@@ -646,7 +646,7 @@ The compound engineering loop adapted for data science: hypothesize, design stud
 | `/method-question` | Harden a fuzzy study idea into structured PICO + FINER + PubMed query at `analysis/research-question.yaml` |
 | `/method-plan` | Create the canonical versioned SAP or technical implementation plan with an implementation-independent objective, ICH E9(R1) estimands (SAP-1.4) and RCT minimum content in SAP mode, Markdown/HTML output modes, and format-preserving resume |
 | `/method-sap` | Deepen complex clinical or observational SAPs with a claim-to-dataset schema, ICH E9(R1) estimands, diagnostics, and decision evidence without creating a competing plan or workbook |
-| `/method-model-choice` | Choose, evidence-ground, and scaffold the primary statistical model—including mixed/random effects, causal, prediction, Bayesian, survival, and meta-analysis branches—in the detected R or Python stack |
+| `/method-model-choice` | Choose, evidence-ground, and scaffold the primary statistical model—including mixed/random effects, causal, prediction, Bayesian, survival, and meta-analysis branches—in the detected R or Python stack. For prediction-model branches, anchors the full training/validation protocol: tuning inside resampling, proper-score selection, calibration, and refit-instability checks. |
 | `/method-review` | Statistical and methodological review with confidence-calibrated integrity/causal findings, reporting checklist compliance, and blinding-state awareness (auto-detected from stack profile) |
 | `/method-adversarial-review` | Independent adversarial code or plan review with quick/auto/deep, a read-only Claude Code/Codex peer pass, bounded evidence-based rebuttal, and explicit local-only or unresolved coverage when a peer cannot validate |
 | `/method-work` | Execute analysis tasks with SAP tracking and verified parallel snapshots while failing loudly at missing, corrupt, or uncommitted dependencies |
@@ -692,7 +692,7 @@ For the academic paper lifecycle: literature → checklist → cohort → power 
 | `/method-anti-slop` | Detect and remove generic AI-writing tells from scientific and clinical manuscript prose |
 | `/method-presubmit` | Run the combined voice, section-discipline, and anti-slop gate before manuscript handoff |
 | `/method-signoff` | Create PI-facing review packs and validate named signoff ledgers for manuscript, registry, sprint, and data-lock approvals |
-| `/method-model-card` | Generate a Mitchell-style model card for a clinical prediction model, with overall + subgroup performance (CIs, event counts, validation type), equalized odds kept distinct from equal opportunity, and ethical considerations |
+| `/method-model-card` | Generate a Mitchell-style model card for a clinical prediction model, with overall + subgroup performance (CIs, event counts, validation type), equalized odds kept distinct from equal opportunity, and ethical considerations. Renders the essential measures (discrimination, calibration, net benefit, risk distributions) and reports imbalance handling as a gap when unrecorded. |
 
 ### EHR & Administrative Data
 
@@ -715,7 +715,7 @@ For the academic paper lifecycle: literature → checklist → cohort → power 
 
 | Skill | Description |
 |-------|-------------|
-| `/method-ml-track` | Wire up ML experiment tracking (mlflow / wandb / dvc / offline-YAML); generate boilerplate, configure backend, define required-log schema, and keep the test set out of model selection |
+| `/method-ml-track` | Wire up ML experiment tracking (mlflow / wandb / dvc / offline-YAML); generate boilerplate, configure backend, define required-log schema, and keep the test set out of model selection. Logs log-loss selection, calibration, refit instability, and net benefit on the locked test set. |
 | `/method-optimize` | Run metric-driven optimization with isolated experiment directories, recorded baselines, cross-validation awareness, leakage guards, and a flag on selection-biased CV scores |
 
 ### Microsoft Fabric & Marimo
