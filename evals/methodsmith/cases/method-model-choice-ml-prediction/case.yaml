@@ -1,0 +1,139 @@
+schema_version: "1.0"
+id: method-model-choice-ml-prediction
+target:
+  kind: skill
+  name: method-model-choice
+  source: plugins/methodsmith/skills/method-model-choice/SKILL.md
+mode: forward
+prompt_path: evals/methodsmith/cases/method-model-choice-ml-prediction/prompt.md
+fixtures:
+  - path: evals/methodsmith/cases/method-model-choice-ml-prediction/fixtures/aggregate-profile.md
+    destination: workspace/aggregate-profile.md
+    sha256: 5233f25adc39b35333c67497254ddb04a9876225a95940b64b0db106b1edc46c
+required_behaviors:
+  - writes-strategy-memo
+  - writes-python-scaffold
+  - auprc-primary-for-rare-outcome
+  - validation-design-declared
+  - tuning-inside-resampling
+  - calibration-assessed
+  - calibration-method-named
+  - device-strategy-addressed
+  - shap-figures-named
+  - permutation-importance-named
+  - partial-dependence-named
+  - scaffold-splits-stratified
+  - evidence-ledger-preserved
+  - emits-handoff
+prohibited_behaviors:
+  - no-fabricated-metrics
+criteria:
+  - id: writes-strategy-memo
+    description: A model-strategy memo is created.
+    type: file_exists
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
+    expected: true
+    weight: 3
+    hard_gate: true
+  - id: writes-python-scaffold
+    description: A Python scaffold is created.
+    type: file_exists
+    path: workspace/analysis/model-strategy/sepsis-48h-model.py
+    expected: true
+    weight: 3
+    hard_gate: true
+  - id: auprc-primary-for-rare-outcome
+    description: The memo selects AUPRC or average precision as the primary metric for the rare outcome.
+    type: regex
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
+    pattern: 'AUPRC|PR.?AUC|average precision'
+    weight: 3
+    hard_gate: true
+  - id: validation-design-declared
+    description: The memo names the validation design (locked held-out set, nested CV, internal-external, or optimism-corrected resampling).
+    type: regex
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
+    pattern: 'nested|held.?out|optimism|locked test|internal.?external'
+    weight: 2
+    hard_gate: true
+  - id: tuning-inside-resampling
+    description: Tuning is performed inside resampling, not on outer or test data.
+    type: regex
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
+    pattern: 'tun(?:e|es|ed|ing)[\s\S]{0,400}(?:fold|resampl|cross.?valid)|(?:fold|resampl|cross.?valid)[\s\S]{0,400}tun(?:e|es|ed|ing)'
+    weight: 3
+    hard_gate: true
+  - id: calibration-assessed
+    description: The memo assesses calibration with slope, curve, or calibration-in-the-large.
+    type: regex
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
+    pattern: 'calibration (?:slope|curve|intercept)|calibration.?in.?the.?large|Brier'
+    weight: 2
+    hard_gate: true
+  - id: calibration-method-named
+    description: A concrete calibration method is named.
+    type: regex
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
+    pattern: 'isotonic|Platt|sigmoid|CalibratedClassifierCV|FrozenEstimator'
+    weight: 2
+    hard_gate: true
+  - id: device-strategy-addressed
+    description: The memo addresses the local device strategy for the stated hardware.
+    type: regex
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
+    pattern: 'CPU|GPU|CUDA'
+    weight: 2
+    hard_gate: true
+  - id: shap-figures-named
+    description: SHAP explanations are planned for the figures.
+    type: regex
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
+    pattern: 'SHAP'
+    weight: 2
+    hard_gate: true
+  - id: permutation-importance-named
+    description: Permutation importance is planned.
+    type: regex
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
+    pattern: 'permutation.{0,40}importance'
+    weight: 2
+    hard_gate: true
+  - id: partial-dependence-named
+    description: Partial dependence plots are planned.
+    type: regex
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
+    pattern: 'partial.?dependence|PartialDependence'
+    weight: 2
+    hard_gate: true
+  - id: scaffold-splits-stratified
+    description: The scaffold uses outcome-stratified splits or explicit seeds.
+    type: regex
+    path: workspace/analysis/model-strategy/sepsis-48h-model.py
+    pattern: 'stratif|random_state|seed'
+    weight: 2
+    hard_gate: true
+  - id: evidence-ledger-preserved
+    description: The memo keeps the PR-vs-ROC evidence anchor with its PMID.
+    type: regex
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
+    pattern: 'PMID\s*25738806'
+    weight: 3
+    hard_gate: true
+  - id: emits-handoff
+    description: The response emits the canonical model-strategy handoff for Python.
+    type: regex
+    path: response.md
+    pattern: '__CE_MODEL_STRATEGY__ .*language=python'
+    weight: 3
+    hard_gate: true
+  - id: no-fabricated-metrics
+    description: The scaffold contains no hard-coded performance values.
+    type: regex_not
+    path: workspace/analysis/model-strategy/sepsis-48h-model.py
+    pattern: '\b(?:auc|auroc|auprc|accuracy|brier)\b\s*[:=]\s*0\.\d'
+    weight: 2
+    hard_gate: true
+threshold: 0.85
+limitations:
+  - The fixture is synthetic and aggregate; the case evaluates protocol routing and scaffold structure, not fitted results or clinical validity.
+  - Regex criteria verify that the right concepts are named, not that the reasoning is complete.

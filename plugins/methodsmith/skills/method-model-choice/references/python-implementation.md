@@ -12,7 +12,7 @@ Use the project's locked environment and existing conventions. Check `pyproject.
 | Bayesian binomial/Poisson random effects | Installed `statsmodels` Bayesian mixed-GLM path or approved Bayesian stack | Approximation and output differ from `MixedLM`; do not present as equivalent frequentist GLMM |
 | Survival | Installed `lifelines`, `statsmodels`, `scikit-survival`, or project-approved path | Match inferential versus predictive aim and package capabilities |
 | Bayesian hierarchy | Installed PyMC/Bambi or project-approved path | Priors, sampling diagnostics, posterior predictive checks |
-| Prediction/ML | `scikit-learn` pipeline or installed project stack | Split by independent unit; all learning inside resampling |
+| Prediction/ML | `scikit-learn` pipeline or installed project stack | Split by independent unit; all learning inside resampling; follow `ml-training-protocol.md` |
 | Meta-analysis | Existing project implementation or route computation to `method-meta-analysis` | Do not invent parity with mature R tooling |
 
 If Python cannot credibly implement the selected model with installed dependencies, retain the statistical recommendation but set `status=provisional` and the code path to `none` while a vetted R or Bayesian alternative awaits human approval. Use `status=blocked` when no credible implementation path exists. Never emit `ready_for_review` without its required scaffold, and never silently replace a GLMM with ordinary logistic regression or a GEE because it is easier to code.

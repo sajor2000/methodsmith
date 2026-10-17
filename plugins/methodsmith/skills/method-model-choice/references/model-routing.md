@@ -34,7 +34,7 @@ Define treatment strategies, time zero, eligibility, follow-up, outcome, estiman
 
 Define intended use, prediction horizon, target population, validation design, leakage boundary, calibration, and decision threshold. An inferential regression may still be a prediction model, but p-values are not its selection criterion.
 
-Determine the minimum development sample size with the Riley et al. criteria (BMJ 2020, PMID `32188600`; `pmsampsize` in R/Stata), not a fixed events-per-variable rule (van Smeden et al. 2019, PMID `29966490`). Keep continuous predictors continuous and model nonlinearity with restricted cubic splines; never dichotomize for convenience (Harrell, *Regression Modeling Strategies*, 2nd ed., ch. 2). Use penalized estimation (ridge, lasso, elastic net, or uniform shrinkage) when the sample-size criteria are not comfortably met, and report bootstrap optimism-corrected discrimination and calibration slope (Steyerberg & Vergouwe 2014, PMID `24898551`).
+Determine the minimum development sample size with the Riley et al. criteria (BMJ 2020, PMID `32188600`; `pmsampsize` in R/Stata), not a fixed events-per-variable rule (van Smeden et al. 2019, PMID `29966490`). Keep continuous predictors continuous and model nonlinearity with restricted cubic splines; never dichotomize for convenience (Harrell, *Regression Modeling Strategies*, 2nd ed., ch. 2). Use penalized estimation (ridge, lasso, elastic net, or uniform shrinkage) when the sample-size criteria are not comfortably met, and report bootstrap optimism-corrected discrimination and calibration slope (Steyerberg & Vergouwe 2014, PMID `24898551`). With several sites or calendar periods, validate by internal-external cross-validation (PMID `33836256`). Do not correct class imbalance in a risk model (PMID `35686364`). For flexible or machine-learning candidates, read `ml-training-protocol.md`.
 
 ### Validation or agreement
 
@@ -60,7 +60,7 @@ Every primary model needs checks for convergence/identifiability, influential ob
 - Count: dispersion, zero structure, offset validity.
 - Ordinal: proportional-odds or threshold assumptions.
 - Survival: proportional hazards when used, time-varying effects, informative censoring.
-- Prediction: minimum sample size (Riley criteria), resampling by the independent unit, calibration, optimism, subgroup performance.
+- Prediction: minimum sample size (Riley criteria), resampling by the independent unit, calibration, optimism, bootstrap instability, net benefit, subgroup performance.
 - Causal: balance, overlap/positivity, weight distribution, time alignment, sensitivity to unmeasured confounding.
 - Meta-analysis: heterogeneity estimate uncertainty, influence, and prediction interval when appropriate.
 
