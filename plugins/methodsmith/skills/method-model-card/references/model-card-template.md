@@ -23,6 +23,7 @@
 | Architecture | {{ model.architecture }} |
 | Owner / Contact | {{ model.owner }} |
 | License | {{ model.license | default("CC-BY-4.0 -- model weights subject to data-use agreement") }} |
+| Pretrained weights licence | {{ model.weights_license }} (pretrained or foundation-model components only, e.g. TabPFN; state whether the licence permits the intended use) |
 | Citation | {{ model.citation }} |
 
 ## 2. Intended use
@@ -68,10 +69,13 @@ N = {{ eval.internal.n }}; events = {{ eval.internal.n_events }} (prevalence {{ 
 | Brier score | {{ eval.internal.brier }} | {{ eval.internal.brier_ci }} |
 | Calibration intercept (calibration-in-the-large) | {{ eval.internal.calibration_intercept }} | {{ eval.internal.calibration_intercept_ci }} |
 | Calibration slope | {{ eval.internal.calibration_slope }} | {{ eval.internal.calibration_slope_ci }} |
+| Log loss (when reported) | {{ eval.internal.log_loss }} | {{ eval.internal.log_loss_ci }} |
+| AUPRC (when reported; no-skill baseline = prevalence {{ eval.internal.prevalence }}) | {{ eval.internal.auprc }} | {{ eval.internal.auprc_ci }} |
 | Sensitivity (at threshold {{ eval.internal.threshold }}) | {{ eval.internal.sens }} | {{ eval.internal.sens_ci }} |
 | Specificity (at threshold {{ eval.internal.threshold }}) | {{ eval.internal.spec }} | {{ eval.internal.spec_ci }} |
 | PPV | {{ eval.internal.ppv }} | {{ eval.internal.ppv_ci }} |
 | NPV | {{ eval.internal.npv }} | {{ eval.internal.npv_ci }} |
+| Predicted-risk distribution by outcome | Figure {{ eval.internal.risk_distribution_fig }} | -- |
 
 ### 4.2 Performance by subgroup
 
@@ -98,7 +102,13 @@ N = {{ eval.external.n }}; events = {{ eval.external.n_events }}; cohort = {{ ev
 
 ### 4.4 Decision-curve analysis
 
-Net benefit at thresholds {{ thresholds }} compared with treat-all and treat-none -- see Figure {{ fig_id }}.
+Net benefit at thresholds {{ thresholds }} compared with treat-all and treat-none -- see Figure {{ fig_id }}. The threshold range was fixed from clinical consequences before results were seen.
+
+AUROC, the calibration plot, net benefit, and the distribution of predicted risks by outcome are the essential measures (Van Calster et al., Lancet Digit Health 2025, PMID 41391983). AUPRC, when shown, is supplementary and is not compared across groups with different prevalence.
+
+### 4.5 Model stability
+
+Instability from {{ eval.stability.n_bootstrap }} bootstrap refits of the full model-building procedure: mean absolute prediction error {{ eval.stability.mape }}; see the prediction, calibration, and decision-curve instability plots in Figure {{ eval.stability.fig_id }} (Riley & Collins, Biom J 2023, PMID 37466257). Omit this section only when the evaluation did not include a stability analysis, and say so in section 9.
 
 ## 5. Evaluation data
 
@@ -120,7 +130,8 @@ Net benefit at thresholds {{ thresholds }} compared with treat-all and treat-non
 | Date range | {{ training.dates }} |
 | Features | {{ training.features }} (count: {{ training.feature_count }}) |
 | Outcome definition | {{ training.outcome }} |
-| Class balance | {{ training.class_balance }} |
+| Outcome prevalence | {{ training.class_balance }} |
+| Imbalance correction | {{ training.imbalance_correction }} (if any was used: method, rationale, and recalibration to the natural prevalence; TRIPOD+AI item 13). When the training records do not establish this, report the gap in section 9 -- never render "none" by default |
 | Train / val / test split | {{ training.split }} -- {{ training.split_strategy }} (group / temporal / random) |
 
 ## 7. Quantitative analyses
@@ -158,3 +169,4 @@ See section 4.1.
 - Concept drift monitoring: {{ drift_plan }}.
 - Human-in-the-loop required: model is decision SUPPORT, not decision AUTOMATION.
 - Re-evaluation triggered by: {{ retrigger_conditions }}.
+- Internal validation only: {{ external_validation_status }}. A model without external or internal-external validation is not ready for deployment decisions.

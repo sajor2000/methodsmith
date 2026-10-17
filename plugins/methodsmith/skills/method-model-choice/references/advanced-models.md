@@ -16,9 +16,9 @@ Choose among standardization/g-computation, propensity-score weighting or matchi
 
 ## Prediction and machine learning
 
-Choose models from intended use, sample/event size, nonlinearities, interactions, deployment constraints, and validation design. Respect subject/site/time boundaries in splitting. Keep preprocessing, imputation, feature selection, and tuning inside resampling. Compare against a simple prespecified baseline. Report calibration, discrimination, uncertainty, clinical utility, subgroup performance, and external/temporal validation as appropriate.
+Choose models from intended use, sample/event size, nonlinearities, interactions, deployment constraints, and validation design. Respect subject/site/time boundaries in splitting. Keep preprocessing, imputation, feature selection, and tuning inside resampling. Compare against a simple prespecified baseline. Report calibration, discrimination (AUROC), clinical utility (net benefit), risk distributions, instability, subgroup performance, and external, temporal, or internal-external validation as appropriate. Do not resample or reweight for class imbalance.
 
-Do not use test-set performance for model selection. Do not interpret feature importance as a causal effect. Route experiment recording to `method-ml-track` and final documentation to `method-model-card`.
+Do not use test-set performance for model selection. Do not interpret feature importance as a causal effect. Read `ml-training-protocol.md` for the Python training loop: validation design, fold structure, sample size and stability, performance measures, imbalance, tuning on proper scoring rules, candidate learners including tabular foundation models, device strategy, calibration, thresholds, and explainability figures. Route experiment recording to `method-ml-track` and final documentation to `method-model-card`.
 
 ## Bayesian hierarchical models
 
