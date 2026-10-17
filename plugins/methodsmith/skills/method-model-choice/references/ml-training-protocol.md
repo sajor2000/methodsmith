@@ -5,6 +5,7 @@ Apply after `model-routing.md` fixes the prediction aim and the model family is 
 ## Contents
 
 - Run order
+- Status gate for prediction protocols
 - Validation design
 - Resampling: fold count and structure
 - Sample size and model stability
@@ -34,6 +35,21 @@ Apply after `model-routing.md` fixes the prediction aim and the model family is 
 8. Score the locked test set exactly once, or report the resampling-corrected estimate.
 
 A memo that skips the sample-size check, the validation design, or the measure decision is `provisional` at best.
+
+## Status gate for prediction protocols
+
+Separate true blockers from approval prerequisites so that a complete protocol still reaches `ready_for_review` with a scaffold:
+
+| Situation | Effect on status |
+|---|---|
+| Unknown grain or independent unit, undefined outcome or horizon, failed data QA, or no credible implementation in the active stack | `blocked` or `provisional`; no scaffold |
+| Prediction aim, outcome, unit, counts, predictors, and stack are established | Eligible for `ready_for_review` |
+| Anticipated performance unknown for the Riley calculation | Not a blocker. Compute the criteria with a stated conservative assumption (an anticipated C-statistic or Cox-Snell R-squared, with the conservative default from the Riley guidance when nothing better exists), show the arithmetic, and list confirmation as an approval prerequisite. Downgrade only when the computed minimum clearly exceeds the available events for every candidate, including the penalized baseline |
+| Clinical decision-threshold range not yet approved | Not a blocker. The scaffold takes the threshold range as a required configuration value with no default; the memo proposes a range and lists clinical approval as a prerequisite |
+| Exact locked package versions not visible | Not a blocker when the scaffold uses only long-stable APIs (`Pipeline`, `ColumnTransformer`, `SimpleImputer`, `SplineTransformer`, `LogisticRegression`, `StratifiedKFold`, `StratifiedGroupKFold`, `LeaveOneGroupOut`, `cross_validate`, `CalibratedClassifierCV` with `method="sigmoid"`, `LGBMClassifier`). Record versions at run time, and guard any version-dependent feature (`FrozenEstimator`, `method="temperature"`, `TunedThresholdClassifierCV`) with an explicit version check that raises |
+| Optional tooling (SHAP, Optuna, TabPFN) not confirmed installed | Not a blocker for the primary scaffold. Import optional tools inside the functions that use them, fail with a clear message when absent, and keep the primary fit independent of them |
+
+Approval prerequisites go in the memo's residual-uncertainty section; they do not change `ready_for_review` into `provisional`.
 
 ## Validation design
 
@@ -120,7 +136,7 @@ Choose measures by what they reward, not by habit. Report these as the essential
 | Random forest | Rarely preferred | Check calibration closely; tune on log loss like any other candidate |
 | Deep tabular networks | Only with large data and a stated reason | Higher variance and tuning cost |
 
-Tabular foundation models are the main 2025-2026 change in tabular prediction. TabPFN v2 is a pretrained transformer that predicts in context without per-dataset tuning and outperformed tuned baselines on datasets up to 10,000 samples (Hollmann et al., Nature 2025, PMID 39780007); the TabArena living benchmark (NeurIPS 2025 Datasets and Benchmarks, arXiv 2506.16791) tracks tuned GBDTs, deep tabular models, and foundation models under one protocol. Use one only when all of these hold:
+TabPFN v2 is a pretrained transformer that predicts in context without per-dataset tuning and outperformed tuned baselines on datasets up to 10,000 samples (Hollmann et al., Nature 2025, PMID 39780007); the TabArena living benchmark (NeurIPS 2025 Datasets and Benchmarks, arXiv 2506.16791) tracks tuned GBDTs, deep tabular models, and foundation models under one protocol. Use one only when all of these hold:
 
 - the package and weights are already installed and approved; never install them from this skill;
 - the weight licence fits the use: TabPFN-2.5 and later weights carry non-commercial licences, so commercial or deployed use needs explicit licence clearance;
@@ -153,8 +169,8 @@ Tabular foundation models are the main 2025-2026 change in tabular prediction. T
 |---|---|
 | Logistic recalibration (intercept and slope) | Default for binary risk; few events |
 | Sigmoid (Platt) via `CalibratedClassifierCV(method="sigmoid")` | Same idea inside scikit-learn |
-| Isotonic | Many events (hundreds per fold or more); overfits with few |
-| Temperature scaling, `method="temperature"` (scikit-learn 1.8 or later) | Mainly multiclass; a single scale parameter without an intercept, so it cannot fix calibration-in-the-large |
+| Isotonic | Many events (hundreds per fold); overfits with few |
+| Temperature scaling, `method="temperature"` (scikit-learn 1.8 or later) | Mainly multiclass; a one-parameter Platt variant with no separate intercept, so it cannot independently correct calibration-in-the-large (Guo 2017, arXiv 1706.04599) |
 | `CalibratedClassifierCV(FrozenEstimator(model))` (scikit-learn 1.6 or later) | Calibrating one locked model on disjoint development data; `cv="prefit"` is deprecated |
 
 - Fit calibration on out-of-fold development predictions or a disjoint development split; the locked test set scores the calibrated model once. Report discrimination after calibration.
