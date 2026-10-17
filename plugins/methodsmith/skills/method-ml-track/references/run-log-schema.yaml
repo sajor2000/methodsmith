@@ -29,6 +29,7 @@ metrics:
   log_loss_validation: float      # proper scoring rule; default tuning objective
   auprc_validation: float         # supplementary; interpret against prevalence
   auc_validation_scheme: string   # e.g., "grouped 5-fold CV by patient"
+  instability_mape: float         # bootstrap prediction instability (development)
   # Test metrics below: held-out design and final locked model only, logged once;
   # null otherwise. Record resampling-corrected estimates for other designs.
   corrected_performance: map
@@ -41,7 +42,6 @@ metrics:
   auc_test_ci_hi: float
   auprc_test: float               # supplementary; report with test prevalence
   net_benefit_test: map           # threshold -> net benefit on the locked test set
-  instability_mape: float         # bootstrap prediction instability (development)
   auc_external: float             # null if no external set
   brier_test: float
   calibration_intercept_test: float  # calibration-in-the-large (offset model)
