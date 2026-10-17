@@ -29,16 +29,13 @@
     },
     {
       "id": 3,
-      "prompt": "We're building our first ML prediction model in Python: sepsis within 48 hours of ICU admission. One row per patient, 4,180 patients, 6% outcome prevalence, 22 candidate admission-time predictors. Stack: locked scikit-learn plus LightGBM stock pip wheels; local Linux workstation with 32 cores and an RTX 4090. Before we code: train/test or train/val/test, 5 or 10 fold CV, Optuna or something else for tuning, AUROC or AUPRC at 6% prevalence, how to calibrate, and how to get publication-quality SHAP, variable-importance, and partial-dependence figures. Write the strategy memo and scaffold.",
-      "expected_output": "Routes through the prediction branch into the ML training protocol: locks a validation design (held-out test scored once after lock, or nested CV) with all tuning inside resampling, picks AUPRC as the primary metric for the rare outcome while still reporting AUROC and calibration, recommends a seeded Optuna TPE search with a declared budget, gives a hardware-honest device strategy (CPU baseline first; LightGBM CUDA needs a CUDA-built wheel), and wires SHAP, permutation-importance, and partial-dependence figures through the figure workflow.",
+      "prompt": "Review this proposed MMRM for four visits per patient: clinic random intercept + patient random intercept + fully unstructured residual covariance within patient. I only want model advice, not a fit.",
+      "expected_output": "Identifies the same-level covariance non-identifiability; Recommends clinic random intercept plus unstructured patient residual covariance without an additional patient intercept, or a constrained residual alternative; Respects the advice-only request without running a model or inventing fitted results.",
       "files": [],
       "expectations": [
-        "Selects AUPRC/average precision as the primary tuning and reporting metric for the ~6% prevalence outcome with AUROC also reported, justified by prevalence rather than AUROC convenience",
-        "Locks a validation design before modeling (held-out test scored once after model lock, or nested CV, or resampling with correction) and keeps tuning, thresholds, and calibration off the outer/test data",
-        "Recommends calibration assessment (slope plus calibration-in-the-large or a calibration curve, and Brier) with a named method such as isotonic, sigmoid/Platt, CalibratedClassifierCV, or FrozenEstimator, fit on development data only",
-        "Gives a hardware-honest device strategy: CPU baseline first, LightGBM CUDA only with a CUDA-built wheel, no GPU claims where no CUDA device or build exists",
-        "Covers explainability on a declared split: SHAP (beeswarm/bar/dependence), permutation importance, and partial dependence, with figure production routed to the figure workflow",
-        "Writes analysis/model-strategy/<slug>-model-strategy.md plus a Python scaffold (or a justified provisional) with no fabricated results, and emits the __CE_MODEL_STRATEGY__ handoff"
+        "Identifies the same-level covariance non-identifiability",
+        "Recommends clinic random intercept plus unstructured patient residual covariance without an additional patient intercept, or a constrained residual alternative",
+        "Respects the advice-only request without running a model or inventing fitted results"
       ]
     }
   ]
