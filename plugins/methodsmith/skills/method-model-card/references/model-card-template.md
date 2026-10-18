@@ -169,4 +169,4 @@ See section 4.1.
 - Concept drift monitoring: {{ drift_plan }}.
 - Human-in-the-loop required: model is decision SUPPORT, not decision AUTOMATION.
 - Re-evaluation triggered by: {{ retrigger_conditions }}.
-- Internal validation only: {{ external_validation_status }}. A model without external or internal-external validation is not ready for deployment decisions.
+- Validation status: {{ external_validation_status }}. A model without external or internal-external validation is not ready for deployment decisions.
