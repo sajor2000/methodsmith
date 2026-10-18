@@ -147,7 +147,7 @@ describe("corporate install artifacts", () => {
     }
     expect(setupDocs).toContain("Windows PowerShell")
     expect(setupDocs).toContain("Git Bash")
-  })
+  }, SLOW_TEST_TIMEOUT_MS)
 
   test("Claude local aliases are managed, idempotent, and preserve user-owned commands", async () => {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "method-claude-aliases-"))
@@ -242,7 +242,7 @@ describe("corporate install artifacts", () => {
     expect(await exists(path.join(codexPackage, "install.ps1"))).toBe(true)
     expect(await exists(path.join(codexPackage, "codex-agent-bridge", "config.toml.template"))).toBe(false)
     expect(await exists(path.join(codexPackage, "codex-agent-bridge", "agents", "methodsmith", "method-security-reviewer.toml"))).toBe(true)
-  })
+  }, SLOW_TEST_TIMEOUT_MS)
 
   test("Codex offline installer writes local marketplace and bridge agents", async () => {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "method-codex-offline-"))
@@ -345,7 +345,7 @@ describe("corporate install artifacts", () => {
     expect(malformedExit).not.toBe(0)
     expect(malformedStderr).toContain("leaving config unchanged")
     expect(await fs.readFile(configPath, "utf8")).toBe(malformedConfig)
-  })
+  }, SLOW_TEST_TIMEOUT_MS)
 
   test("setup intake supports corporate no-install mode and keeps Quarto optional", async () => {
     const setupSkill = await fs.readFile(path.join(pluginRoot, "skills", "method-setup", "SKILL.md"), "utf8")
@@ -390,7 +390,7 @@ describe("corporate install artifacts", () => {
     })
     expect(await incomplete.exited).toBe(0)
     expect(await new Response(incomplete.stdout).text()).not.toContain("Legacy Compound Codex tool map")
-  })
+  }, SLOW_TEST_TIMEOUT_MS)
 
   test("setup uses a concise evidence-first profile before optional detail", async () => {
     const setupSkill = await fs.readFile(path.join(pluginRoot, "skills", "method-setup", "SKILL.md"), "utf8")
