@@ -7,7 +7,7 @@
   {"query": "Write the model-selection memo for SAP section 5: estimand, grain, dependence, candidate models considered and rejected, primary model, sensitivity analyses, evidence ledger.", "should_trigger": true},
   {"query": "count outcome (falls per patient-day), clustered by ward, overdispersed - poisson GLMM vs negative binomial vs GEE? need something defensible for the biostat reviewer", "should_trigger": true},
   {"query": "We're at design stage, no data yet. What's the likely primary model for a stepped-wedge cluster trial with a binary outcome, and what QA facts would we need to finalize it?", "should_trigger": true},
-  {"query": "Design the training and validation protocol for our first tabular prediction model in Python (scikit-learn, CPU LightGBM): splits and cross-validation, tuning plan, calibration, and which performance measures to report, before any code is written.", "should_trigger": true},
+  {"query": "Design the training and validation protocol for our first tabular prediction model in Python (scikit-learn, CPU LightGBM): splits and cross-validation, tuning plan, calibration, performance measures, and a machine-readable decision sidecar, before any code is written.", "should_trigger": true},
   {"query": "Reviewer says our logistic model ignores clustering within hospitals. Re-do the model strategy so the dependence structure and inference method are justified.", "should_trigger": true},
   {"query": "Write the full canonical SAP for our early-vasopressin cohort study including population, outcomes, analysis, and missing data.", "should_trigger": false},
   {"query": "Build the claims-to-datasets schema and estimand table for our complex EHR validation study's SAP.", "should_trigger": false},

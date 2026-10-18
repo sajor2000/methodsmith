@@ -20,6 +20,20 @@ const casePath = path.join(
 )
 const memoRelative = "workspace/analysis/model-strategy/sepsis-48h-model-strategy.md"
 const scaffoldRelative = "workspace/analysis/model-strategy/sepsis-48h-model.py"
+const decisionsRelative = "workspace/analysis/model-strategy/sepsis-48h-model-strategy.decisions.json"
+const compliantDecisions = {
+  schema_version: "1.0",
+  status: "ready_for_review",
+  validation: { scheme: "internal_external_cv", outer_unit: "site" },
+  tuning: { objective: "log_loss", inside_resampling: true },
+  sample_size: {
+    method: "riley",
+    inputs: { patients: 4180, events: 251, candidate_predictors: 22 },
+  },
+  calibration: { methods: ["calibration_in_the_large", "calibration_slope", "calibration_curve"] },
+  fixture_counts: { patients: 4180, events: 251, sites: 14, candidate_predictors: 22 },
+  unresolved: [],
+}
 
 const tempRoots: string[] = []
 
@@ -47,9 +61,20 @@ present, so the compute plan stays on the CPU and installs nothing.
 
 const compliantMemo = `# Sepsis-48h model strategy and training protocol
 
-Status: ready_for_review. Protocol written before any scaffold execution; no
+Status: ready_for_review
+Human reviewer: pending
+
+Protocol written before any scaffold execution; no
 models were fitted, no packages installed, no network access, and no
 performance results exist.
+
+## Decision summary
+
+Validation scheme: internal_external_cv
+Outer validation unit: site
+Objective: log_loss
+Tuning inside resampling: true
+Sample-size method: riley
 
 ## Design facts from the frozen profile
 
@@ -574,7 +599,11 @@ const tunedOnceBeforeHelperLoopScaffold = precomputedFoldsScaffold
 
 const nonTuningProcedureScaffold = fixedCHelperScaffold.replaceAll("fit_procedure", "train_procedure")
 
-async function buildRunDir(options: { memo?: string; scaffold?: string } = {}): Promise<string> {
+async function buildRunDir(options: {
+  memo?: string
+  scaffold?: string
+  decisions?: unknown
+} = {}): Promise<string> {
   const definition = await loadAndValidateCase(repoRoot, casePath)
   const runDir = await mkdtemp(path.join(os.tmpdir(), "ml-prediction-case-"))
   tempRoots.push(runDir)
@@ -586,6 +615,10 @@ async function buildRunDir(options: { memo?: string; scaffold?: string } = {}): 
   }
   await writeFile(path.join(runDir, memoRelative), options.memo ?? compliantMemo)
   await writeFile(path.join(runDir, scaffoldRelative), options.scaffold ?? compliantScaffold)
+  if (options.decisions !== null) {
+    await writeFile(path.join(runDir, decisionsRelative),
+      JSON.stringify(options.decisions ?? compliantDecisions, null, 2))
+  }
   await writeFile(path.join(runDir, "response.md"), handoffResponse(runDir))
   await writeFile(
     path.join(runDir, "run.json"),
@@ -624,6 +657,89 @@ async function scoreRun(runDir: string) {
 }
 
 describe("method-model-choice ml-prediction case", () => {
+  test("keeps Brier score valid when the sidecar, memo, and scaffold select it", async () => {
+    const runDir = await buildRunDir({
+      decisions: {
+        ...compliantDecisions,
+        tuning: { objective: "brier_score", inside_resampling: true },
+        calibration: { methods: [...compliantDecisions.calibration.methods].reverse() },
+      },
+      memo: compliantMemo.replace("Objective: log_loss", "Objective: brier_score")
+        .replaceAll("log loss", "Brier score"),
+      scaffold: compliantScaffold
+        .replace("loss = float(log_loss(y, pooled, labels=[0, 1]))",
+          "loss = float(brier_score_loss(y, pooled))")
+        .replace("minimum pooled inner-fold log loss", "minimum pooled inner-fold Brier score"),
+    })
+    const report = await scoreRun(runDir)
+    expect(report.pass).toBe(true)
+    expect(report.score_ratio).toBe(1)
+  })
+
+  test("fails canonical memo rows that disagree with otherwise valid sidecar decisions", async () => {
+    for (const [id, from, to] of [
+      ["memo-status-agrees", "Status: ready_for_review", "Status: blocked"],
+      ["memo-validation-agrees", "Validation scheme: internal_external_cv", "Validation scheme: nested_cv"],
+      ["memo-outer-unit-agrees", "Outer validation unit: site", "Outer validation unit: patient"],
+      ["memo-objective-agrees", "Objective: log_loss", "Objective: brier_score"],
+      ["memo-tuning-agrees", "Tuning inside resampling: true", "Tuning inside resampling: false"],
+      ["memo-sample-size-agrees", "Sample-size method: riley", "Sample-size method: epv"],
+      ["memo-objective-agrees", "Objective: log_loss", "Objective: log_loss\nObjective: brier_score"],
+      ["memo-objective-agrees", "Objective: log_loss", "Objective: log_loss\nObjective: AUROC (primary)"],
+      ["memo-objective-agrees", "Objective: log_loss", ""],
+    ]) {
+      const report = await scoreRun(await buildRunDir({ memo: compliantMemo.replace(from!, to!) }))
+      expect(report.criteria.find((criterion) => criterion.id === id)?.passed).toBe(false)
+      expect(report.hard_gates_passed).toBe(false)
+      expect(report.pass).toBe(false)
+    }
+  })
+
+  test("fails a wrong sidecar objective even when the memo and scaffold are compliant", async () => {
+    const runDir = await buildRunDir({
+      decisions: { ...compliantDecisions, tuning: { objective: "auroc", inside_resampling: true } },
+    })
+    const report = await scoreRun(runDir)
+    expect(report.criteria.find((criterion) => criterion.id === "sidecar-proper-objective")?.passed)
+      .toBe(false)
+    expect(report.hard_gates_passed).toBe(false)
+    expect(report.pass).toBe(false)
+  })
+
+  test("fails a complete memo and scaffold when the required decision sidecar is missing", async () => {
+    const runDir = await buildRunDir({ decisions: null })
+    await expect(scoreRun(runDir)).rejects.toThrow(/requires missing artifact:.*decisions\.json/)
+  })
+
+  test("rejects incomplete or contradictory sidecar decisions independently of the memo", async () => {
+    const invalid: Array<[string, unknown]> = [
+      ["sidecar-version", { ...compliantDecisions, schema_version: "2.0" }],
+      ["sidecar-status", { ...compliantDecisions, status: "blocked" }],
+      ["sidecar-status", { ...compliantDecisions, status: undefined }],
+      ["sidecar-validation", { ...compliantDecisions, validation: { scheme: "random_split", outer_unit: "patient" } }],
+      ["sidecar-validation", { ...compliantDecisions, validation: {} }],
+      ["sidecar-tuning-nested", { ...compliantDecisions, tuning: { objective: "log_loss", inside_resampling: false } }],
+      ["sidecar-tuning-nested", { ...compliantDecisions, tuning: { objective: "log_loss", inside_resampling: "true" } }],
+      ["sidecar-proper-objective", { ...compliantDecisions, tuning: {} }],
+      ["sidecar-sample-size", { ...compliantDecisions, sample_size: { method: "epv", inputs: compliantDecisions.sample_size.inputs } }],
+      ["sidecar-sample-size", { ...compliantDecisions, sample_size: { method: "riley", inputs: { patients: 418, events: 25, candidate_predictors: 8 } } }],
+      ["sidecar-sample-size", { ...compliantDecisions, sample_size: { method: "riley" } }],
+      ["sidecar-calibration", { ...compliantDecisions, calibration: { methods: ["calibration_curve"] } }],
+      ["sidecar-calibration", { ...compliantDecisions, calibration: {} }],
+      ["sidecar-fixture-counts", { ...compliantDecisions, fixture_counts: { patients: 418, events: 25, sites: 5, candidate_predictors: 8 } }],
+      ["sidecar-fixture-counts", { ...compliantDecisions, fixture_counts: { ...compliantDecisions.fixture_counts, patients: "4180" } }],
+      ["sidecar-fixture-counts", { ...compliantDecisions, fixture_counts: undefined }],
+      ["sidecar-unresolved", { ...compliantDecisions, unresolved: ["validation is undecided"] }],
+      ["sidecar-unresolved", { ...compliantDecisions, unresolved: undefined }],
+    ]
+    for (const [id, decisions] of invalid) {
+      const report = await scoreRun(await buildRunDir({ decisions }))
+      expect(report.criteria.find((criterion) => criterion.id === id)?.passed).toBe(false)
+      expect(report.hard_gates_passed).toBe(false)
+      expect(report.pass).toBe(false)
+    }
+  })
+
   test("scores a compliant synthetic protocol memo and scaffold as a full pass", async () => {
     const runDir = await buildRunDir()
     const report = await scoreRun(runDir)

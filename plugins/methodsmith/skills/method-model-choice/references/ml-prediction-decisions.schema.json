@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Methodsmith prediction decisions, version 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "validation", "tuning", "sample_size", "calibration", "fixture_counts", "unresolved"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "status": {"enum": ["blocked", "provisional", "ready_for_review"]},
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scheme", "outer_unit"],
+      "properties": {
+        "scheme": {"enum": ["internal_external_cv", "nested_cv", "held_out", "bootstrap", "other", null]},
+        "outer_unit": {"type": ["string", "null"], "minLength": 1}
+      }
+    },
+    "tuning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["objective", "inside_resampling"],
+      "properties": {
+        "objective": {"type": ["string", "null"], "minLength": 1},
+        "inside_resampling": {"type": ["boolean", "null"]}
+      }
+    },
+    "sample_size": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "inputs"],
+      "properties": {
+        "method": {"enum": ["riley", "simulation", "other", null]},
+        "inputs": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["patients", "events", "candidate_predictors"],
+          "properties": {
+            "patients": {"$ref": "#/$defs/count"},
+            "events": {"$ref": "#/$defs/count"},
+            "candidate_predictors": {"$ref": "#/$defs/count"}
+          }
+        }
+      }
+    },
+    "calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["methods"],
+      "properties": {
+        "methods": {"type": ["array", "null"], "minItems": 1, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "fixture_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["patients", "events", "sites", "candidate_predictors"],
+      "properties": {
+        "patients": {"$ref": "#/$defs/count"},
+        "events": {"$ref": "#/$defs/count"},
+        "sites": {"$ref": "#/$defs/count"},
+        "candidate_predictors": {"$ref": "#/$defs/count"}
+      }
+    },
+    "unresolved": {"type": "array", "items": {"type": "string", "minLength": 1}}
+  },
+  "allOf": [{
+    "if": {"properties": {"status": {"const": "ready_for_review"}}},
+    "then": {
+      "properties": {
+        "validation": {"properties": {"scheme": {"type": "string"}, "outer_unit": {"type": "string"}}},
+        "tuning": {"properties": {"objective": {"type": "string"}, "inside_resampling": {"type": "boolean"}}},
+        "sample_size": {"properties": {
+          "method": {"type": "string"},
+          "inputs": {"type": "object", "properties": {
+            "patients": {"type": "integer"}, "events": {"type": "integer"}, "candidate_predictors": {"type": "integer"}
+          }}
+        }},
+        "calibration": {"properties": {"methods": {"type": "array"}}},
+        "fixture_counts": {"properties": {
+          "patients": {"type": "integer"}, "events": {"type": "integer"},
+          "sites": {"type": "integer"}, "candidate_predictors": {"type": "integer"}
+        }},
+        "unresolved": {"maxItems": 0}
+      }
+    },
+    "else": {"properties": {"unresolved": {"minItems": 1}}}
+  }],
+  "$defs": {"count": {"type": ["integer", "null"], "minimum": 0}}
+}

@@ -11,6 +11,22 @@ fixtures:
     destination: workspace/aggregate-profile.md
     sha256: f83d7d1c5c996762f4ba61ce972a19638cedf8453ede595bd56acf3a3c5d7c40
 required_behaviors:
+  - memo-status-agrees
+  - memo-validation-agrees
+  - memo-outer-unit-agrees
+  - memo-objective-agrees
+  - memo-tuning-agrees
+  - memo-sample-size-agrees
+  - sidecar-version
+  - sidecar-status
+  - sidecar-validation
+  - sidecar-tuning-nested
+  - sidecar-sample-size
+  - sidecar-calibration
+  - sidecar-fixture-counts
+  - sidecar-unresolved
+  - sidecar-proper-objective
+  - writes-decision-sidecar
   - writes-strategy-memo
   - writes-python-scaffold
   - essential-measures-named
@@ -40,6 +56,145 @@ prohibited_behaviors:
   - no-imbalance-correction
   - no-cuda-install-plan
 criteria:
+  - id: memo-status-agrees
+    description: Exactly one canonical memo status agrees with the sidecar.
+    type: json_text_equals
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.decisions.json
+    json_path: status
+    text_path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
+    pattern: '^Status:[ \t]*([^\r\n]*)\r?$'
+    case_sensitive: true
+    weight: 2
+    hard_gate: true
+  - id: memo-validation-agrees
+    description: The canonical validation-scheme row agrees with the sidecar.
+    type: json_text_equals
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.decisions.json
+    json_path: validation.scheme
+    text_path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
+    pattern: '^Validation scheme:[ \t]*([^\r\n]*)\r?$'
+    case_sensitive: true
+    weight: 2
+    hard_gate: true
+  - id: memo-outer-unit-agrees
+    description: The canonical outer-validation-unit row agrees with the sidecar.
+    type: json_text_equals
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.decisions.json
+    json_path: validation.outer_unit
+    text_path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
+    pattern: '^Outer validation unit:[ \t]*([^\r\n]*)\r?$'
+    case_sensitive: true
+    weight: 2
+    hard_gate: true
+  - id: memo-objective-agrees
+    description: The canonical objective row agrees with the selected proper score.
+    type: json_text_equals
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.decisions.json
+    json_path: tuning.objective
+    text_path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
+    pattern: '^Objective:[ \t]*([^\r\n]*)\r?$'
+    case_sensitive: true
+    weight: 2
+    hard_gate: true
+  - id: memo-tuning-agrees
+    description: The canonical tuning-location row agrees with the sidecar boolean.
+    type: json_text_equals
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.decisions.json
+    json_path: tuning.inside_resampling
+    text_path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
+    pattern: '^Tuning inside resampling:[ \t]*([^\r\n]*)\r?$'
+    case_sensitive: true
+    weight: 2
+    hard_gate: true
+  - id: memo-sample-size-agrees
+    description: The canonical sample-size-method row agrees with the sidecar.
+    type: json_text_equals
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.decisions.json
+    json_path: sample_size.method
+    text_path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
+    pattern: '^Sample-size method:[ \t]*([^\r\n]*)\r?$'
+    case_sensitive: true
+    weight: 2
+    hard_gate: true
+  - id: sidecar-version
+    description: The sidecar uses the supported decision contract version.
+    type: json_equals
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.decisions.json
+    json_path: schema_version
+    expected: "1.0"
+    weight: 1
+    hard_gate: true
+  - id: sidecar-status
+    description: Complete frozen inputs support a ready-for-human-review strategy, not approval.
+    type: json_equals
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.decisions.json
+    json_path: status
+    expected: ready_for_review
+    weight: 2
+    hard_gate: true
+  - id: sidecar-validation
+    description: The declared validation design respects the fixture's sites.
+    type: json_equals
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.decisions.json
+    json_path: validation
+    expected: {scheme: internal_external_cv, outer_unit: site}
+    weight: 2
+    hard_gate: true
+  - id: sidecar-tuning-nested
+    description: Tuning is explicitly inside resampling; scaffold structure remains an independent gate.
+    type: json_equals
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.decisions.json
+    json_path: tuning.inside_resampling
+    expected: true
+    weight: 2
+    hard_gate: true
+  - id: sidecar-sample-size
+    description: The Riley planning inputs use the frozen aggregate counts, not patient-level data.
+    type: json_equals
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.decisions.json
+    json_path: sample_size
+    expected: {method: riley, inputs: {patients: 4180, events: 251, candidate_predictors: 22}}
+    weight: 2
+    hard_gate: true
+  - id: sidecar-calibration
+    description: Calibration assessment includes level, slope, and curve.
+    type: json_set_equals
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.decisions.json
+    json_path: calibration.methods
+    expected: [calibration_in_the_large, calibration_slope, calibration_curve]
+    weight: 2
+    hard_gate: true
+  - id: sidecar-fixture-counts
+    description: All sidecar design counts match the frozen aggregate fixture with numeric types.
+    type: json_equals
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.decisions.json
+    json_path: fixture_counts
+    expected: {patients: 4180, events: 251, sites: 14, candidate_predictors: 22}
+    weight: 2
+    hard_gate: true
+  - id: sidecar-unresolved
+    description: A ready-for-review recommendation has no unresolved design decisions.
+    type: json_equals
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.decisions.json
+    json_path: unresolved
+    expected: []
+    weight: 2
+    hard_gate: true
+  - id: sidecar-proper-objective
+    description: The selected tuning objective is log loss or Brier, never AUROC or AUPRC.
+    type: json_one_of
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.decisions.json
+    json_path: tuning.objective
+    expected: ["log_loss", "brier_score"]
+    weight: 2
+    hard_gate: true
+  - id: writes-decision-sidecar
+    description: A machine-readable decision sidecar accompanies the memo.
+    type: file_exists
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.decisions.json
+    expected: true
+    weight: 3
+    hard_gate: true
   - id: writes-strategy-memo
     description: A model-strategy memo is created.
     type: file_exists
@@ -104,10 +259,11 @@ criteria:
     weight: 3
     hard_gate: true
   - id: scaffold-tuning-inside-resampling
-    description: The scaffold tunes inside the resampling; a resampling loop (header may span lines) passes its own training index (X[train], data.take(train), frame.iloc[train], or a subset variable assigned from it) to a tuning call, to a top-level helper whose body tunes (search CV, a grid loop, best-value selection, or a tun* call), or to a helper that calls such a tuner. Fit-helper names alone never count, so an inner tuning loop cannot stand in for tuning inside the outer folds.
-    type: regex
+    description: Parsed outer assessment loops must call a real search or explicit loss-based grid selector using only their training rows; helper names and unrelated inner loops never suffice.
+    type: code_query
+    language: python
+    query: tuning_inside_resampling
     path: workspace/analysis/model-strategy/sepsis-48h-model.py
-    pattern: 'for\s+(?:\w+\s*,\s*)?\(?\s*(?<aIdx>\w+)\s*,\s*\w+\s*\)?\s+in\b[^:]{0,240}:[\s\S]{0,1600}?(?:(?<![\w.])(?<aSub>\w+)\s*(?:,\s*\w+\s*)*=[^\n]*?(?<![\w.])\k<aIdx>(?![\w.(])[^\n]*\n(?:[^\n]*\n){0,12}?[^\n]*?(?<![.\w])(?:tun\w*|GridSearchCV|RandomizedSearchCV)\s*\(\s*\k<aSub>\b|(?<![.\w])(?:tun\w*|GridSearchCV|RandomizedSearchCV)\s*\([^\n]{0,120}?(?<![\w.])\k<aIdx>(?![\w.(]))|^def\s+(?<bHelper>\w+)\s*\((?:(?!\n\S)[\s\S]){0,6000}?(?:GridSearchCV|RandomizedSearchCV|Halving\w*SearchCV|BayesSearchCV|optuna\.|\btun\w*\s*\(|\bfor\s+(?:\w+\s*,\s*)?\w+\s+in\s+(?:enumerate\(\s*)?\w*grid\w*|\bbest_\w+\s*(?:,\s*\w+\s*)*=(?!=))[\s\S]*?for\s+(?:\w+\s*,\s*)?\(?\s*(?<bIdx>\w+)\s*,\s*\w+\s*\)?\s+in\b[^:]{0,240}:[\s\S]{0,1600}?(?:(?<![\w.])(?<bSub>\w+)\s*(?:,\s*\w+\s*)*=[^\n]*?(?<![\w.])\k<bIdx>(?![\w.(])[^\n]*\n(?:[^\n]*\n){0,12}?[^\n]*?(?<![.\w])\k<bHelper>\s*\(\s*\k<bSub>\b|(?<![.\w])\k<bHelper>\s*\([^\n]{0,120}?(?<![\w.])\k<bIdx>(?![\w.(]))|^def\s+(?<cTuner>\w+)\s*\((?:(?!\n\S)[\s\S]){0,6000}?(?:GridSearchCV|RandomizedSearchCV|Halving\w*SearchCV|BayesSearchCV|optuna\.|\btun\w*\s*\(|\bfor\s+(?:\w+\s*,\s*)?\w+\s+in\s+(?:enumerate\(\s*)?\w*grid\w*|\bbest_\w+\s*(?:,\s*\w+\s*)*=(?!=))[\s\S]*?^def\s+(?<cHelper>\w+)\s*\((?:(?!\n\S)[\s\S]){0,6000}?(?<![.\w])\k<cTuner>\s*\([\s\S]*?for\s+(?:\w+\s*,\s*)?\(?\s*(?<cIdx>\w+)\s*,\s*\w+\s*\)?\s+in\b[^:]{0,240}:[\s\S]{0,1600}?(?:(?<![\w.])(?<cSub>\w+)\s*(?:,\s*\w+\s*)*=[^\n]*?(?<![\w.])\k<cIdx>(?![\w.(])[^\n]*\n(?:[^\n]*\n){0,12}?[^\n]*?(?<![.\w])\k<cHelper>\s*\(\s*\k<cSub>\b|(?<![.\w])\k<cHelper>\s*\([^\n]{0,120}?(?<![\w.])\k<cIdx>(?![\w.(]))'
     weight: 3
     hard_gate: true
   - id: calibration-assessed
@@ -231,6 +387,8 @@ criteria:
     hard_gate: true
 threshold: 0.85
 limitations:
+  - Structured gates check the pilot fields and six canonical memo rows, not every JSON Schema constraint or arbitrary contradictions elsewhere in the narrative.
+  - The sidecar cannot establish scaffold correctness. The structural tuning gate parses supported Python shapes and follows bounded data flow; it is not execution, full control-flow analysis, or a statistical code audit.
   - The fixture is synthetic and aggregate; the case evaluates protocol routing and scaffold structure, not fitted results or clinical validity.
   - Regex criteria verify that the right concepts are named, not that the reasoning is complete; a human reviewer still reads the memo.
   - The auprc-supplementary-only check is a heuristic phrase match and is not a hard gate.
