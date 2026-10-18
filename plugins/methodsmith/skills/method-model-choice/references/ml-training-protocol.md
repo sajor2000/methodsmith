@@ -153,7 +153,7 @@ TabPFN v2 is a pretrained transformer that predicts in context without per-datas
 | scikit-learn | CPU (`n_jobs`) | GPU only through the cuML accelerator where supported |
 | LightGBM | `device_type="cuda"` | Needs a CUDA-enabled build; the stock PyPI wheel is CPU-only. CUDA build is a user-authorized step, never run by this skill: `pip install lightgbm --no-binary lightgbm --config-settings=cmake.define.USE_CUDA=ON` |
 | XGBoost 2.0 or later | `tree_method="hist"`, `device="cuda"` | `gpu_hist` is deprecated; set the ordinal with `device="cuda:0"` |
-| cuML accelerator | `python -m cuml.accel.install` or `cuml.accel.install()` before importing sklearn | Supported estimators only; others fall back to CPU |
+| cuML accelerator | `python -m cuml.accel <script.py>`, or `cuml.accel.install()` before importing sklearn | Supported estimators only; others fall back to CPU |
 | TabPFN family | GPU recommended by the package | Check the installed version's CPU limits before planning a CPU run |
 
 - With a few thousand rows, CPU GBDT on many cores is usually fast enough; the bootstrap stability analysis, not a single fit, is what usually justifies a GPU.
