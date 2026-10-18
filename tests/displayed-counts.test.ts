@@ -47,6 +47,7 @@ const PATTERNS: Array<{ kind: Kind; pattern: RegExp }> = [
   { kind: "skills", pattern: /\b(\d+) (?:slash )?skills\b/gi },
   { kind: "agents", pattern: /\b(\d+) (?:specialist )?(?:agents|reviewers|review agents|reviewer agents)\b/gi },
   { kind: "checklists", pattern: /\b(\d+) (?:EQUATOR )?(?:reporting )?checklists\b/gi },
+  { kind: "checklists", pattern: /\b(\d+) reporting standards\b/gi },
   { kind: "checklists", pattern: /\b(\d+) reporting guidelines\b/gi },
   { kind: "checklists", pattern: /\bacross (\d+) guidelines\b/gi },
 ]

@@ -47,7 +47,7 @@ const AUDIENCES = [
 ];
 
 const TRUST = [
-  ['39 reporting checklists', 'CONSORT, STROBE, PRISMA, TRIPOD+AI, TARGET and more, encoded with their official item IDs. A test enforces routing to the newest version of each guideline.', 'Check the guideline sources', '/docs/guideline-sources'],
+  ['39 reporting standards', 'Reporting guidelines, appraisal tools and templates, including CONSORT, STROBE, PRISMA, TRIPOD+AI and TARGET, encoded with their official item IDs. A test enforces routing to the newest version of each guideline.', 'Check the guideline sources', '/docs/guideline-sources'],
   ['An explicit sensitive-data boundary', 'Claude Code’s pre-tool hook restricts data reads in schema-only mode and checks identifiers before external calls in every mode. Other agents rely on skill instructions. These safeguards are not a sandbox or a substitute for institutional approval.', 'Read the safeguards and their limits', '/docs/setup#sensitive-data-boundary'],
   ['55 specialist agents', 'Methods, causal inference, leakage, calibration, fairness and reproducibility reviewers are part of a broader team of research and workflow agents. Review findings are deduplicated and confidence-gated.', 'Explore the skills and agents', 'https://github.com/sajor2000/methodsmith/blob/main/plugins/methodsmith/README.md#agents'],
   ['Numbers traced to the analysis', 'Manuscripts, tables and abstracts cite a registry written by the analysis code. A fail-closed gate traces each number to its SAP output, script commit and source hash. It does not read numbers inside images.', 'See how number provenance works', 'https://github.com/sajor2000/methodsmith/blob/main/plugins/methodsmith/README.md#numbers-locked-to-raw-data'],
@@ -60,7 +60,7 @@ const LOOP = [
   ['Compound', 'Choose which validated lessons to retain.', 'Document decisions for the next study.'],
 ];
 
-const INSTALL_COMMAND = 'claude plugin install methodsmith \\\n  --marketplace sajor2000/methodsmith';
+const INSTALL_COMMAND = 'claude plugin install methodsmith --marketplace sajor2000/methodsmith';
 
 export default function Home() {
   const demo = useBaseUrl('/brand/demo.svg');
@@ -125,14 +125,14 @@ export default function Home() {
             </pre>
             <p className="ms-copy-status" role="status">{copyStatus}</p>
             <p>
-              Requires Claude Code 2.1.275 or later.{' '}
+              Requires Claude Code 2.1.292 or later.{' '}
               <Link to="/docs/setup">Other agents and managed laptops</Link>.
             </p>
           </figure>
         </header>
 
         <div className="ms-inventory container" aria-label="Included in Methodsmith">
-          <p>67 skills, 55 specialist agents, 39 reporting checklists.</p>
+          <p>67 skills, 55 specialist agents, 39 reporting standards.</p>
           <Link href="https://github.com/sajor2000/methodsmith/blob/main/plugins/methodsmith/README.md#skills">
             Browse the full toolkit
           </Link>

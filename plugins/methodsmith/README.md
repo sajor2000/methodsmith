@@ -8,13 +8,13 @@ numbers to their analysis code. Built for clinical statistics, machine learning,
 and meta-analysis. Your team keeps scientific judgment and responsibility for
 the results.
 
-**67 skills · 55 specialist agents · 39 reporting checklists.** Works with Claude
+**67 skills · 55 specialist agents · 39 reporting standards.** Works with Claude
 Code, Codex, Pi, Gemini CLI, OpenCode, Kiro, and Qwen Code.
 
 [Get started](#getting-started) · [Read the full setup guide](../../docs/setup.md) ·
 [Upgrade from ce-datascience](#moving-from-ce-datascience) <!-- rebrand:keep -->
 
-For Claude Code 2.1.275 or later:
+From a terminal with Claude Code 2.1.292 or later:
 
 ```bash
 claude plugin install methodsmith --marketplace sajor2000/methodsmith
@@ -168,7 +168,7 @@ later):
 /plugin install methodsmith --marketplace sajor2000/methodsmith
 ```
 
-Or from a terminal:
+Or from a terminal with Claude Code 2.1.292 or later:
 
 ```bash
 claude plugin install methodsmith --marketplace sajor2000/methodsmith

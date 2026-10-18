@@ -25,11 +25,11 @@ papers, and meta-analysis; R or Python.
 approve the plan and judge the findings. Methodsmith does the drafting, running
 and checking that make the work reproducible and grounded: pre-specified SAPs,
 reviewed code, reporting checklists and numbers traced to the analysis.
-**67 skills, 55 specialist agents, and 39 reporting checklists.**
+**67 skills, 55 specialist agents, and 39 reporting standards.**
 
 ## Install
 
-**Claude Code** (2.1.275 or later):
+**Claude Code** (terminal command, 2.1.292 or later):
 
 ```bash
 claude plugin install methodsmith --marketplace sajor2000/methodsmith
@@ -83,7 +83,8 @@ next safe step.
 
 ## Why you can check its work
 
-- **39 EQUATOR reporting checklists**, encoded with their official item IDs
+- **39 reporting standards**, covering reporting guidelines, appraisal tools,
+  and templates, encoded with their official item IDs
   (CONSORT, STROBE, PRISMA, TRIPOD+AI, TARGET and more). Only the newest version
   of each guideline can load, and a test enforces it. Sources are listed in
   [Guideline sources](https://sajor2000.github.io/methodsmith/docs/guideline-sources).
@@ -262,14 +263,14 @@ required for basic use.
 
 ### Claude Code, easiest path
 
-No checkout needed (Claude Code 2.1.275 or later):
+No checkout needed (terminal command, Claude Code 2.1.292 or later):
 
 ```bash
 claude plugin install methodsmith --marketplace sajor2000/methodsmith
 claude
 ```
 
-Or, inside a running Claude Code session:
+Or, inside a running Claude Code session (2.1.275 or later):
 
 ```text
 /plugin install methodsmith --marketplace sajor2000/methodsmith
