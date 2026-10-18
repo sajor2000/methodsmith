@@ -5,6 +5,7 @@ import { isDeepStrictEqual } from "util"
 import path from "path"
 import { load } from "js-yaml"
 import { sha256File, sha256Target } from "./digest"
+import { evaluateCodeQuery, validateCodeQuery } from "./code-query"
 
 // Re-export so existing consumers (scorer, contract tests) keep importing the
 // digest helpers from lib. The implementations live in ./digest.
@@ -19,7 +20,10 @@ export type CriterionType =
   | "regex_not"
   | "claim_absent"
   | "numeric"
+  | "code_query"
   | "json_equals"
+  | "json_one_of"
+  | "json_text_equals"
   | "json_set_equals"
   | "file_exists"
   | "file_unchanged"
@@ -42,11 +46,14 @@ export interface EvaluationCriterion {
   expected?: unknown
   tolerance?: number
   json_path?: string
+  text_path?: string
   fixture_path?: string
   case_sensitive?: boolean
   subjects?: string[]
   claims?: string[]
   negation_pattern?: string
+  language?: "python" | "r"
+  query?: string
 }
 
 export interface EvaluationCase {
@@ -199,6 +206,7 @@ export async function writeEvaluationArtifacts(options: {
 }
 
 const ALLOWED_CRITERION_TYPES = new Set<CriterionType>([
+  "code_query",
   "text_contains",
   "text_not_contains",
   "regex",
@@ -206,6 +214,8 @@ const ALLOWED_CRITERION_TYPES = new Set<CriterionType>([
   "claim_absent",
   "numeric",
   "json_equals",
+  "json_one_of",
+  "json_text_equals",
   "json_set_equals",
   "file_exists",
   "file_unchanged",
@@ -367,11 +377,11 @@ function validateCriterionShape(criterion: EvaluationCriterion, index: number): 
     errors.push(`${label}.value is required for ${criterion.type}`)
   }
   if (
-    ["regex", "regex_not", "numeric"].includes(criterion.type) &&
+    ["regex", "regex_not", "numeric", "json_text_equals"].includes(criterion.type) &&
     typeof criterion.pattern !== "string"
   ) {
     errors.push(`${label}.pattern is required for ${criterion.type}`)
-  } else if (["regex", "regex_not", "numeric"].includes(criterion.type)) {
+  } else if (["regex", "regex_not", "numeric", "json_text_equals"].includes(criterion.type)) {
     try {
       new RegExp(criterion.pattern!)
     } catch (error) {
@@ -408,8 +418,10 @@ function validateCriterionShape(criterion: EvaluationCriterion, index: number): 
       }
     }
   }
-  if (["json_equals", "json_set_equals"].includes(criterion.type) && !criterion.json_path) {
-    errors.push(`${label}.json_path is required for ${criterion.type}`)
+  if (["json_equals", "json_one_of", "json_text_equals", "json_set_equals"].includes(criterion.type) &&
+      (typeof criterion.json_path !== "string" ||
+        criterion.json_path.split(".").some((segment) => !segment.trim()))) {
+    errors.push(`${label}.json_path must be a non-empty dotted path for ${criterion.type}`)
   }
   if (
     criterion.type === "json_equals" &&
@@ -419,6 +431,17 @@ function validateCriterionShape(criterion: EvaluationCriterion, index: number): 
   }
   if (criterion.type === "json_set_equals" && !Array.isArray(criterion.expected)) {
     errors.push(`${label}.expected must be an array for json_set_equals`)
+  }
+  if (criterion.type === "json_one_of" &&
+      (!Array.isArray(criterion.expected) || criterion.expected.length === 0)) {
+    errors.push(`${label}.expected must be a non-empty array for json_one_of`)
+  }
+  if (criterion.type === "json_text_equals") {
+    try {
+      resolveInside("/", criterion.text_path ?? "", `${label}.text_path`)
+    } catch (error) {
+      errors.push((error as Error).message)
+    }
   }
   if (criterion.type === "file_unchanged" && !criterion.fixture_path) {
     errors.push(`${label}.fixture_path is required for file_unchanged`)
@@ -551,6 +574,13 @@ export async function loadAndValidateCase(
       }
       const criterion = criterionValue as unknown as EvaluationCriterion
       errors.push(...validateCriterionShape(criterion, index))
+      if (criterion.type === "code_query") {
+        try {
+          await validateCodeQuery(criterion.language, criterion.query)
+        } catch (error) {
+          errors.push(`criteria[${index}]: ${(error as Error).message}`)
+        }
+      }
       if (seen.has(criterion.id)) errors.push(`duplicate criterion id: ${criterion.id}`)
       seen.add(criterion.id)
       if (
@@ -843,6 +873,7 @@ async function evaluateCriterion(
   artifact: Buffer | undefined,
   fixture: Buffer | undefined,
   artifactExists: boolean,
+  textArtifact?: Buffer,
 ): Promise<CriterionResult> {
   let passed = false
   let evidence = ""
@@ -891,6 +922,10 @@ async function evaluateCriterion(
       evidence = match
         ? `affirmative claim found: subject=${JSON.stringify(match.subject)}; claim=${JSON.stringify(match.claim)}; scope=${JSON.stringify(match.scope)}`
         : "no affirmative subject/claim sentence found"
+    } else if (criterion.type === "code_query") {
+      const result = await evaluateCodeQuery(raw, criterion.language, criterion.query)
+      passed = result.passed
+      evidence = result.evidence
     } else if (criterion.type === "numeric") {
       const flags = criterion.case_sensitive ? "m" : "im"
       const match = raw.match(new RegExp(criterion.pattern!, flags))
@@ -903,12 +938,26 @@ async function evaluateCriterion(
       let parsed: unknown
       try {
         parsed = JSON.parse(raw)
-      } catch (error) {
-        throw new Error(`criterion ${criterion.id} could not parse ${criterion.path}: ${(error as Error).message}`)
+      } catch {
+        throw new Error(`criterion ${criterion.id} could not parse JSON in ${criterion.path}`)
       }
       const actual = getJsonPath(parsed, criterion.json_path!)
       if (criterion.type === "json_equals") {
         passed = isDeepStrictEqual(actual, criterion.expected)
+      } else if (criterion.type === "json_one_of") {
+        passed = Array.isArray(criterion.expected) &&
+          criterion.expected.some((expected) => isDeepStrictEqual(actual, expected))
+      } else if (criterion.type === "json_text_equals") {
+        const scalar = ["string", "number", "boolean"].includes(typeof actual)
+          ? String(actual) : undefined
+        const matches = textArtifact === undefined ? [] : [
+          ...textArtifact.toString("utf8").matchAll(
+            new RegExp(criterion.pattern!, criterion.case_sensitive ? "gm" : "gim"),
+          ),
+        ]
+        passed = scalar !== undefined && matches.length === 1 && matches[0]?.[1] !== undefined &&
+          normalizeText(matches[0][1].trim(), criterion.case_sensitive) ===
+          normalizeText(scalar, criterion.case_sensitive)
       } else {
         const actualSet = Array.isArray(actual)
           ? [...new Set(actual.map((item) => JSON.stringify(item)))].sort()
@@ -1126,12 +1175,30 @@ export async function scoreEvaluationRun(options: {
         type: artifactType,
       }
     }
+    let textArtifact: Buffer | undefined
+    if (criterion.type === "json_text_equals") {
+      const textPath = criterion.text_path!
+      const resolvedText = await resolveRunArtifact(runDir, textPath, `criterion ${criterion.id} text_path`)
+      if (resolvedText.exists) {
+        if (!(await fs.stat(resolvedText.path)).isFile()) {
+          throw new Error(`criterion ${criterion.id} requires a file artifact: ${textPath}`)
+        }
+        textArtifact = await readOnce(resolvedText.path)
+        scoredArtifactContents.set(textPath, textArtifact)
+        scoredArtifactState[textPath] = {
+          exists: true, type: "file", sha256: sha256Contents(textArtifact),
+        }
+      } else {
+        scoredArtifactState[textPath] = { exists: false, type: "missing" }
+      }
+    }
     results.push(
       await evaluateCriterion(
         criterion,
         artifact,
         criterion.fixture_path ? fixtureContents.get(criterion.fixture_path) : undefined,
         artifactPath.exists,
+        textArtifact,
       ),
     )
   }

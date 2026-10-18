@@ -105,6 +105,11 @@ Use a stable ASCII slug and write under `analysis/model-strategy/`:
 <slug>-model.py    # Python only, ready_for_review only
 ```
 
+For prediction-model strategies only, read `references/ml-prediction-decisions.md`
+and `references/ml-prediction-decisions.schema.json`. Also write
+`<slug>-model-strategy.decisions.json` beside the memo and check its agreement
+with the memo before handing off. Other model branches keep their existing outputs.
+
 The memo must contain:
 
 1. An exact `Status: <blocked|provisional|ready_for_review>` line and named human reviewer (`pending` until a human acts).

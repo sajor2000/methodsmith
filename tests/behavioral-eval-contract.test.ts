@@ -24,6 +24,7 @@ import {
   validateAllCases,
   writeEvaluationArtifacts,
   type EvaluationCase,
+  type EvaluationCriterion,
 } from "../scripts/evals/lib"
 
 const tempRoots: string[] = []
@@ -164,7 +165,642 @@ async function writeRun(root: string, response = "complete\nscore: 3.145\n"): Pr
   return runDir
 }
 
+async function scoreCode(source: string, language: "python" | "r" = "python") {
+  const root = await makeRepo()
+  const base = sampleCase()
+  const definition: EvaluationCase = {
+    ...base,
+    required_behaviors: [...base.required_behaviors, "nested-tuning"],
+    criteria: [...base.criteria, {
+      id: "nested-tuning", description: "Tune within training folds",
+      type: "code_query", path: "model.code", language,
+      query: "tuning_inside_resampling", weight: 2, hard_gate: true,
+    }],
+  }
+  const casePath = await writeCase(root, definition)
+  const runDir = await writeRun(root)
+  await writeFile(path.join(runDir, "model.code"), source)
+  return scoreEvaluationRun({
+    repoRoot: root, casePath, definition: await loadAndValidateCase(root, casePath), runDir,
+  })
+}
+
 describe("behavioral evaluation contract", () => {
+  test("does not manufacture a training alias from a dead branch or another helper's scope", async () => {
+    for (const source of [
+      `from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(X, y):
+    subset_X = X[test]
+    subset_y = y[test]
+    if False:
+        subset_X = X[train]
+        subset_y = y[train]
+    search = GridSearchCV(model, grid)
+    search.fit(subset_X, subset_y)
+`,
+      `from sklearn.model_selection import GridSearchCV
+def ignore_arguments(a, b):
+    return X, y
+def choose(X, y):
+    fit_X, fit_y = ignore_arguments(X, y)
+    search = GridSearchCV(model, grid)
+    return search.fit(fit_X, fit_y)
+for train, test in outer.split(X, y):
+    chosen = choose(X[train], y[train])
+`,
+    ]) {
+      const report = await scoreCode(source)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(false)
+    }
+  })
+
+  test("honors a global callable replacement inside an assessment entry point", async () => {
+    const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+def choose(X, y):
+    search = GridSearchCV(model, grid)
+    return search.fit(X, y)
+def fixed(X, y):
+    return model.fit(X, y)
+choose = fixed
+def assess(X, y):
+    for train, test in outer.split(X, y):
+        fitted = choose(X[train], y[train])
+`)
+    expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(false)
+  })
+
+  test("keeps an outer assessment loop when its training-only grid is inline", async () => {
+    const report = await scoreCode(`
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import log_loss
+for train, test in outer.split(X, y):
+    records = []
+    for C in GRID:
+        for a, b in inner.split(X[train], y[train]):
+            fitted = LogisticRegression(C=C).fit(X[train][a], y[train][a])
+            loss = log_loss(y[train][b], fitted.predict_proba(X[train][b])[:, 1])
+        records.append((loss, C))
+    selected = min(records)[1]
+`)
+    expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(true)
+    expect(report.pass).toBe(true)
+  })
+
+  test("resolves visible callable bindings instead of stale helpers or constructor spellings", async () => {
+    const helper = `from sklearn.model_selection import GridSearchCV
+def choose(X, y):
+    search = GridSearchCV(model, grid)
+    return search.fit(X, y)
+def fixed(X, y):
+    return model.fit(X, y)
+`
+    const loop = "for train, test in outer.split(X, y):\n    selected = choose(X[train], y[train])\n"
+    for (const source of [
+      helper + "choose = fixed\n" + loop,
+      `def choose(X, y):
+    return model.fit(X, y)
+def unused():
+    def choose(X, y):
+        search = GridSearchCV(model, grid)
+        return search.fit(X, y)
+` + loop,
+      helper.replace("from sklearn.model_selection import GridSearchCV",
+        "from sklearn.linear_model import LogisticRegression as GridSearchCV") + loop,
+    ]) {
+      const report = await scoreCode(source)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(false)
+      expect(report.pass).toBe(false)
+    }
+    const aliased = await scoreCode(helper.replaceAll("GridSearchCV", "Search")
+      .replace("import Search", "import GridSearchCV as Search") + loop)
+    expect(aliased.pass).toBe(true)
+  })
+
+  test("rejects a decorative candidate grid whose fit helper ignores the candidate", async () => {
+    const report = await scoreCode(`
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import log_loss
+def fixed(X, y, C):
+    return LogisticRegression(C=1).fit(X, y)
+def choose(X, y):
+    records = []
+    for C in GRID:
+        fitted = fixed(X, y, C)
+        records.append((log_loss(y, fitted.predict_proba(X)[:, 1]), C))
+    return min(records)[1]
+for train, test in outer.split(X, y):
+    selected = choose(X[train], y[train])
+`)
+    expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(false)
+    expect(report.pass).toBe(false)
+  })
+
+  test("rejects grid selection using outer-held-out losses even when candidate fits use training rows", async () => {
+    const report = await scoreCode(`
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import log_loss
+def choose(X, y, evaluation_X, evaluation_y):
+    records = []
+    for C in GRID:
+        fitted = LogisticRegression(C=C).fit(X, y)
+        loss = log_loss(evaluation_y, fitted.predict_proba(evaluation_X)[:, 1])
+        records.append((loss, C))
+    return min(records)[1]
+for train, test in outer.split(X, y):
+    selected = choose(X[train], y[train], X[test], y[test])
+`)
+    expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(false)
+    expect(report.pass).toBe(false)
+  })
+
+  test("rejects reassigned training indices in both the loop and its helper", async () => {
+    for (const source of [
+      `from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(X, y):
+    train = test
+    search = GridSearchCV(model, grid)
+    search.fit(X[train], y[train])
+`,
+      `from sklearn.model_selection import GridSearchCV
+def choose(X, y, rows, heldout_rows):
+    rows = heldout_rows
+    search = GridSearchCV(model, grid)
+    return search.fit(X[rows], y[rows])
+for train, test in outer.split(X, y):
+    selected = choose(X, y, train, test)
+`,
+    ]) {
+      const report = await scoreCode(source)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(false)
+      expect(report.pass).toBe(false)
+    }
+  })
+
+  test("accepts annotation-only statements in a valid manual selector", async () => {
+    const report = await scoreCode(`
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import log_loss
+def choose(X, y):
+    best_loss = float("inf")
+    for C in GRID:
+        for a, b in inner.split(X, y):
+            fitted = LogisticRegression(C=C).fit(X[a], y[a])
+            loss = log_loss(y[b], fitted.predict_proba(X[b])[:, 1])
+        if loss < best_loss:
+            selected: float
+            selected, best_loss = C, loss
+    return selected
+for train, test in outer.split(X, y):
+    selected = choose(X[train], y[train])
+`)
+    expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(true)
+  })
+
+  test("resolves Python keyword arguments in fits and helper calls without masking leakage", async () => {
+    for (const source of [
+      `from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(X, y):
+    search = GridSearchCV(model, grid)
+    search.fit(X=X[train], y=y[train])
+`,
+      `from sklearn.model_selection import GridSearchCV
+def select_model(X, y):
+    search = GridSearchCV(model, grid)
+    return search.fit(X, y)
+for train, test in outer.split(X, y):
+    fitted = select_model(y=y[train], X=X[train])
+`,
+    ]) {
+      const report = await scoreCode(source)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(true)
+      expect(report.pass).toBe(true)
+    }
+    const leaked = await scoreCode(`from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(X, y):
+    search = GridSearchCV(model, grid)
+    search.fit(X=X[test], y=y[test])
+`)
+    expect(leaked.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(false)
+    expect(leaked.pass).toBe(false)
+  })
+
+  test("keeps training-only nested and helper-owned calibration loops out of assessment classification", async () => {
+    const header = `from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import StratifiedKFold
+`
+    const inline = `${header}for train, test in outer.split(X, y):
+    search = GridSearchCV(model, grid)
+    search.fit(X[train], y[train])
+    calibrators = []
+    for cal_train, cal_valid in StratifiedKFold(n_splits=5).split(X[train], y[train]):
+        calibrator = LogisticRegression()
+        calibrator.fit(X[train][cal_train], y[train][cal_train])
+        calibrators.append(calibrator)
+`
+    const owned = `${header}def calibrate(X_dev, y_dev):
+    calibrators = []
+    for cal_train, cal_valid in StratifiedKFold(n_splits=5).split(X_dev, y_dev):
+        calibrator = LogisticRegression()
+        calibrator.fit(X_dev[cal_train], y_dev[cal_train])
+        calibrators.append(calibrator)
+    return calibrators
+for train, test in outer.split(X, y):
+    search = GridSearchCV(model, grid)
+    search.fit(X[train], y[train])
+    fitted = calibrate(X[train], y[train])
+`
+    for (const source of [inline, owned]) {
+      const report = await scoreCode(source)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed,
+        JSON.stringify(report.criteria.find((criterion) => criterion.id === "nested-tuning"))).toBe(true)
+      expect(report.pass).toBe(true)
+    }
+    const leakyInline = `${header}for train, test in outer.split(X, y):
+    search = GridSearchCV(model, grid)
+    search.fit(X[train], y[train])
+    for cal_train, cal_valid in StratifiedKFold(n_splits=5).split(X, y):
+        calibrator = LogisticRegression()
+        calibrator.fit(X, y)
+`
+    const leakyOwned = owned
+      .replace("calibrator.fit(X_dev[cal_train], y_dev[cal_train])", "calibrator.fit(X_dev, y_dev)")
+      .replace("fitted = calibrate(X[train], y[train])", "fitted = calibrate(X, y)")
+    const mixedCallSitesOwned = owned.replace(
+      "fitted = calibrate(X[train], y[train])",
+      "fitted = calibrate(X[train], y[train])\n    leaked = calibrate(X, y)",
+    )
+    expect(leakyOwned).not.toBe(owned)
+    for (const source of [leakyInline, leakyOwned, mixedCallSitesOwned]) {
+      const report = await scoreCode(source)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(false)
+      expect(report.pass).toBe(false)
+    }
+  })
+
+  test("validates the closed code-query contract and rejects unsupported languages or queries", async () => {
+    const root = await makeRepo()
+    const base = sampleCase()
+    const valid = {
+      id: "nested-tuning", description: "Training-only tuning", type: "code_query",
+      path: "model.py", language: "python", query: "tuning_inside_resampling",
+      weight: 1, hard_gate: true,
+    }
+    for (const [override, message] of [
+      [{ language: undefined }, /language must be python or r/],
+      [{ language: "julia" }, /language must be python or r/],
+      [{ query: undefined }, /query must be tuning_inside_resampling/],
+      [{ query: "(for_statement" }, /query must be tuning_inside_resampling/],
+      [{ query: "run_arbitrary_query" }, /query must be tuning_inside_resampling/],
+    ] as const) {
+      const casePath = path.join(root, "evals/methodsmith/cases/sample/case.yaml")
+      await writeFile(casePath, dump({
+        ...base,
+        required_behaviors: [...base.required_behaviors, "nested-tuning"],
+        criteria: [...base.criteria, { ...valid, ...override }],
+      }))
+      await expect(loadAndValidateCase(root, casePath)).rejects.toThrow(message)
+    }
+  })
+
+  test("rejects full, held-out, fit-only, inner-loop, and calibration-distraction scaffolds independently", async () => {
+    const helper = `from sklearn.model_selection import GridSearchCV
+def choose(X, y):
+    search = GridSearchCV(model, grid)
+    return search.fit(X, y)
+`
+    const sources = [
+      helper + "chosen = choose(X, y)\nfor train, test in outer.split(X, y):\n    fitted = model.fit(X[train], y[train])\n",
+      helper + "for train, test in outer.split(X, y):\n    chosen = choose(X, y)\n",
+      helper + "for train, test in outer.split(X, y):\n    chosen = choose(X[test], y[test])\n",
+      helper + "for train, test in outer.split(X, y):\n    chosen = choose(X[train], y[test])\n",
+      helper + "for train, test in outer.split(X, y):\n    good = choose(X[train], y[train])\n    bad = choose(X, y)\n",
+      helper + `def misleading(X, y):
+    for inner_train, valid in inner.split(X, y):
+        chosen = choose(X[inner_train], y[inner_train])
+for train, test in outer.split(X, y):
+    fitted = misleading(X, y)
+`,
+      helper + `for calibration_train, calibration_test in calibration.split(X, y):
+    adjusted = choose(X[calibration_train], y[calibration_train])
+chosen = choose(X, y)
+for train, test in outer.split(X, y):
+    fitted = model.fit(X[train], y[train])
+`,
+      helper + `def GridSearchCV(model, grid):
+    return model
+for train, test in outer.split(X, y):
+    selected = choose(X[train], y[train])
+`,
+      helper + `for train, test in outer.split(X, y):
+    if False:
+        chosen = choose(X[train], y[train])
+    fitted = model.fit(X[train], y[train])
+`,
+      '# for train, test in outer.split(X, y): choose(X[train], y[train])\n',
+      "for train, test in outer.split(X, y):\n    broken = (\n",
+    ]
+    for (const [index, source] of sources.entries()) {
+      const report = await scoreCode(source)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed,
+        `adversarial scaffold ${index}`).toBe(false)
+      expect(report.hard_gates_passed).toBe(false)
+      expect(report.pass).toBe(false)
+    }
+    for (const training of ["rsample::assessment(fold)", "all_rows"]) {
+      const report = await scoreCode(`
+for (fold in folds$splits) {
+  training <- ${training}
+  selected <- tune::tune_grid(model, resamples = rsample::vfold_cv(training))
+}
+`, "r")
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(false)
+      expect(report.pass).toBe(false)
+    }
+  })
+
+  test.each([["train", true], ["test", false]] as const)(
+    "follows the actual %s index into a helper rather than trusting its name",
+    async (index, expected) => {
+      const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+def choose(X, y, rows):
+    search = GridSearchCV(model, grid)
+    return search.fit(X[rows], y[rows])
+for train, test in outer.split(X, y):
+    selected = choose(X, y, ${index})
+`)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(expected)
+      expect(report.pass).toBe(expected)
+    },
+  )
+
+  test.each(["min(records)[1]", "GRID[int(np.argmin(means))]"])(
+    "recognizes explicit loss-series selection by %s",
+    async (selection) => {
+      const report = await scoreCode(`
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import log_loss
+def columns(frame):
+    return frame["features"], frame["outcome"]
+def fit_candidate(frame, C):
+    X, y = columns(frame)
+    return LogisticRegression(C=C).fit(X, y)
+def select_model(frame):
+    records = []
+    losses = np.empty((len(GRID), 5))
+    for i, C in enumerate(GRID):
+        for j, (a, b) in enumerate(inner.split(frame)):
+            fitted = fit_candidate(frame.iloc[a], C)
+            loss = log_loss(frame.iloc[b]["outcome"], fitted.predict_proba(frame.iloc[b])[:, 1])
+            losses[i, j] = loss
+        records.append((float(np.mean(losses[i])), C))
+    means = np.mean(losses, axis=1)
+    return ${selection}
+for train, test in outer.split(frame):
+    selected = select_model(frame.iloc[train])
+`)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed,
+        JSON.stringify(report.criteria)).toBe(true)
+      expect(report.pass).toBe(true)
+    },
+  )
+
+  test("recognizes a search estimator fitted through one checked-fit helper", async () => {
+    const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+def checked(estimator, X, y):
+    return estimator.fit(X, y)
+def select_model(X, y):
+    search = GridSearchCV(model, grid)
+    return checked(search, X, y)
+for train, test in splitter.split(X, y):
+    selected = select_model(X[train], y[train])
+`)
+    expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(true)
+    expect(report.pass).toBe(true)
+  })
+
+  test("tracks a typed record's row-subset helper into the tuning fit", async () => {
+    const report = await scoreCode(`
+from dataclasses import dataclass
+from sklearn.model_selection import GridSearchCV
+@dataclass
+class Batch:
+    X: object
+    y: object
+def subset(data, indices):
+    return Batch(data.X[indices], data.y[indices])
+def select_model(data: Batch):
+    search = GridSearchCV(model, grid)
+    return search.fit(data.X, data.y)
+for train, test in splitter.split(data.X, data.y):
+    selected = select_model(subset(data, train))
+`)
+    expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(true)
+    expect(report.pass).toBe(true)
+  })
+
+  test("does not count uncalled helpers or rebound full-data parameters as in-fold tuning", async () => {
+    for (const source of [
+      `from sklearn.model_selection import GridSearchCV
+for train, test in splitter.split(X, y):
+    def unused():
+        search = GridSearchCV(model, grid)
+        return search.fit(X[train], y[train])
+    fitted = model.fit(X[train], y[train])
+`,
+      `from sklearn.model_selection import GridSearchCV
+def misleading(X, y):
+    X = full_X
+    y = full_y
+    search = GridSearchCV(model, grid)
+    return search.fit(X, y)
+for train, test in splitter.split(X, y):
+    fitted = misleading(X[train], y[train])
+`,
+    ]) {
+      const report = await scoreCode(source)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(false)
+      expect(report.hard_gates_passed).toBe(false)
+      expect(report.pass).toBe(false)
+    }
+  })
+
+  test("scores R tuning on analysis rows inside an rsample outer loop without running R", async () => {
+    const report = await scoreCode(`
+select_model <- function(settings, training) {
+  tune::tune_grid(model, resamples = rsample::vfold_cv(training))
+}
+for (fold in folds$splits) {
+  training <- rsample::analysis(fold)
+  selected <- select_model(settings, training)
+}
+`, "r")
+    expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(true)
+    expect(report.pass).toBe(true)
+  })
+
+  test("scores a multiline training-only tuning helper through a Python code query", async () => {
+    const root = await makeRepo()
+    const base = sampleCase()
+    const definition: EvaluationCase = {
+      ...base,
+      required_behaviors: [...base.required_behaviors, "nested-tuning"],
+      criteria: [...base.criteria, {
+        id: "nested-tuning",
+        description: "Tuning receives the current outer training rows",
+        type: "code_query",
+        path: "model.py",
+        language: "python",
+        query: "tuning_inside_resampling",
+        weight: 2,
+        hard_gate: true,
+      }],
+    }
+    const casePath = await writeCase(root, definition)
+    const runDir = await writeRun(root)
+    await writeFile(path.join(runDir, "model.py"), `
+from sklearn.model_selection import GridSearchCV
+
+def select_model(X, y):
+    search = GridSearchCV(model, grid, cv=5)
+    return search.fit(X, y)
+
+for train, test in splitter.split(X, y):
+    fitted = select_model(
+        X[train],
+        y[train],
+    )
+`)
+    const validated = await loadAndValidateCase(root, casePath)
+    const report = await scoreEvaluationRun({ repoRoot: root, casePath, definition: validated, runDir })
+    expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(true)
+    expect(report.pass).toBe(true)
+  })
+
+  test("checks a JSON decision against exactly one captured memo value and snapshots the memo", async () => {
+    const root = await makeRepo()
+    const base = sampleCase()
+    const casePath = await writeCase(root, {
+      ...base,
+      required_behaviors: [...base.required_behaviors, "memo-agreement"],
+      criteria: [...base.criteria, {
+        id: "memo-agreement",
+        description: "The selected objective agrees with the memo",
+        type: "json_text_equals",
+        path: "evidence.json",
+        json_path: "objective",
+        text_path: "memo.md",
+        pattern: "^Tuning objective:\\s*([a-z_]+)\\s*$",
+        weight: 1,
+        hard_gate: true,
+      }],
+    })
+    const runDir = await writeRun(root)
+    const definition = await loadAndValidateCase(root, casePath)
+    await writeFile(path.join(runDir, "evidence.json"),
+      JSON.stringify({ evidence: ["row-1", "row-2"], objective: "log_loss" }))
+    const memoCases: Array<[string, boolean]> = [
+      ["Tuning objective: log_loss\n", true],
+      ["Tuning objective: brier_score\n", false],
+      ["Tuning objective: log_loss\nTuning objective: brier_score\n", false],
+      ["No selected objective.\n", false],
+    ]
+    for (const [memo, expected] of memoCases) {
+      await writeFile(path.join(runDir, "memo.md"), memo)
+      const report = await scoreEvaluationRun({ repoRoot: root, casePath, definition, runDir })
+      expect(report.criteria.find((criterion) => criterion.id === "memo-agreement")?.passed)
+        .toBe(expected)
+      expect(report.pass).toBe(expected)
+      if (expected) {
+        await writeFile(path.join(runDir, "memo.md"), "changed after scoring")
+        const manifest = await buildEvaluationManifest({
+          report, evaluationContents: JSON.stringify(report),
+        })
+        expect(manifest.scored_artifact_sha256["memo.md"]).toBe(
+          createHash("sha256").update(memo).digest("hex"),
+        )
+      }
+    }
+    await rm(path.join(runDir, "memo.md"))
+    const missingMemo = await scoreEvaluationRun({ repoRoot: root, casePath, definition, runDir })
+    expect(missingMemo.pass).toBe(false)
+    const missingManifest = await buildEvaluationManifest({
+      report: missingMemo, evaluationContents: JSON.stringify(missingMemo),
+    })
+    expect(missingManifest.scored_artifact_state["memo.md"]).toEqual({ exists: false, type: "missing" })
+
+    await writeFile(path.join(runDir, "memo.md"), "Tuning objective: log_loss\nsk-ant-" + "synthetic".repeat(4))
+    const credentialReport = await scoreEvaluationRun({ repoRoot: root, casePath, definition, runDir })
+    expect(credentialReport.hard_gates_passed).toBe(true)
+    expect(credentialReport.credential_scan_passed).toBe(false)
+    expect(credentialReport.pass).toBe(false)
+
+    await rm(path.join(runDir, "memo.md"))
+    await writeFile(path.join(root, "outside-memo.md"), "Tuning objective: log_loss\n")
+    await symlink(path.join(root, "outside-memo.md"), path.join(runDir, "memo.md"))
+    await expect(scoreEvaluationRun({ repoRoot: root, casePath, definition, runDir }))
+      .rejects.toThrow(/outside|escape/)
+  })
+
+  test("scores an allowed JSON value without accepting wrong types or missing fields", async () => {
+    const root = await makeRepo()
+    const base = sampleCase()
+    const casePath = await writeCase(root, {
+      ...base,
+      required_behaviors: [...base.required_behaviors, "proper-objective"],
+      criteria: [...base.criteria, {
+        id: "proper-objective",
+        description: "The objective is an allowed proper score",
+        type: "json_one_of",
+        path: "evidence.json",
+        json_path: "objective",
+        expected: ["log_loss", "brier_score"],
+        weight: 1,
+        hard_gate: true,
+      }],
+    })
+    const runDir = await writeRun(root)
+    const definition = await loadAndValidateCase(root, casePath)
+    const objectives: Array<[unknown, boolean]> = [
+      ["log_loss", true], ["brier_score", true], ["auroc", false], [1, false], [undefined, false],
+    ]
+    for (const [objective, expected] of objectives) {
+      await writeFile(path.join(runDir, "evidence.json"),
+        JSON.stringify({ evidence: ["row-1", "row-2"], objective }))
+      const report = await scoreEvaluationRun({ repoRoot: root, casePath, definition, runDir })
+      expect(report.criteria.find((criterion) => criterion.id === "proper-objective")?.passed)
+        .toBe(expected)
+      expect(report.pass).toBe(expected)
+    }
+  })
+
+  test("rejects invalid allowed-value and cross-artifact criterion shapes", async () => {
+    const root = await makeRepo()
+    const base = sampleCase()
+    const common = { id: "decision", description: "Decision contract", path: "evidence.json", weight: 1, hard_gate: true }
+    const invalidCriteria: EvaluationCriterion[] = [
+      { ...common, type: "json_one_of", json_path: "objective", expected: [] },
+      { ...common, type: "json_one_of", json_path: "objective", expected: "log_loss" },
+      { ...common, type: "json_one_of", expected: ["log_loss"] },
+      { ...common, type: "json_one_of", json_path: ".", expected: ["log_loss"] },
+      { ...common, type: "json_text_equals", json_path: "objective", pattern: "(.*)" },
+      { ...common, type: "json_text_equals", json_path: "objective", text_path: "../memo.md", pattern: "(.*)" },
+      { ...common, type: "json_text_equals", json_path: "objective", text_path: "/memo.md", pattern: "(.*)" },
+      { ...common, type: "json_text_equals", json_path: "objective", text_path: "memo.md", pattern: "[" },
+      { ...common, type: "json_text_equals", json_path: "objective", text_path: "memo.md" },
+    ]
+    for (const criterion of invalidCriteria) {
+      const casePath = await writeCase(root, {
+        ...base, required_behaviors: [...base.required_behaviors, "decision"], criteria: [...base.criteria, criterion],
+      })
+      await expect(loadAndValidateCase(root, casePath)).rejects.toThrow(/criteria\[5\]/)
+    }
+  })
+
   test("validates the committed pilot cases and their frozen fixture hashes", async () => {
     const result = await validateAllCases(process.cwd())
 

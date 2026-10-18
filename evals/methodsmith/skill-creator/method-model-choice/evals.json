@@ -11,12 +11,13 @@
         "Memo addresses the patient-within-hospital nesting with an explicit random-effects/covariance structure and lists rejected candidate models with reasons",
         "Includes a decision-to-evidence ledger with PMIDs and abstract/full_text labels, obtained via method-evidence-map or an existing evidence map",
         "If status is ready_for_review, writes analysis/model-strategy/<slug>-model.R that fails on missing columns and contains no synthetic results or hard-coded patient values",
-        "Emits exactly one '__CE_MODEL_STRATEGY__ memo=... code=... language=r status=... primary=... evidence=...' line"
+        "Emits exactly one '__CE_MODEL_STRATEGY__ memo=... code=... language=r status=... primary=... evidence=...' line",
+        "Keeps this non-prediction mixed-effects branch free of the ML-only decision sidecar"
       ]
     },
     {
       "id": 2,
-      "prompt": "which model should I use for our readmission study? haven't looked at the data yet, not sure if it's one row per admission or per patient. outcome is 30-day readmission.",
+      "prompt": "which model should I use to predict 30-day readmission? haven't looked at the data yet, not sure if it's one row per admission or per patient.",
       "expected_output": "Does not choose a final model; marks the strategy blocked or provisional because the data grain and estimand are unresolved, asks one decision-changing question, and writes no code scaffold.",
       "files": [],
       "expectations": [
@@ -24,7 +25,8 @@
         "Writes no .R or .py scaffold (code=none in the handoff)",
         "Asks a single decision-changing question at a time about grain/unit of analysis or estimand",
         "Lists the exact future QA facts (e.g. grain, repeat admissions per patient) required to promote the recommendation",
-        "Does not open patient-level files merely to avoid asking about the missing design decision"
+        "Does not open patient-level files merely to avoid asking about the missing design decision",
+        "If writing a prediction strategy memo, writes its version-1.0 decisions.json sidecar with matching blocked/provisional status, null unknowns, and explicit unresolved questions"
       ]
     },
     {
