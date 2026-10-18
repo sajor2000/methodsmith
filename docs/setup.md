@@ -55,7 +55,7 @@ then run setup.
 
 ### Claude Code
 
-No checkout needed (Claude Code 2.1.275 or later): install straight from the
+No checkout needed (terminal command, Claude Code 2.1.292 or later): install straight from the
 GitHub marketplace, then start Claude Code.
 
 ```bash
@@ -63,11 +63,15 @@ claude plugin install methodsmith --marketplace sajor2000/methodsmith
 claude
 ```
 
-The same one-step install works inside a running Claude Code session:
+The same one-step install works inside a running Claude Code session
+(2.1.275 or later):
 
 ```text
 /plugin install methodsmith --marketplace sajor2000/methodsmith
 ```
+
+These version requirements differ between the terminal and in-session commands;
+see the [Claude Code publishing guide](https://code.claude.com/docs/en/plugins/publish#tell-users-how-to-install).
 
 From a source checkout (also adds the optional bare `/method-*` aliases), on macOS,
 Linux, WSL, or Git Bash:

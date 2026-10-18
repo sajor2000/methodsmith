@@ -1,10 +1,36 @@
 # Methodsmith
 
-**Rigorous methods for statistics, machine learning, and meta-analysis, from question to paper. Every study compounds.**
+**Rigorous methods, from question to paper. Every study compounds.**
 
-A plugin for Claude Code and Codex. SAP management, statistical review, and evidence-backed reporting-guideline review for R and Python workflows — covering 39 standards across all study types and AI extensions. The registry distinguishes reporting guidelines from appraisal tools, planning templates, data-quality tools, and provisional candidates. [Guideline sources](../../docs/guideline-sources.md) lists each checklist's primary citation, PMID, DOI, verification status, and superseded versions; it is generated from the registry.
+Methodsmith is a research plugin for coding agents. Plan the study, build
+reproducible R and Python analyses, review the methods, and trace reported
+numbers to their analysis code. Built for clinical statistics, machine learning,
+and meta-analysis. Your team keeps scientific judgment and responsibility for
+the results.
+
+**67 skills · 55 specialist agents · 39 reporting standards.** Works with Claude
+Code, Codex, Pi, Gemini CLI, OpenCode, Kiro, and Qwen Code.
+
+[Get started](#getting-started) · [Read the full setup guide](../../docs/setup.md) ·
+[Upgrade from ce-datascience](#moving-from-ce-datascience) <!-- rebrand:keep -->
+
+From a terminal with Claude Code 2.1.292 or later:
+
+```bash
+claude plugin install methodsmith --marketplace sajor2000/methodsmith
+```
+
+Open your study folder, start Claude Code, and run
+`/methodsmith:method-setup`, then `/methodsmith:method-workflow`.
+For Codex, other agents, Windows, or approved offline installs, use the
+[setup guide](../../docs/setup.md).
 
 ## How It Works
+
+Methodsmith makes a human-led loop explicit: **plan -> work -> review -> compound**.
+Your team frames the question, approves the plan, judges findings, and chooses
+what to carry forward. The agent drafts, checks, and documents the work; validated
+lessons make the next study stronger.
 
 ![Methodsmith package workflow: install, set up a project, run skills, and create research artifacts](../../docs/methodsmith-package-workflow.png)
 
@@ -142,7 +168,7 @@ later):
 /plugin install methodsmith --marketplace sajor2000/methodsmith
 ```
 
-Or from a terminal:
+Or from a terminal with Claude Code 2.1.292 or later:
 
 ```bash
 claude plugin install methodsmith --marketplace sajor2000/methodsmith
@@ -670,6 +696,12 @@ prose and citations.
 ### Biomedical Lifecycle
 
 For the academic paper lifecycle: literature → checklist → cohort → power → SAP → manuscript artifacts.
+
+The registry covers 39 standards across study types and AI extensions.
+[Guideline sources](../../docs/guideline-sources.md) lists each
+checklist's primary citation, PMID, DOI, verification status, and superseded
+versions. It distinguishes reporting guidelines from appraisal tools, planning
+templates, data-quality tools, and provisional candidates.
 
 | Skill | Description |
 |-------|-------------|
