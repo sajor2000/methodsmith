@@ -8,7 +8,7 @@
       "files": [],
       "expectations": [
         "Writes analysis/ml/tracking.py with mlflow init code that logs train_data_sha, git_sha, and study_id",
-        "Writes analysis/ml/run-schema.yaml listing required params (including random_seed and split_strategy), validation metrics used for model selection (auc_validation with its scheme, n_events_train), and artifacts, and restricts held-out test metrics (Brier, calibration intercept/slope, test AUC) to the locked final model logged once",
+        "Writes analysis/ml/run-schema.yaml listing required params (including random_seed and split_strategy), development metrics (log_loss_validation and auprc_validation with their scheme, n_events_train) with log loss as the selection metric and the bootstrap instability_mape of predictions, and artifacts, and restricts held-out test metrics (Brier, calibration intercept/slope, test AUC, net_benefit_test) to the locked final model logged once",
         "Adds the tracking/manuscript-run linkage sentence to analysis/sap.md referencing analysis/ml/manuscript-run.txt",
         "Keeps complete logs in approved restricted gitignored storage; runs/ contains only disclosure-reviewed suppressed aggregate summaries",
         "Emits '__CE_ML_TRACK__ backend=mlflow uri=<uri> schema=<path>'"

@@ -11,6 +11,7 @@
         "Includes the nine template sections, including intended use with out-of-scope uses and caveats/recommendations with recalibration and monitoring plans",
         "Includes a fairness table with per-group AUC (with CI), calibration intercept/slope, sensitivity/specificity at the deployment threshold, demographic parity ratio, equal-opportunity gap (TPR difference), and equalized-odds gap (max of TPR and FPR differences)",
         "Reports N, number of events, the validation type, and a 95% CI for every overall performance estimate including Brier score and calibration intercept/slope",
+        "Presents AUROC, calibration, net benefit, and risk distributions as the essential measures; shows AUPRC only beside prevalence when present; states the imbalance correction when the training records document it, reports none only when they confirm no correction was used, and otherwise reports the undocumented imbalance correction as a gap in the caveats; when the eval JSON has no stability analysis, says so in the caveats",
         "Highlights any subgroup AUC gap > 0.05 or calibration intercept difference > 0.10 in the card body, not only a footnote",
         "Adds 'Model card available at analysis/model-card.md.' to the SAP and manuscript Methods",
         "Cites fairness-metric definitions and TRIPOD+AI reporting items by PMID/DOI with an evidence label, without recomputing or adjusting any reported metric",

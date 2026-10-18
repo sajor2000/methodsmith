@@ -97,4 +97,57 @@ describe("skill-creator eval sets", () => {
     }
     expect(offenders).toEqual([])
   })
+
+  test("method-model-choice keeps the MMRM covariance-identifiability advice eval", async () => {
+    const data = await readJson<{ skill_name: string; evals: SkillEval[] }>(
+      path.join(evalsRoot, "method-model-choice", "evals.json"),
+    )
+    const mmrm = data.evals.find((item) => /MMRM/i.test(item.prompt))
+    expect(mmrm).toBeDefined()
+    expect(mmrm!.expectations.join(" ").toLowerCase()).toContain("non-identifiability")
+  })
+
+  test("method-model-choice trigger evals include a prediction-model training-protocol query", async () => {
+    const data = await readJson<TriggerEval[]>(
+      path.join(evalsRoot, "method-model-choice", "trigger-evals.json"),
+    )
+    const matches = data.filter(
+      (item) =>
+        item.should_trigger &&
+        /training (?:and )?validation protocol|prediction model/i.test(item.query),
+    )
+    expect(matches.length).toBeGreaterThan(0)
+  })
+
+  test("method-ml-track evals cover the protocol run-log metric fields", async () => {
+    const raw = await fs.readFile(path.join(evalsRoot, "method-ml-track", "evals.json"), "utf8")
+    for (const field of [
+      "log_loss_validation",
+      "auprc_validation",
+      "net_benefit_test",
+      "instability_mape",
+    ]) {
+      expect(raw.includes(field)).toBe(true)
+    }
+  })
+
+  test("method-ml-track trigger evals include a proper-score and instability logging query", async () => {
+    const data = await readJson<TriggerEval[]>(
+      path.join(evalsRoot, "method-ml-track", "trigger-evals.json"),
+    )
+    const matches = data.filter(
+      (item) => item.should_trigger && /log.?loss|instability/i.test(item.query),
+    )
+    expect(matches.length).toBeGreaterThan(0)
+  })
+
+  test("method-model-card trigger evals include an essential-measures documentation query", async () => {
+    const data = await readJson<TriggerEval[]>(
+      path.join(evalsRoot, "method-model-card", "trigger-evals.json"),
+    )
+    const matches = data.filter(
+      (item) => item.should_trigger && /risk distribution|net benefit/i.test(item.query),
+    )
+    expect(matches.length).toBeGreaterThan(0)
+  })
 })

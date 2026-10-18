@@ -6,7 +6,7 @@
   {"query": "make a mitchell-style model card for the delirium classifier, eval output is in reports/delirium_eval.json, highlight any subgroup gaps", "should_trigger": true},
   {"query": "Document the external validation of our chest X-ray triage model (site B, n=5500) in a model card with ethical considerations and a monitoring plan.", "should_trigger": true},
   {"query": "Before submitting to Lancet Digital Health we need the AI reporting artifact for the model: performance by sex/race/age/site, calibration by group, demographic parity and equalized odds.", "should_trigger": true},
-  {"query": "Generate analysis/model-card.html from the trained ONNX model and eval results so I can share it with the clinical leads.", "should_trigger": true},
+  {"query": "Document the deployed sepsis risk model in a model card: AUROC, calibration plot, net benefit decision curve, risk distributions by outcome, and how class imbalance was handled.", "should_trigger": true},
   {"query": "Update the model card after recalibration - new eval JSON is reports/eval-recal-2026-10.json; caveats should mention the recalibration plan.", "should_trigger": true},
   {"query": "Need prediction model documentation for the FDA presubmission meeting - intended use, data provenance, metrics, limitations. eval file attached as reports/eval_final.json.", "should_trigger": true},
   {"query": "Review our sepsis model's calibration - the slope looks like 0.7 on external validation; is recalibration needed?", "should_trigger": false},

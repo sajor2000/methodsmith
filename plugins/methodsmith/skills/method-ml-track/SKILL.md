@@ -111,43 +111,13 @@ def init_run(train_path, approved_tracking_uri, experiment="sepsis-risk", run_na
 
 ### Step 3: Define the required-log schema
 
-Write `analysis/ml/run-schema.yaml` -- the minimum fields every run must log:
+Write `analysis/ml/run-schema.yaml` -- the minimum fields every run must log. The field list, names, and placement rules live in `references/run-log-schema.yaml`; that schema is authoritative, so when the two disagree fix the project schema to match it. Every run must log:
 
-```yaml
-required:
-  params:
-    - train_data_sha
-    - git_sha
-    - study_id
-    - random_seed
-    - validation_type         # bootstrap / nested-CV / internal-external / temporal / held-out
-    - split_strategy          # group / temporal / random / not-applicable
-    - n_configurations_evaluated  # running count of configurations tried in this experiment
-  metrics:
-    - auc_validation          # tuning/CV metric used for model selection
-    - auc_validation_scheme   # e.g., grouped 5-fold CV by patient
-    - n_train
-    - n_events_train
-  # Held-out test metrics (test_data_sha, auc_test, brier_test,
-  # calibration_intercept_test, calibration_slope_test, n_test, n_events_test,
-  # auc_external when an external set exists) are logged ONLY for the locked
-  # final model, once; record test_set_unlocked_at.
-  restricted_artifacts:       # approved restricted store, not automatic tracker uploads
-    - model.pkl (or equivalent)
-    - eval-results.json
-    - calibration-plot.png
-    - feature-importance.csv (or shap_values.npz)
-  # Upload/export only separately reviewed aggregate artifacts to an approved
-  # backend. Row-retaining models, SHAP arrays and patient-level evaluation
-  # output remain in restricted storage, even when the backend is wandb.
-recommended:
-  params:
-    - hyperparam_search_strategy
-    - model_class
-  metrics:
-    - subgroup_auc.<subgroup>
-    - decision_curve.net_benefit_at_<threshold>
-```
+- Provenance params: data hash, Git SHA, study id, random seed.
+- Validation params: `validation_type`, `split_strategy`, `n_configurations_evaluated`.
+- Development metrics (resampling/tuning): the selection metric `log_loss_validation` (a proper scoring rule; tune and select on it), `auc_validation` (reported discrimination, never the selection criterion), `auprc_validation` (interpreted against prevalence, never alone), the validation scheme, train counts, and `instability_mape` when refit instability is measured.
+- Held-out test metrics ONLY for the locked final model, once; record `test_set_unlocked_at`.
+- Restricted artifacts (model, eval results, calibration plot, feature importance) stay in the approved restricted store -- never automatic tracker uploads, and only separately reviewed aggregates go to the backend.
 
 A run that omits the required validation evidence is not eligible for manuscript inclusion. For non-held-out designs, that evidence is `validation_type`, `validation_procedure`, and `corrected_performance`. Held-out fields are conditional on that design; disclosure-suppressed shared values are acceptable when the complete restricted record and review reason are retained. A run that logs test-set metrics before the model is locked is not eligible either: scoring exploratory runs on the test set turns it into a selection set (REFORMS, Kapoor et al., Sci Adv 2024, PMID 38691601). Report `n_configurations_evaluated` with the final model (TRIPOD+AI item 12c, PMID 38626948).
 
@@ -171,6 +141,7 @@ params:
   train_data_sha: <sha256 of the training extract>
   # one key per hyperparameter
 metrics:
+  log_loss_validation: 0.21
   auc_validation: 0.84
   # one key per reported metric
 artifacts:
