@@ -63,17 +63,28 @@ per skill, per the self-contained-skill rule). Example fields for
 ## 1.2 Code-structure criterion for scaffolds
 
 Add a criterion type `code_query` that parses Python and R scaffolds with
-tree-sitter (`web-tree-sitter` WASM with `tree-sitter-python`; Context7 lists
-both) so CI needs no Python runtime. The first rule replaces the regex gate:
+tree-sitter (`web-tree-sitter` WASM with `tree-sitter-python` for Python and
+the r-lib grammar `tree-sitter-r`, published on npm as
+`@davisvaughan/tree-sitter-r`, for R) so CI needs neither a Python nor an R
+runtime. Build or vendor a `.wasm` for each grammar and pin both versions. The first rule replaces the regex gate:
 a tuning call, or a call to a top-level function whose body tunes, sits inside
 a resampling loop and receives that loop's training index. It should follow
 helper calls one level deep.
 
-- TDD at `scoreEvaluationRun`: the 18 existing case tests and the r5 to r14
-  scaffolds are the parity suite; the new criterion must agree with the
-  current regex on all of them before the regex is retired.
-- Validation in `eval:validate`: the query parses, and the referenced language
-  is supported.
+- TDD at `scoreEvaluationRun`: parity with the current regex is required only
+  on compliant inputs (the compliant case fixtures and the r5 to r14
+  scaffolds); the new criterion must accept all of them before the regex is
+  retired.
+- Adversarial inputs are asserted separately and must be rejected on their
+  own terms, not by agreement with the regex: tuning on the full data before
+  or inside the outer loop, a tuning helper fed the held-out index, a
+  fit-only helper that refits a fixed hyperparameter, and an inner tuning loop
+  standing in for outer-fold tuning. The regex is known to accept some leaky
+  shapes (for example, a tuning helper called inside a calibration cross-fit
+  while the outer loop is leaky), so agreement there is not a goal.
+- Validation in `eval:validate`: the query parses, the referenced language is
+  supported, and both grammars load by parsing a small committed Python
+  fixture and a small committed R fixture.
 - Decision needed: adding a WASM dependency to the scorer.
 
 ## 1.3 Phrasing corpus as permanent regression fixtures
