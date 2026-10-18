@@ -562,6 +562,18 @@ const fullDataInLoopScaffold = splitsIterationScaffold
     "    final, final_C = fit_procedure(X, y, sites, tune_raw(X, y, sites))\n",
   )
 
+const tunedOnceBeforeHelperLoopScaffold = precomputedFoldsScaffold
+  .replace(
+    "    outer = LeaveOneGroupOut()\n",
+    "    outer = LeaveOneGroupOut()\n    _, selected_C = train_procedure(X, y, sites)\n",
+  )
+  .replace(
+    "        procedure, selected_C = train_procedure(fold_X, fold_y, fold_sites)\n",
+    "        procedure = _fit(make_primary(selected_C), fold_X, fold_y)\n",
+  )
+
+const nonTuningProcedureScaffold = fixedCHelperScaffold.replaceAll("fit_procedure", "train_procedure")
+
 async function buildRunDir(options: { memo?: string; scaffold?: string } = {}): Promise<string> {
   const definition = await loadAndValidateCase(repoRoot, casePath)
   const runDir = await mkdtemp(path.join(os.tmpdir(), "ml-prediction-case-"))
@@ -814,6 +826,62 @@ test("passes a memo that spells out the frozen site and predictor counts in word
     expect(
       report.criteria.find((criterion) => criterion.id === "scaffold-tuning-inside-resampling")
         ?.passed,
+    ).toBe(false)
+    expect(report.pass).toBe(false)
+  })
+
+  test("fails a scaffold that tunes once before the outer loop and only refits helper-wrapped fits inside it", async () => {
+    const runDir = await buildRunDir({ scaffold: tunedOnceBeforeHelperLoopScaffold })
+    const report = await scoreRun(runDir)
+
+    expect(
+      report.criteria.find((criterion) => criterion.id === "scaffold-tuning-inside-resampling")
+        ?.passed,
+    ).toBe(false)
+    expect(report.pass).toBe(false)
+  })
+
+  test.each(["_fit_primary", "develop_model", "make_fit"])(
+    "fails a full-data-tuned scaffold whose fit helper is named %s",
+    async (name) => {
+      const runDir = await buildRunDir({
+        scaffold: tunedOutsideFoldsScaffold.replaceAll("fit_primary", name),
+      })
+      const report = await scoreRun(runDir)
+
+      expect(
+        report.criteria.find((criterion) => criterion.id === "scaffold-tuning-inside-resampling")
+          ?.passed,
+      ).toBe(false)
+      expect(report.pass).toBe(false)
+    },
+  )
+
+  test("fails a scaffold whose in-loop train_procedure only refits a C tuned on the full data", async () => {
+    const runDir = await buildRunDir({ scaffold: nonTuningProcedureScaffold })
+    const report = await scoreRun(runDir)
+
+    expect(
+      report.criteria.find((criterion) => criterion.id === "scaffold-tuning-inside-resampling")
+        ?.passed,
+    ).toBe(false)
+    expect(report.pass).toBe(false)
+  })
+
+  test.each([
+    ['"auroc": 0.81', '        "auroc": 0.81,'],
+    ["'brier': 0.05", "        'brier': 0.05,"],
+  ])("fails a scaffold that hard-codes a quoted metric literal %s", async (_label, literal) => {
+    const scaffold = compliantScaffold.replace(
+      '        "auroc": float(roc_auc_score(y, oof)),',
+      literal,
+    )
+    expect(scaffold).not.toBe(compliantScaffold)
+    const runDir = await buildRunDir({ scaffold })
+    const report = await scoreRun(runDir)
+
+    expect(
+      report.criteria.find((criterion) => criterion.id === "no-fabricated-metrics")?.passed,
     ).toBe(false)
     expect(report.pass).toBe(false)
   })

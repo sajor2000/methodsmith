@@ -104,10 +104,10 @@ criteria:
     weight: 3
     hard_gate: true
   - id: scaffold-tuning-inside-resampling
-    description: The scaffold tunes inside the resampling; within a resampling loop, a tuning call, or a top-level helper whose own body tunes, receives that loop's own training index (X[train], data.take(train), frame.iloc[train]), so hyperparameters are never selected on held-out or full data.
+    description: The scaffold tunes inside the resampling; a resampling loop (header may span lines) passes its own training index (X[train], data.take(train), frame.iloc[train], or a subset variable assigned from it) to a tuning call, to a top-level helper whose body tunes (search CV, a grid loop, best-value selection, or a tun* call), or to a helper that calls such a tuner. Fit-helper names alone never count, so an inner tuning loop cannot stand in for tuning inside the outer folds.
     type: regex
     path: workspace/analysis/model-strategy/sepsis-48h-model.py
-    pattern: 'for\s+(?:\w+\s*,\s*)?\(?\s*(?<trainIdx>\w+)\s*,\s*\w+\s*\)?\s+in\s+[^\n]{0,140}:[\s\S]{0,1600}\b(?:tun\w*|GridSearchCV|RandomizedSearchCV|build_procedure|fit_primary_procedure|train_procedure|develop\w*|make_\w+|_fit\w*)\s*\([^\n]{0,100}?[\[(]\s*\k<trainIdx>\s*[\])]|^def\s+(?<helper>\w+)\s*\((?:(?!\n\S)[\s\S]){0,4000}?(?:GridSearchCV|RandomizedSearchCV|\btun\w*\s*\()[\s\S]*?for\s+(?:\w+\s*,\s*)?\(?\s*(?<helperIdx>\w+)\s*,\s*\w+\s*\)?\s+in\s+[^\n]{0,140}:[\s\S]{0,1600}?(?<![.\w])\k<helper>\s*\([^\n]{0,100}?[\[(]\s*\k<helperIdx>\s*[\])]'
+    pattern: 'for\s+(?:\w+\s*,\s*)?\(?\s*(?<aIdx>\w+)\s*,\s*\w+\s*\)?\s+in\b[^:]{0,240}:[\s\S]{0,1600}?(?:(?<![\w.])(?<aSub>\w+)\s*(?:,\s*\w+\s*)*=[^\n]*?(?<![\w.])\k<aIdx>(?![\w.(])[^\n]*\n(?:[^\n]*\n){0,12}?[^\n]*?(?<![.\w])(?:tun\w*|GridSearchCV|RandomizedSearchCV)\s*\(\s*\k<aSub>\b|(?<![.\w])(?:tun\w*|GridSearchCV|RandomizedSearchCV)\s*\([^\n]{0,120}?(?<![\w.])\k<aIdx>(?![\w.(]))|^def\s+(?<bHelper>\w+)\s*\((?:(?!\n\S)[\s\S]){0,6000}?(?:GridSearchCV|RandomizedSearchCV|Halving\w*SearchCV|BayesSearchCV|optuna\.|\btun\w*\s*\(|\bfor\s+(?:\w+\s*,\s*)?\w+\s+in\s+(?:enumerate\(\s*)?\w*grid\w*|\bbest_\w+\s*(?:,\s*\w+\s*)*=(?!=))[\s\S]*?for\s+(?:\w+\s*,\s*)?\(?\s*(?<bIdx>\w+)\s*,\s*\w+\s*\)?\s+in\b[^:]{0,240}:[\s\S]{0,1600}?(?:(?<![\w.])(?<bSub>\w+)\s*(?:,\s*\w+\s*)*=[^\n]*?(?<![\w.])\k<bIdx>(?![\w.(])[^\n]*\n(?:[^\n]*\n){0,12}?[^\n]*?(?<![.\w])\k<bHelper>\s*\(\s*\k<bSub>\b|(?<![.\w])\k<bHelper>\s*\([^\n]{0,120}?(?<![\w.])\k<bIdx>(?![\w.(]))|^def\s+(?<cTuner>\w+)\s*\((?:(?!\n\S)[\s\S]){0,6000}?(?:GridSearchCV|RandomizedSearchCV|Halving\w*SearchCV|BayesSearchCV|optuna\.|\btun\w*\s*\(|\bfor\s+(?:\w+\s*,\s*)?\w+\s+in\s+(?:enumerate\(\s*)?\w*grid\w*|\bbest_\w+\s*(?:,\s*\w+\s*)*=(?!=))[\s\S]*?^def\s+(?<cHelper>\w+)\s*\((?:(?!\n\S)[\s\S]){0,6000}?(?<![.\w])\k<cTuner>\s*\([\s\S]*?for\s+(?:\w+\s*,\s*)?\(?\s*(?<cIdx>\w+)\s*,\s*\w+\s*\)?\s+in\b[^:]{0,240}:[\s\S]{0,1600}?(?:(?<![\w.])(?<cSub>\w+)\s*(?:,\s*\w+\s*)*=[^\n]*?(?<![\w.])\k<cIdx>(?![\w.(])[^\n]*\n(?:[^\n]*\n){0,12}?[^\n]*?(?<![.\w])\k<cHelper>\s*\(\s*\k<cSub>\b|(?<![.\w])\k<cHelper>\s*\([^\n]{0,120}?(?<![\w.])\k<cIdx>(?![\w.(]))'
     weight: 3
     hard_gate: true
   - id: calibration-assessed
@@ -212,7 +212,7 @@ criteria:
     description: The scaffold contains no hard-coded performance values.
     type: regex_not
     path: workspace/analysis/model-strategy/sepsis-48h-model.py
-    pattern: '\b(?:auc|auroc|auprc|accuracy|brier|log_loss|net_benefit)\b\s*[:=]\s*0\.\d'
+    pattern: '\b(?:auc|auroc|auprc|accuracy|brier|log_loss|net_benefit)\b[''"]?\s*[:=]\s*0\.\d'
     weight: 2
     hard_gate: true
   - id: no-imbalance-correction

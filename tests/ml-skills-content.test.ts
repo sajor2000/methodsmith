@@ -65,4 +65,37 @@ describe("ML skills content contracts", () => {
     const cardRow = longRowFor("method-model-card")
     expect(cardRow).toMatch(/risk distribution/i)
   })
+
+  test("log loss is the development selection metric and AUC is reported, not selected on", async () => {
+    const schema = await read("plugins/methodsmith/skills/method-ml-track/references/run-log-schema.yaml")
+    const skill = await read("plugins/methodsmith/skills/method-ml-track/SKILL.md")
+    const schemaLine = (field: string): string => {
+      const line = schema.split("\n").find((l) => l.trimStart().startsWith(field + ":"))
+      expect(line).toBeDefined()
+      return line as string
+    }
+    expect(schemaLine("log_loss_validation")).toMatch(/selection/i)
+    expect(schemaLine("auc_validation")).not.toMatch(/selection|tuning/i)
+    const step3 = skill.slice(skill.indexOf("### Step 3"), skill.indexOf("### Step 4"))
+    expect(step3).toMatch(/selection metric[^.;]{0,40}`log_loss_validation`/)
+    expect(step3).not.toMatch(/selection metric \(`auc_validation`/)
+  })
+
+  test("the model card labels validation status neutrally and gaps an undocumented imbalance correction", async () => {
+    const template = await read(
+      "plugins/methodsmith/skills/method-model-card/references/model-card-template.md",
+    )
+    expect(template).not.toContain("Internal validation only:")
+    expect(template).toContain("Validation status: {{ external_validation_status }}")
+    const evals = JSON.parse(await read("evals/methodsmith/skill-creator/method-model-card/evals.json"))
+    const first = evals.evals.find((e: { id: number }) => e.id === 1).expectations.join("\n")
+    expect(first).not.toContain("(or none)")
+    expect(first).toMatch(/imbalance correction[^\n]{0,200}gap/i)
+  })
+
+  test("the cuML accelerator runs a script through its documented CLI", async () => {
+    const protocol = await read("plugins/methodsmith/skills/method-model-choice/references/ml-training-protocol.md")
+    expect(protocol).not.toContain("python -m cuml.accel.install")
+    expect(protocol).toContain("`python -m cuml.accel <script.py>`")
+  })
 })
