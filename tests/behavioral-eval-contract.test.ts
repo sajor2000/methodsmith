@@ -357,6 +357,88 @@ for train, test in outer.split(X, y):
     expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(true)
   })
 
+  test("resolves Python keyword arguments in fits and helper calls without masking leakage", async () => {
+    for (const source of [
+      `from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(X, y):
+    search = GridSearchCV(model, grid)
+    search.fit(X=X[train], y=y[train])
+`,
+      `from sklearn.model_selection import GridSearchCV
+def select_model(X, y):
+    search = GridSearchCV(model, grid)
+    return search.fit(X, y)
+for train, test in outer.split(X, y):
+    fitted = select_model(y=y[train], X=X[train])
+`,
+    ]) {
+      const report = await scoreCode(source)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(true)
+      expect(report.pass).toBe(true)
+    }
+    const leaked = await scoreCode(`from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(X, y):
+    search = GridSearchCV(model, grid)
+    search.fit(X=X[test], y=y[test])
+`)
+    expect(leaked.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(false)
+    expect(leaked.pass).toBe(false)
+  })
+
+  test("keeps training-only nested and helper-owned calibration loops out of assessment classification", async () => {
+    const header = `from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import StratifiedKFold
+`
+    const inline = `${header}for train, test in outer.split(X, y):
+    search = GridSearchCV(model, grid)
+    search.fit(X[train], y[train])
+    calibrators = []
+    for cal_train, cal_valid in StratifiedKFold(n_splits=5).split(X[train], y[train]):
+        calibrator = LogisticRegression()
+        calibrator.fit(X[train][cal_train], y[train][cal_train])
+        calibrators.append(calibrator)
+`
+    const owned = `${header}def calibrate(X_dev, y_dev):
+    calibrators = []
+    for cal_train, cal_valid in StratifiedKFold(n_splits=5).split(X_dev, y_dev):
+        calibrator = LogisticRegression()
+        calibrator.fit(X_dev[cal_train], y_dev[cal_train])
+        calibrators.append(calibrator)
+    return calibrators
+for train, test in outer.split(X, y):
+    search = GridSearchCV(model, grid)
+    search.fit(X[train], y[train])
+    fitted = calibrate(X[train], y[train])
+`
+    for (const source of [inline, owned]) {
+      const report = await scoreCode(source)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed,
+        JSON.stringify(report.criteria.find((criterion) => criterion.id === "nested-tuning"))).toBe(true)
+      expect(report.pass).toBe(true)
+    }
+    const leakyInline = `${header}for train, test in outer.split(X, y):
+    search = GridSearchCV(model, grid)
+    search.fit(X[train], y[train])
+    for cal_train, cal_valid in StratifiedKFold(n_splits=5).split(X, y):
+        calibrator = LogisticRegression()
+        calibrator.fit(X, y)
+`
+    const leakyOwned = owned
+      .replace("calibrator.fit(X_dev[cal_train], y_dev[cal_train])", "calibrator.fit(X_dev, y_dev)")
+      .replace("fitted = calibrate(X[train], y[train])", "fitted = calibrate(X, y)")
+    const mixedCallSitesOwned = owned.replace(
+      "fitted = calibrate(X[train], y[train])",
+      "fitted = calibrate(X[train], y[train])\n    leaked = calibrate(X, y)",
+    )
+    expect(leakyOwned).not.toBe(owned)
+    for (const source of [leakyInline, leakyOwned, mixedCallSitesOwned]) {
+      const report = await scoreCode(source)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(false)
+      expect(report.pass).toBe(false)
+    }
+  })
+
   test("validates the closed code-query contract and rejects unsupported languages or queries", async () => {
     const root = await makeRepo()
     const base = sampleCase()

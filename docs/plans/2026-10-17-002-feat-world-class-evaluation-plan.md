@@ -127,8 +127,8 @@ language selection. Exact dependencies are `web-tree-sitter@0.27.1`,
 `tree-sitter-python@0.25.0`, and `@davisvaughan/tree-sitter-r@1.3.0`. Both shipped
 WASM grammars load and parse committed smoke fixtures with native lifecycle scripts disabled.
 
-- TDD stayed at `scoreEvaluationRun` and `loadAndValidateCase`. Current focused results:
-  81 tests pass, zero fail across the scorer contract and ML case suites.
+- TDD stayed at `scoreEvaluationRun` and `loadAndValidateCase`. Focused results after PR
+  feedback: 83 tests pass, zero fail across the scorer contract and ML case suites.
 - Before retiring the regex, the compliant case fixtures and all ten r5–r14 archive copies
   passed the structural gate; all three sidecar-pilot copies also passed, including the
   multiline helper layout. The current repeat remains 13/13. Probe:
@@ -142,6 +142,19 @@ WASM grammars load and parse committed smoke fixtures with native lifecycle scri
   Each received a public-seam red-to-green regression and fix. Follow-up regressions also
   cover global callable replacement, nondominating aliases, and cross-helper scope.
   The reviewer has not performed a second post-fix review.
+- CodeRabbit PR review found two further gaps. Python keyword arguments now unwrap and bind
+  helper parameters by name, including reordered keywords; regression coverage confirms
+  keyword-held-out data still fails. Nested inline and helper-owned calibration loops are
+  excluded as separate assessments only when all fit data and statically visible helper
+  call paths are provably within the enclosing assessment's training partition; full-data
+  nested loops, including mixed safe/leaky helper invocations, remain rejected. Both findings
+  have red-to-green public-seam regressions.
+- Follow-up validation: archive parity passed 13/13 with every original source hash unchanged
+  (`/tmp/methodsmith/code-query/parity-review-fix-final-1792338940.jsonl`);
+  `bun run eval:validate`
+  validated all 30 cases; `tsc --noEmit` passed; and `bun test --timeout 30000` passed with
+  1,702 pass, 11 skip, 0 fail across 1,713 tests. Full output:
+  `/tmp/methodsmith/code-query/full-review-fix-final-1792338940.log`.
 - The original criterion ID/weight remain unchanged. The guide documents the deliberately
   bounded Python/R API shapes and the limits of static evidence. No source is executed.
 - Prior pilot failures and the earlier Jev escalation remain intact. This is not an

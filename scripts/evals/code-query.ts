@@ -87,7 +87,18 @@ function field(node: Node, name: string): Node | undefined {
 function args(call: Node): Node[] {
   return (field(call, "arguments")?.namedChildren ?? [])
     .filter((node) => node.type !== "comma")
-    .map((node) => node.type === "argument" ? field(node, "value") ?? node : node)
+    .map((node) => ["argument", "keyword_argument"].includes(node.type) ? field(node, "value") ?? node : node)
+}
+
+function argumentName(argument: Node): string | undefined {
+  const parent = argument.parent
+  if (parent?.type === "keyword_argument" || parent?.type === "argument") return field(parent, "name")?.text
+  return undefined
+}
+
+function argumentFor(actual: Node[], parameter: string, index: number): Node | undefined {
+  return actual.find((argument) => argumentName(argument) === parameter) ??
+    (actual[index] ?? (actual[0]?.type === "list_splat" ? actual[0] : undefined))
 }
 
 function assignments(root: Node): Array<{ node: Node; left: Node; right: Node }> {
@@ -269,8 +280,9 @@ function partition(node: Node | undefined, loop: Node, bound: Bindings, depth = 
       const parameters = parameterNames(helper)
       const nested: Bindings = new Map()
       parameters.forEach((name, i) => {
-        nested.set(name, partition(actual[i], loop, bound, depth + 1))
-        nested.set(`index:${name}`, indexPartition(actual[i], loop, bound))
+        const value = argumentFor(actual, name, i)
+        nested.set(name, partition(value, loop, bound, depth + 1))
+        nested.set(`index:${name}`, indexPartition(value, loop, bound))
       })
       const returned = nodes(field(helper, "body")!, "return_statement").at(-1)
       const values = returned?.namedChildren[0]
@@ -311,7 +323,8 @@ function fitPartitions(call: Node, loop: Node, bound: Bindings, functions: Map<s
     return name?.type === "attribute" && field(name, "attribute")?.text === "fit"
   })
   if (!fit) return []
-  const nested = new Map(parameters.map((name, index) => [name, partition(args(call)[index], loop, bound)]))
+  const actual = args(call)
+  const nested = new Map(parameters.map((name, index) => [name, partition(argumentFor(actual, name, index), loop, bound)]))
   return args(fit).slice(0, 2).map((arg) => partition(arg, loop, nested))
 }
 
@@ -342,8 +355,9 @@ function carriesParameter(node: Node | undefined, names: Set<string>, functions:
   if (node.type === "call") {
     const helper = resolveFunction(field(node, "function"), functions)
     if (helper) {
-      const nested = new Set(parameterNames(helper).filter((_, index) =>
-        carriesParameter(args(node)[index], names, functions, depth + 1)))
+      const actual = args(node)
+      const nested = new Set(parameterNames(helper).filter((name, index) =>
+        carriesParameter(argumentFor(actual, name, index), names, functions, depth + 1)))
       return nodes(field(helper, "body")!, "return_statement")
         .filter((returned) => owner(returned).id === helper.id)
         .some((returned) => returned.namedChildren.some((value) =>
@@ -362,8 +376,9 @@ function variesEstimator(call: Node, candidate: Node, functions: Map<string, Nod
   }
   const helper = resolveFunction(callee, functions)
   if (!helper) return false
-  const nested = new Set(parameterNames(helper).filter((_, index) =>
-    carriesParameter(args(call)[index], names, functions)))
+  const actual = args(call)
+  const nested = new Set(parameterNames(helper).filter((name, index) =>
+    carriesParameter(argumentFor(actual, name, index), names, functions)))
   return calls(field(helper, "body")!).some((fit) => {
     const method = field(fit, "function")
     return method?.type === "attribute" && field(method, "attribute")?.text === "fit" &&
@@ -464,11 +479,12 @@ function tunerCalls(root: Node, loop: Node, bound: Bindings, functions: Map<stri
       const actual = args(call)
       const parameters = parameterNames(helper)
       const nested = new Map(parameters.map((parameter, i) =>
-        [parameter, partition(actual[0]?.type === "list_splat" ? actual[0] : actual[i], loop, bound)]))
-      parameters.forEach((parameter, i) => nested.set(`index:${parameter}`, indexPartition(actual[i], loop, bound)))
+        [parameter, partition(argumentFor(actual, parameter, i), loop, bound)]))
+      parameters.forEach((parameter, i) =>
+        nested.set(`index:${parameter}`, indexPartition(argumentFor(actual, parameter, i), loop, bound)))
       const nestedSearches = new Map<string, Node>()
       parameters.forEach((parameter, index) => {
-        const value = actual[index]
+        const value = argumentFor(actual, parameter, index)
         const definition = value?.type === "identifier" ?
           binding(value.text, value) ?? searches.get(value.text) : value
         if (definition) nestedSearches.set(parameter, definition)
@@ -477,6 +493,64 @@ function tunerCalls(root: Node, loop: Node, bound: Bindings, functions: Map<stri
     }
   }
   return events
+}
+
+function fitDataPartitions(scope: Node, reference: Node, bound: Bindings, functions: Map<string, Node>): Partition[] {
+  const data: Partition[] = []
+  for (const call of nodes(scope, "call")) {
+    const callee = field(call, "function")
+    if (callee && ["tune::tune_grid", "tune::tune_bayes"].includes(callee.text)) {
+      const resamples = args(call).find((argument) => field(argument.parent!, "name")?.text === "resamples")
+      data.push(partition(resamples, reference, bound))
+    }
+    data.push(...fitPartitions(call, reference, bound, functions))
+  }
+  return data
+}
+
+function trainingOnlyFitData(loop: Node, reference: Node, bound: Bindings, functions: Map<string, Node>): boolean {
+  const data = fitDataPartitions(field(loop, "body")!, reference, bound, functions)
+  return data.length > 0 && data.every((value) => value === "train")
+}
+
+function trainingOnlyWithin(loop: Node, enclosing: Node, functions: Map<string, Node>): boolean {
+  const enclosingBody = field(enclosing, "body")
+  if (!enclosingBody) return false
+  if (enclosingBody.startIndex <= loop.startIndex && enclosingBody.endIndex >= loop.endIndex) {
+    return trainingOnlyFitData(loop, enclosing, new Map(), functions)
+  }
+  return trainingOnlyHelper(loop, enclosingBody, enclosing, new Map(), functions, 0) === true
+}
+
+function trainingOnlyHelper(loop: Node, root: Node, reference: Node, bound: Bindings,
+  functions: Map<string, Node>, depth: number): boolean | undefined {
+  if (depth > 2) return undefined
+  let found = false
+  let safe = true
+  for (const call of nodes(root, "call")) {
+    const helper = resolveFunction(field(call, "function"), functions)
+    if (!helper) continue
+    const actual = args(call)
+    const parameters = parameterNames(helper)
+    const nested: Bindings = new Map()
+    parameters.forEach((parameter, index) => {
+      const value = argumentFor(actual, parameter, index)
+      nested.set(parameter, partition(value, reference, bound))
+      nested.set(`index:${parameter}`, indexPartition(value, reference, bound))
+    })
+    const body = field(helper, "body")!
+    if (body.startIndex <= loop.startIndex && body.endIndex >= loop.endIndex) {
+      found = true
+      safe = trainingOnlyFitData(loop, reference, nested, functions) && safe
+    } else {
+      const nestedResult = trainingOnlyHelper(loop, body, reference, nested, functions, depth + 1)
+      if (nestedResult !== undefined) {
+        found = true
+        safe = nestedResult && safe
+      }
+    }
+  }
+  return found ? safe : undefined
 }
 
 export async function evaluateCodeQuery(source: string, language: unknown, queryName: unknown) {
@@ -491,11 +565,13 @@ export async function evaluateCodeQuery(source: string, language: unknown, query
     if (!tree || tree.rootNode.hasError) return { passed: false, evidence: "code_query: invalid source syntax" }
     query = new Query(grammar, "(for_statement) @resampling")
     const functions = topLevelFunctions(tree.rootNode)
-    const loops = query.captures(tree.rootNode).map((capture) => capture.node)
+    const candidates = query.captures(tree.rootNode).map((capture) => capture.node)
       .filter((loop) => !manualSearchLoops(owner(loop)).some((search) =>
         search.startIndex <= loop.startIndex && search.endIndex >= loop.endIndex))
       .filter((loop) => resamplingSource(field(loop, "right") ?? field(loop, "sequence")))
       .filter((loop) => doesModelWork(field(loop, "body")!, functions))
+    const loops = candidates.filter((loop) => !candidates.some((enclosing) =>
+      enclosing.id !== loop.id && trainingOnlyWithin(loop, enclosing, functions)))
     const outcomes = loops.map((loop) => {
       const events = tunerCalls(field(loop, "body")!, loop, new Map(), functions, 0)
       const passed = events.length > 0 && events.every((event) =>

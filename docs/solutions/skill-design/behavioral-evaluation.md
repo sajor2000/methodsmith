@@ -263,14 +263,20 @@ tuning. Manual selectors must vary the fitted estimator, select by comparison or
 `min`/`argmin` family, and keep both candidate-fit and selection-loss observations in the
 outer training partition. Fit-only names never establish tuning. Calls into a top-level helper
 and one further helper are followed; checked-fit wrappers preserve search-estimator bindings.
+Python `.fit()` calls unwrap named arguments. Helper parameters resolve by keyword name when
+supplied, including reordered keyword arguments, and otherwise by position.
 R support is narrower: `folds$splits`, `rsample::analysis` versus `rsample::assessment`,
 `rsample::vfold_cv`/`group_vfold_cv`, and qualified `tune::tune_grid`/`tune_bayes` calls,
 directly or through top-level helpers.
 
 Every recognized assessment loop doing model work needs its own training-only tuning evidence.
-Preflight-only loops and inner loops inside a manual search are not outer assessments. An
-unrelated compliant calibration loop cannot rescue a leaky outer loop. Evidence contains source
-line numbers and partition classifications, not source excerpts.
+A nested calibration/resampling loop, whether inline or reached through a supported helper, is
+not counted as a separate assessment when every fit's data can be traced to the enclosing
+loop's training partition. The enclosing assessment still needs its own tuning evidence.
+Full-data, held-out, or unproven nested work remains an assessment candidate; an unrelated
+compliant calibration loop cannot rescue a leaky outer loop. Preflight-only loops and inner
+loops inside a manual search are not outer assessments. Evidence contains source line numbers
+and partition classifications, not source excerpts.
 
 This is bounded static evidence, not a type checker, interpreter, complete control-flow or
 interprocedural analysis, or a guarantee against every leakage pattern. Unknown branches,
