@@ -115,7 +115,7 @@ Write `analysis/ml/run-schema.yaml` -- the minimum fields every run must log. Th
 
 - Provenance params: data hash, Git SHA, study id, random seed.
 - Validation params: `validation_type`, `split_strategy`, `n_configurations_evaluated`.
-- Development metrics (resampling/tuning): the selection metric (`auc_validation`, with `log_loss_validation` as the proper scoring rule), `auprc_validation` (interpreted against prevalence, never alone), the validation scheme, train counts, and `instability_mape` when refit instability is measured.
+- Development metrics (resampling/tuning): the selection metric `log_loss_validation` (a proper scoring rule; tune and select on it), `auc_validation` (reported discrimination, never the selection criterion), `auprc_validation` (interpreted against prevalence, never alone), the validation scheme, train counts, and `instability_mape` when refit instability is measured.
 - Held-out test metrics ONLY for the locked final model, once; record `test_set_unlocked_at`.
 - Restricted artifacts (model, eval results, calibration plot, feature importance) stay in the approved restricted store -- never automatic tracker uploads, and only separately reviewed aggregates go to the backend.
 
@@ -141,6 +141,7 @@ params:
   train_data_sha: <sha256 of the training extract>
   # one key per hyperparameter
 metrics:
+  log_loss_validation: 0.21
   auc_validation: 0.84
   # one key per reported metric
 artifacts:

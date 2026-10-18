@@ -25,8 +25,8 @@ params:
 metrics:
   n_train: integer
   n_events_train: integer
-  auc_validation: float           # tuning/CV metric used for model selection
-  log_loss_validation: float      # proper scoring rule; default tuning objective
+  auc_validation: float           # resampled discrimination; reported beside log loss
+  log_loss_validation: float      # proper scoring rule; tuning and model-selection objective
   auprc_validation: float         # supplementary; interpret against prevalence
   auc_validation_scheme: string   # e.g., "grouped 5-fold CV by patient"
   instability_mape: float         # bootstrap prediction instability (development)
