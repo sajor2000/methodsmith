@@ -107,5 +107,9 @@ jobs:
           node-version: "24"
           registry-url: https://registry.npmjs.org
 
+      # Trusted publishing needs npm 11.5.1 or newer for the OIDC exchange.
+      - name: Use an npm version with trusted publishing support
+        run: npm install -g npm@11.5.1
+
       - name: Publish package
         run: npm publish --provenance --access public

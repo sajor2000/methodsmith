@@ -2,13 +2,38 @@
   "name": "methodsmith",
   "version": "5.1.0",
   "description": "Methodsmith plugin for Claude Code, Codex, and Pi — agentic workflows for computational science, statistical review, and reporting compliance",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "codex",
+    "cursor",
+    "ai-agent",
+    "biostatistics",
+    "statistical-analysis",
+    "meta-analysis",
+    "reproducible-research",
+    "reporting-guidelines",
+    "research-methods"
+  ],
   "type": "module",
   "private": false,
+  "files": [
+    "src",
+    "plugins",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "bun": ">=1.3.0"
+  },
   "bin": {
     "methodsmith": "src/index.ts"
   },
   "homepage": "https://github.com/sajor2000/methodsmith",
   "repository": "https://github.com/sajor2000/methodsmith",
+  "bugs": {
+    "url": "https://github.com/sajor2000/methodsmith/issues"
+  },
   "publishConfig": {
     "access": "public"
   },
