@@ -150,16 +150,21 @@ next safe step.
 
 ## How it compares
 
-From each project's public documentation, checked 2026-10-15.
+From each project's public documentation, checked 2026-10-19.
 
 | | Methodsmith | [Compound Engineering](https://github.com/EveryInc/compound-engineering-plugin) | [Superpowers](https://github.com/obra/superpowers) | [Scientific Agent Skills](https://github.com/K-Dense-AI/scientific-agent-skills) | [MedSci Skills](https://github.com/Aperivue/medsci-skills) |
 |---|---|---|---|---|---|
 | Built for | Biostatistics, clinical and ML research | Software engineers | Software engineers | Scientists across fields | Physician-researchers |
-| Plan -> review -> compound loop | Yes | Yes | Plans and TDD | No | Router, no compound step |
-| SAP with estimands | Yes | No | No | Power only | Not SAP-centred |
-| Reporting checklists | 49, item IDs, newest version only | No | No | Writing aids | 46 guidelines |
+| Plan -> review -> compound loop | Yes | Yes | Plans and TDD | No | Router plus defined chains; no compound step |
+| SAP with estimands | Yes | No | No | Power only | Analysis plan, no estimands |
+| Reporting checklists | 49, item IDs, newest version only | No | No | Writing aids | 49 stated (guidelines and risk-of-bias tools) |
 | PHI guard hook | Yes | No | No | No | De-identification skill |
 | Hosts | Claude Code, Codex, Pi, more | 14 hosts | 16 hosts | Many | Claude Code, Codex, Cursor, Copilot |
+
+The reporting-checklist row is not a count race: MedSci Skills states a similar
+number, and the difference is how each is encoded and maintained. See the
+[competitive audit](docs/audits/2026-10-19-medsci-skills-competitive-audit.md)
+for the verified comparison and the gaps we have not closed.
 
 ## Try it
 
