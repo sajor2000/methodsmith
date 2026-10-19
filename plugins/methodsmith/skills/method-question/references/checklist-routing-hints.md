@@ -15,8 +15,8 @@ Default mapping from `suggested_design` → primary EQUATOR checklist. This is a
 | Case-control | STROBE | RECORD if EHR-derived |
 | Cross-sectional | STROBE | RECORD if EHR-derived |
 | Target trial emulation | TARGET (standalone) | RECORD for routinely collected EHR/claims/registry data; RECORD-PE if pharmacoepi on EHR, registry, or claims data |
-| Prediction model — development | TRIPOD+AI | TRIPOD-Cluster if clustered/multisite data; REFORMS if `ai-primary` or `llm-based`; CHARMS only for systematic reviews of prediction models |
-| Prediction model — external validation | TRIPOD+AI | — |
+| Prediction model — development | TRIPOD+AI | TRIPOD-Cluster if clustered/multisite data; REFORMS if `ai-primary` or `llm-based`; PROBAST+AI to appraise the model's quality and risk of bias; CHARMS only for systematic reviews of prediction models |
+| Prediction model — external validation | TRIPOD+AI | PROBAST+AI to appraise risk of bias and applicability |
 | Prediction model — clinical impact / RCT of model | CONSORT (2025) | CONSORT-AI; TRIPOD+AI for the model itself |
 | Diagnostic accuracy (no AI) | STARD | QUADAS-3 if doing a SR |
 | Diagnostic accuracy (AI) | STARD-AI (stand-alone; replaces STARD) | CLAIM if imaging |
@@ -24,7 +24,7 @@ Default mapping from `suggested_design` → primary EQUATOR checklist. This is a
 | ML-based science (AI prediction model) | TRIPOD+AI (or the underlying design's primary) | REFORMS |
 | Generative AI / LLM paper | Ask whether the study is chatbot health advice, a trial, a diagnostic test, or a prediction model | Apply CHART only to chatbot health-advice reporting; add TRIPOD-LLM for any LLM development or evaluation; do not auto-route DEAL (opt-in on request) or the PDSQI-9 evaluation instrument |
 | Early clinical evaluation of an AI decision-support system (`early-clinical-ai-evaluation`) | DECIDE-AI | — |
-| Systematic review / meta-analysis | PRISMA 2020; PRISMA-DTA, PRISMA-NMA, or PRISMA-IPD replace it for those subtypes | QUADAS-3 for DTA appraisal; CHARMS for reviews of prediction models |
+| Systematic review / meta-analysis | PRISMA 2020; PRISMA-DTA, PRISMA-NMA, or PRISMA-IPD replace it for those subtypes | QUADAS-3 for DTA appraisal; CHARMS + PROBAST+AI for reviews of prediction models; RoB 2 or ROBINS-I to appraise included primary studies; AMSTAR 2 for included reviews (overviews) |
 | Scoping review | PRISMA-ScR | — |
 | Case report | CARE | — |
 | Qualitative | COREQ | SRQR if alternative preferred |
@@ -54,3 +54,4 @@ AI involvement uses the canonical `ai_involvement` values `none`, `ai-assisted`,
 - **Making a layered extension the primary** — CONSORT-AI, CLAIM, REFORMS, and GRAMMS layer on a primary checklist; they never replace it. Stand-alone extensions are the exception: STROBE-MR, STARD-AI, and the PRISMA subtype checklists (PRISMA-DTA, -NMA, -IPD, -ScR) replace their base for their study type.
 - **Treating TARGET as an add-on** — for a target trial emulation, TARGET is the primary and is designed as a standalone guideline (Cashin et al. 2025); do not make STROBE the primary.
 - **No checklist for AI papers** — all AI / ML clinical papers map to *some* extension. If the routing here doesn't fit, ask `method-checklist` directly.
+- **Treating an appraisal tool as a reporting checklist** — RoB 2, ROBINS-I, PROBAST+AI, AMSTAR 2, QUADAS-3, and CHARMS assess risk of bias or methodological quality; they never serve as a study's primary reporting guideline.

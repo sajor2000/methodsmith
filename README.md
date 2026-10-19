@@ -25,7 +25,7 @@ papers, and meta-analysis; R or Python.
 approve the plan and judge the findings. Methodsmith does the drafting, running
 and checking that make the work reproducible and grounded: pre-specified SAPs,
 reviewed code, reporting checklists and numbers traced to the analysis.
-**67 skills, 55 specialist agents, and 39 reporting standards.**
+**67 skills, 55 specialist agents, and 43 reporting standards.**
 
 > **Research use only; not a medical device for clinical care.** Methodsmith
 > supports research workflows and is not intended to diagnose, treat, cure,
@@ -109,7 +109,7 @@ next safe step.
 
 ## Why you can check its work
 
-- **39 reporting standards**, covering reporting guidelines, appraisal tools,
+- **43 reporting standards**, covering reporting guidelines, appraisal tools,
   and templates, encoded with their official item IDs
   (CONSORT, STROBE, PRISMA, TRIPOD+AI, TARGET and more). Only the newest version
   of each guideline can load, and a test enforces it. Sources are listed in
@@ -135,7 +135,7 @@ From each project's public documentation, checked 2026-10-15.
 | Built for | Biostatistics, clinical and ML research | Software engineers | Software engineers | Scientists across fields | Physician-researchers |
 | Plan -> review -> compound loop | Yes | Yes | Plans and TDD | No | Router, no compound step |
 | SAP with estimands | Yes | No | No | Power only | Not SAP-centred |
-| Reporting checklists | 39, item IDs, newest version only | No | No | Writing aids | 46 guidelines |
+| Reporting checklists | 43, item IDs, newest version only | No | No | Writing aids | 46 guidelines |
 | PHI guard hook | Yes | No | No | No | De-identification skill |
 | Hosts | Claude Code, Codex, Pi, more | 14 hosts | 16 hosts | Many | Claude Code, Codex, Cursor, Copilot |
 
@@ -147,7 +147,7 @@ Use Methodsmith to set up this project, then help me plan a study of
 to make before we analyze any data.
 ```
 
-![Skill map: 30 key skills across six phases (Frame, Design, Data, Plan, Execute, Review), with guardrails for ICH E9(R1) estimands, 39 reporting checklists, 55 specialist reviewers, and PHI-safe outputs](docs/workflow-diagram.png)
+![Skill map: 30 key skills across six phases (Frame, Design, Data, Plan, Execute, Review), with guardrails for ICH E9(R1) estimands, 43 reporting checklists, 55 specialist reviewers, and PHI-safe outputs](docs/workflow-diagram.png)
 
 ## How the package works
 
@@ -904,7 +904,7 @@ remain external. When the core Compound Engineering plugin is also installed,
 methodsmith handoffs can use those skills with a visible fallback; they are
 not packaged as methodsmith slash skills.
 
-## Reviews against 39 reporting checklists
+## Reviews against 43 reporting checklists
 
 The checklist registry records publication evidence, current versus legacy versions, and methodological roles. Reporting guidelines, appraisal tools, planning templates, and unresolved candidates are not treated as interchangeable routes; unresolved entries remain explicitly labeled rather than being presented as authoritative.
 
@@ -1079,7 +1079,7 @@ bun run package:corporate
 |---|---|
 | Skills | 67 |
 | Agents | 55 |
-| Reporting checklists | 39 |
+| Reporting checklists | 43 |
 
 [See every skill and agent](plugins/methodsmith/README.md)
 

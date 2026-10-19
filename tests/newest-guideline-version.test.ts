@@ -25,11 +25,18 @@ const OLD_VERSION_ALIASES: Record<string, string> = {
   "arrive-1.0": "ARRIVE",
   "squire-1.0": "SQUIRE",
   "stard-2003": "STARD",
+  probast: "PROBAST+AI",
+  "probast-2019": "PROBAST+AI",
+  amstar: "AMSTAR-2",
+  "amstar-1": "AMSTAR-2",
+  "rob-1": "ROB2",
+  "cochrane-rob-1": "ROB2",
+  robins: "ROBINS-I",
 }
 
 // Wording that names a superseded version. Allowed only on lines that state the supersession.
 const SUPERSEDED_VERSION =
-  /TRIPOD[ -]2015|QUADAS-2\b|SPIRIT[ -]2013|CONSORT[ -]2010|PRISMA[ -]2009|CHEERS[ -]2013|ARRIVE[ -]1\.0|SQUIRE[ -]1\.0|STARD[ -]200[38]|tripod-checklist\.md|quadas-2-checklist\.md/i
+  /TRIPOD[ -]2015|QUADAS-2\b|SPIRIT[ -]2013|CONSORT[ -]2010|PRISMA[ -]2009|CHEERS[ -]2013|ARRIVE[ -]1\.0|SQUIRE[ -]1\.0|STARD[ -]200[38]|PROBAST-2019|AMSTAR 1\b|tripod-checklist\.md|quadas-2-checklist\.md/i
 const SUPERSESSION_CONTEXT = /\b(replaces|replaced|supersedes|superseded by|formerly)\b/i
 
 function findSupersededWording(files: Record<string, string>): string[] {
@@ -71,8 +78,12 @@ describe("newest guideline version only", () => {
     }
     expect(registry.guidelines.TRIPOD).toBeUndefined()
     expect(registry.guidelines["QUADAS-2"]).toBeUndefined()
+    expect(registry.guidelines.PROBAST).toBeUndefined()
     expect(registry.evidence["TRIPOD+AI"].supersedes).toMatch(/TRIPOD 2015.*PMID 25560714/)
     expect(registry.evidence["QUADAS-3"].supersedes).toMatch(/QUADAS-2.*PMID 22007046/)
+    expect(registry.evidence["PROBAST+AI"].supersedes).toMatch(/PROBAST-2019.*PMID 30596875/)
+    expect(registry.evidence["AMSTAR-2"].supersedes).toMatch(/AMSTAR 1.*PMID 17302989/)
+    expect(registry.evidence.ROB2.supersedes).toMatch(/version 1.*PMID 22008217/)
   })
 
   test("scan flags superseded wording outside a supersession context", () => {

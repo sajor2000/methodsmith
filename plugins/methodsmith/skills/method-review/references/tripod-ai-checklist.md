@@ -25,7 +25,7 @@ Current primary checklist for transparent reporting of studies developing or eva
 
 **Original TRIPOD reference:** Moons KGM, Altman DG, Reitsma JB, Ioannidis JPA, Macaskill P, Steyerberg EW, Vickers AJ, Ransohoff DF, Collins GS. Transparent Reporting of a multivariable prediction model for Individual Prognosis or Diagnosis (TRIPOD): explanation and elaboration. Ann Intern Med. 2015;162(1):W1-73. doi:10.7326/M14-0698. PMID: 25560730.
 
-TRIPOD+AI supersedes TRIPOD 2015 for all prediction-model studies; its item numbers do not map one-to-one onto the 2015 numbers, so cite TRIPOD+AI numbers in findings. Markers: D = development only; E = evaluation only; D;E = both. A study that both develops and evaluates a model must report every item. The checklist describes reporting, not study quality; use PROBAST (or PROBAST+AI) for risk-of-bias appraisal.
+TRIPOD+AI supersedes TRIPOD 2015 for all prediction-model studies; its item numbers do not map one-to-one onto the 2015 numbers, so cite TRIPOD+AI numbers in findings. Markers: D = development only; E = evaluation only; D;E = both. A study that both develops and evaluates a model must report every item. The checklist describes reporting, not study quality; use PROBAST+AI for risk-of-bias appraisal.
 
 Each item lists the sub-items with their markers, then what to look for in analysis code and outputs when evaluating compliance.
 

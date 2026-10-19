@@ -6,6 +6,7 @@
 - AI Extension Layer
 - Trial Design Extension Layer
 - Observational Extension Layer
+- Appraisal Layer
 - Extension Selection Rules
 - Guideline Metadata
 
@@ -83,6 +84,19 @@ When `study_type: rct`, layer design extensions on the CONSORT 2025 core (or on 
 
 When the primary is STROBE or TARGET, add RECORD for routinely collected data (EHR, claims, or registry); add RECORD-PE as well when the study is pharmacoepidemiology on EHR, registry, or claims data (Langan et al. 2018, PMID 30429167); add STREGA for genetic association studies. RECORD items are numbered against STROBE; under TARGET, map RECORD 6.x and 12.x to TARGET items 5 and 7. STaRT-RWE is a planning and reporting template, not a reporting checklist.
 
+## Appraisal Layer
+
+Appraisal tools assess risk of bias, methodological quality, or confidence; they are never reporting guidelines, never a primary, and never layered onto a reporting checklist. Route one only when the review task is appraisal: the study's own model, or studies included in a review. Each old name below was replaced by its successor in the registry (`rob-1`, `cochrane-rob-1` -> ROB2; `robins` -> ROBINS-I; `probast`, `probast-2019` -> PROBAST+AI, which supersedes PROBAST-2019; `amstar`, `amstar-1` -> AMSTAR-2; `quadas-2` -> QUADAS-3).
+
+| Appraisal task | Tool | Checklist file |
+|---|---|---|
+| Risk of bias in a result from a randomised trial (own trial or an included trial) | ROB2 | `references/rob2-checklist.md` |
+| Risk of bias in a result from a non-randomised study of interventions | ROBINS-I | `references/robins-i-checklist.md` |
+| Quality, risk of bias, and applicability of a prediction model (development or evaluation), own model or included studies | PROBAST+AI | `references/probast-ai-checklist.md` |
+| Confidence in a systematic review of healthcare interventions (an overview of reviews, or appraising an existing review) | AMSTAR-2 | `references/amstar-2-checklist.md` |
+| Risk of bias and applicability of a diagnostic accuracy study (in a DTA review) | QUADAS-3 | `references/quadas-3-checklist.md` |
+| Data extraction and appraisal for a review of prediction model studies | CHARMS | `references/charms-checklist.md` |
+
 ## Extension Selection Rules
 
 1. **Read stack profile** for `stack_profile.reporting_checklist` and `stack_profile.reporting_checklist_extensions`.
@@ -115,6 +129,10 @@ When the primary is STROBE or TARGET, add RECORD for routinely collected data (E
 | PRISMA-ScR | PRISMA for scoping reviews (2018) | 22 (20 essential + 2 optional) | Scoping reviews and evidence maps (stand-alone) |
 | CHARMS | Data extraction and appraisal for systematic reviews of prediction models | 7 framing items + 11 domains | SR of prediction models (with PRISMA) |
 | QUADAS-3 | Quality Assessment of Diagnostic Accuracy Studies (2026; supersedes QUADAS-2) | 4 domains (appraisal tool) | Risk of bias in DTA systematic reviews |
+| ROB2 | Risk of Bias 2 for randomised trials (appraisal tool) | 5 domains + domain 1b for cluster trials, signalling questions per domain | Risk of bias in randomised trial results |
+| ROBINS-I | Risk Of Bias In Non-randomised Studies - of Interventions (appraisal tool) | 7 domains, signalling questions per domain | Risk of bias in non-randomised studies of interventions |
+| PROBAST+AI | Prediction model Risk Of Bias ASsessment Tool +AI (appraisal tool; supersedes PROBAST-2019) | 4 domains, 2 parts (16 + 18 signalling questions), 6 applicability items | Prediction model quality, risk of bias, applicability |
+| AMSTAR-2 | A MeaSurement Tool to Assess systematic Reviews, version 2 (appraisal tool) | 16 items, 7 critical domains, 4-level confidence rating | Confidence in systematic reviews of interventions |
 | STARD | Standards for Reporting Diagnostic Accuracy (2015) | 30 (34 incl. sub-items) | Diagnostic accuracy |
 | STARD-AI | STARD for AI-centred diagnostic accuracy (replaces STARD 2015) | 40 | AI diagnostic accuracy |
 | CARE | CAse REport guidelines | 13 | Case reports |
