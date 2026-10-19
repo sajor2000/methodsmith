@@ -27,11 +27,34 @@ and checking that make the work reproducible and grounded: pre-specified SAPs,
 reviewed code, reporting checklists and numbers traced to the analysis.
 **67 skills, 55 specialist agents, and 49 reporting standards.**
 
+```bash
+# Install in Claude Code (2.1.292 or later), then set up a project
+claude plugin install methodsmith --marketplace sajor2000/methodsmith
+```
+
+Then open your study folder and run `/methodsmith:method-setup`. Other agents and
+offline installs: [see every install route](#install) or the
+[setup guide](https://sajor2000.github.io/methodsmith/docs/setup).
+
 > **Research use only; not a medical device for clinical care.** Methodsmith
 > supports research workflows and is not intended to diagnose, treat, cure,
 > mitigate, or prevent disease or to guide patient-specific care. It is not
 > validated for clinical use and does not replace qualified clinical,
 > statistical, ethics, or institutional review.
+
+### Start here
+
+| If you want to | Go to |
+|---|---|
+| See what it does in 90 seconds | [See it work](#see-it-work) |
+| Understand the plan -> work -> review -> compound loop | [You decide. Methodsmith does the legwork.](#you-decide-methodsmith-does-the-legwork) |
+| Find the skills for your study type | [Built for three kinds of study](#built-for-three-kinds-of-study) |
+| Install it | [Install](#install) |
+| See worked examples, command by command | [Worked examples](#worked-examples) |
+| Know how your data is protected | [Sensitive-data boundary](#sensitive-data-boundary) |
+| Check a specific claim or limitation | [FAQ](#faq) and [Troubleshooting](#troubleshooting) |
+| Update it safely, without losing your own skills | [Keep Methodsmith updated](#keep-methodsmith-updated) |
+| Install on a locked-down or offline laptop | [Locked-down or demo laptop](#locked-down-or-demo-laptop) |
 
 ## What Methodsmith can do
 
@@ -46,28 +69,27 @@ reviewed code, reporting checklists and numbers traced to the analysis.
 You choose the research question, approve the analysis plan, resolve review
 findings, and sign off the conclusions. Methodsmith drafts, runs, and checks
 the work; it does not make the scientific decisions for you. See the
-[worked examples](#what-can-it-do) and the
+[worked examples](#worked-examples) and the
 [sensitive-data boundary and its limits](#sensitive-data-boundary).
 
 ## Install
 
-**Claude Code** (terminal command, 2.1.292 or later):
+| Your situation | Do this |
+|---|---|
+| **Claude Code**, 2.1.292 or later | `claude plugin install methodsmith --marketplace sajor2000/methodsmith` |
+| **Claude Code**, inside a running session (2.1.275+) | `/plugin install methodsmith --marketplace sajor2000/methodsmith` |
+| **Codex** | `git clone https://github.com/sajor2000/methodsmith.git ~/methodsmith` then `bash ~/methodsmith/install.sh codex` |
+| **Pi** | [Pi, generated install](#pi-generated-install) |
+| **Gemini CLI, OpenCode, Kiro, Qwen Code** | [Also works with Codex, Pi, Gemini, and more](#also-works-with-codex-pi-gemini-and-more) |
+| **Locked-down or offline laptop** | [Locked-down or demo laptop](#locked-down-or-demo-laptop) |
+| **Source checkout**, with bare `/method-*` aliases | [Claude Code, easiest path](#claude-code-easiest-path) |
+| **Windows PowerShell** | [Claude Code, easiest path](#claude-code-easiest-path) |
 
-```bash
-claude plugin install methodsmith --marketplace sajor2000/methodsmith
-```
-
-**Codex**:
-
-```bash
-git clone https://github.com/sajor2000/methodsmith.git ~/methodsmith
-bash ~/methodsmith/install.sh codex
-```
-
-Then open your project and run `/methodsmith:method-setup` (in Codex, ask it to
-use the Methodsmith `method-setup` skill). **Pi**, Windows, locked-down laptops
-and other agents: see [Get started](#get-started-like-compound-engineering) below
-or the [setup guide](https://sajor2000.github.io/methodsmith/docs/setup).
+Installation makes Methodsmith available to your agent; then open your study
+folder and run `/methodsmith:method-setup` (in Codex, ask it to use the
+Methodsmith `method-setup` skill). Full platform details are in the
+[setup guide](https://sajor2000.github.io/methodsmith/docs/setup) and
+[Get started](#get-started) below.
 
 ## See it work
 
@@ -162,6 +184,9 @@ to make before we analyze any data.
 Methodsmith is the same plugin as ce-datascience, renamed in 5.0. Every
 command and agent now starts with `method-` instead of `ce-`. A few names are
 also shorter, for example `/ce-statistical-analysis-plan` is now `/method-sap`.
+
+<details>
+<summary><strong>Switch an existing ce-datascience install</strong> — what stays the same, and the per-harness commands</summary>
 
 **What stays the same:** your own skills, your project's `.ce-datascience/`
 folder (including the PHI-boundary settings in `config.local.yaml`), and the
@@ -272,7 +297,9 @@ Agents keep the rest of their name: `ce-methods-reviewer` is now `method-methods
 
 </details>
 
-## Get started like Compound Engineering
+</details>
+
+## Get started
 
 The normal path is intentionally short: install the plugin, start your agent,
 then run setup. For complete platform details, see the
@@ -650,10 +677,13 @@ command without guessing.
 
 ---
 
-## What can it do?
+## Worked examples
 
 The examples below use bare `/method-*` commands for readability. In native Claude
 plugin installs, use `/methodsmith:method-*` unless local aliases are installed.
+
+<details>
+<summary><strong>Show the worked examples</strong> — one per study type, in the order you would run them</summary>
 
 ### Run an observational study
 
@@ -863,6 +893,8 @@ These workflow utilities are adapted from the original compound-engineering plug
 
 Repository maintenance is reported weekly through [Weekly Branch Maintenance](.github/workflows/branch-maintenance.yml). It identifies remote candidates only; inspect local worktrees and confirm any deletion with `/method-clean-branches`.
 
+</details>
+
 ---
 
 ## Works with your stack
@@ -883,7 +915,8 @@ Repository maintenance is reported weekly through [Weekly Branch Maintenance](.g
 | **Custom EHR** | Default | PHI scanning, generic cohort building |
 | **Bioinformatics** | `.fastq`, `.bam`, `Snakefile` | FastQC/MultiQC, genome build, batch-effect screen |
 
-## Upstream Compound Engineering features now included
+<details>
+<summary><strong>Upstream Compound Engineering features included in this fork</strong> — what was ported, area by area</summary>
 
 This fork tracks useful infrastructure and workflow improvements from the original [compound-engineering](https://github.com/EveryInc/compound-engineering-plugin) plugin while keeping the product scoped to health data science.
 
@@ -903,6 +936,8 @@ frontend/Rails/iOS helpers, LFG, simplify-code, strategy, promote, and polish
 remain external. When the core Compound Engineering plugin is also installed,
 methodsmith handoffs can use those skills with a visible fallback; they are
 not packaged as methodsmith slash skills.
+
+</details>
 
 ## Reviews against 49 reporting checklists
 
@@ -1004,6 +1039,9 @@ Claude Code). It prints the exact command for the agent you are in.
 Updates never delete or overwrite skills, agents, prompts, or commands you
 created.
 
+<details>
+<summary><strong>How ownership tracking protects your files</strong> — generated installs, pre-tracking files, edited files, where to keep your own skills</summary>
+
 - Generated installs (Codex agents, OpenCode, Pi, Gemini CLI, Kiro) record
   every file they write, with a content hash, in
   `<agent folder>/methodsmith/owned-files.json`. An update deletes only
@@ -1038,6 +1076,8 @@ Keep your own skills here:
 Do not start your own skill names with `method-`. That prefix belongs to the
 plugin; if a name is already taken by your own skill, the installer skips the
 plugin's version and tells you.
+
+</details>
 
 ### Update a source checkout
 
