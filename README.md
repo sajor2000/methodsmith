@@ -73,7 +73,7 @@ or the [setup guide](https://sajor2000.github.io/methodsmith/docs/setup).
 
 <a href="https://sajor2000.github.io/methodsmith/#tour"><img src="website/static/media/methodsmith-tour-poster.jpg" width="100%" alt="Opening frame of the 90-second Methodsmith tour: From question to paper, with a methods team at your side. You stay the scientist. Select to watch the video on the Methodsmith site."></a>
 
-<sub><a href="https://sajor2000.github.io/methodsmith/#tour">Watch the 90-second tour</a>: guideline routing, literature search, question framing, the analysis plan, data checks in R or Python, figures, and a first Results draft. Silent, scripted illustration on synthetic data; screens are mock-ups of the formats the skills define, not a recording of a live run.</sub>
+<sub><a href="https://sajor2000.github.io/methodsmith/#tour">Watch the 90-second tour</a> on the Methodsmith site, or <a href="website/static/media/methodsmith-tour.mp4">play the MP4 here on GitHub</a>: guideline routing, literature search, question framing, the analysis plan, data checks in R or Python, figures, and a first Results draft. Silent, scripted illustration on synthetic data; screens are mock-ups of the formats the skills define, not a recording of a live run.</sub>
 
 <img src="website/static/brand/demo.svg" width="100%" alt="Terminal replay on synthetic data. /method-workflow detects an observational study and recommends method-sap. /method-sap links claim C1 to an ICH E9(R1) estimand and lists two decisions that block finalization. /method-review reports two P1, one P2 and one P3 finding, applies small-cell suppression, and returns Not ready.">
 
