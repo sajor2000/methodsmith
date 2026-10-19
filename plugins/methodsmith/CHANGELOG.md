@@ -5,6 +5,13 @@ release pull requests. Canonical current release notes are the repository's
 [GitHub Releases](https://github.com/sajor2000/ce-datascience/releases) and
 open release PRs. Do not hand-add entries from feature or documentation work.
 
+## [5.1.1](https://github.com/sajor2000/methodsmith/compare/methodsmith-v5.1.0...methodsmith-v5.1.1) (2026-10-19)
+
+
+### Miscellaneous Chores
+
+* **methodsmith:** Synchronize methodsmith versions
+
 ## [5.1.0](https://github.com/sajor2000/methodsmith/compare/methodsmith-v5.0.0...methodsmith-v5.1.0) (2026-10-19)
 
 

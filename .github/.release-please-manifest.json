@@ -1,6 +1,6 @@
 {
-  ".": "5.1.0",
-  "plugins/methodsmith": "5.1.0",
+  ".": "5.1.1",
+  "plugins/methodsmith": "5.1.1",
   ".claude-plugin": "1.0.0",
   ".cursor-plugin": "1.0.0",
   "plugins/coding-tutor": "2.0.0"

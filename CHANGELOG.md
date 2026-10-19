@@ -6,6 +6,13 @@ requests. For the current release status and notes, use the repository's
 open release PRs; do not hand-add release entries from feature or documentation
 work.
 
+## [5.1.1](https://github.com/sajor2000/methodsmith/compare/cli-v5.1.0...cli-v5.1.1) (2026-10-19)
+
+
+### Bug Fixes
+
+* **cli:** make the npm package publishable ([#132](https://github.com/sajor2000/methodsmith/issues/132)) ([5ce11ec](https://github.com/sajor2000/methodsmith/commit/5ce11eca22348b648d12ab986527946e345cb6f3))
+
 ## [5.1.0](https://github.com/sajor2000/methodsmith/compare/cli-v5.0.0...cli-v5.1.0) (2026-10-19)
 
 
