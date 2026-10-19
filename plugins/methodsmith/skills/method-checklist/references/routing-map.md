@@ -22,11 +22,13 @@ IF design == RCT:
   primary = CONSORT  # CONSORT 2025 core
   IF ai_involvement IN [ai-primary, llm-based] AND the AI is the trial intervention: extension += CONSORT-AI
   IF protocol_stage == true: protocol = SPIRIT  # SPIRIT 2025 (Chan et al., BMJ 2025, PMID 40294953)
+  IF protocol_stage == true: protocol += SPIRIT-OUT  # SPIRIT-Outcomes 2022: outcome reporting in protocols (Butcher et al., JAMA 2022, PMID 36512367); written against SPIRIT 2013, which SPIRIT 2025 supersedes; matched pair with CONSORT-OUT for reports
   IF protocol_stage == true AND ai_involvement IN [ai-primary, llm-based] AND the AI is the trial intervention: protocol += SPIRIT-AI (layered on SPIRIT 2025)
   IF cluster_design: extension += CONSORT-CLUSTER  # Campbell et al., BMJ 2012, PMID 22951546
   IF adaptive_design: extension += CONSORT-ADAPTIVE  # ACE, Dimairo et al., BMJ 2020, PMID 32554564
   IF n_of_1_design: extension += CONSORT-NOF1  # CENT 2015, Vohra et al., BMJ 2015, PMID 25976398
   extension += TIDIER  # TIDieR: intervention description (Hoffmann et al., BMJ 2014, PMID 24609605); extends the intervention items of CONSORT 2010 and SPIRIT 2013, which CONSORT 2025 and SPIRIT 2025 replaced; applies to any evaluative design
+  extension += CONSORT-OUT  # CONSORT-Outcomes 2022: outcome reporting (Butcher et al., JAMA 2022, PMID 36511921); written against CONSORT 2010, which CONSORT 2025 supersedes; matched pair with SPIRIT-OUT for protocols
   # design extensions were written against CONSORT 2010, now superseded by CONSORT 2025; map their core items to CONSORT 2025 numbers. Never add REFORMS to an RCT.
 
 ELIF design == target_trial_emulation:  # observational data explicitly emulating a target trial

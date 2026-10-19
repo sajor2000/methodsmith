@@ -129,7 +129,7 @@ PHASES = (
 
 GUARDRAILS = (
     ("ICH E9(R1)", "estimands in every SAP"),
-    ("47", "reporting checklists"),
+    ("49", "reporting checklists"),
     ("55", "specialist reviewers"),
     ("PHI-safe", "aggregate-only outputs"),
 )
