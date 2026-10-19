@@ -112,9 +112,16 @@ place. Shared copy for the forms:
 ## Progress
 
 - **v5.1.0 verified as final** (see above); no version hand-bumped.
-- **npm publish readiness implemented** on `chore/npm-publish-readiness`:
-  `files` allowlist, package metadata, npm version floor, and
+- **npm publish readiness implemented** on `chore/npm-publish-readiness`
+  (PR #132): `files` allowlist, package metadata, npm version floor, and
   `tests/npm-publish-readiness.test.ts`. First publish, trusted-publisher
   configuration, and `NPM_PUBLISH` remain human steps.
+- **v5.1.1 released** from that fix. PR #132 merged as `5ce11eca`, release
+  PR #133 merged as `e1480a4f`, and `cli-v5.1.1` / `methodsmith-v5.1.1` are
+  tagged on it. The bump is a patch because the commit is a `fix:`, and
+  `linked-versions` moved `methodsmith` with `cli`. `publish-cli` was skipped
+  as designed: `NPM_PUBLISH` is unset, so nothing reached npm and the name is
+  still unclaimed. The release-verification section above therefore describes
+  the pre-#132 state.
 - **Directory submissions prepared**: metadata and next actions recorded above;
   no submission has been made.
