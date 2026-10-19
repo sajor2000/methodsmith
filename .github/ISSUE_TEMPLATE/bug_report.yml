@@ -1,0 +1,37 @@
+name: Bug report
+description: Report a reproducible Methodsmith problem.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Do not include PHI, patient-level data, credentials, or private
+        research material. Use synthetic examples.
+  - type: input
+    id: version
+    attributes:
+      label: Methodsmith version
+      description: Include the plugin version and agent platform/version.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include the expected and observed behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Use a minimal, synthetic example.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: Redact secrets and confirm the output contains no sensitive data.
+    validations:
+      required: false

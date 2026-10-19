@@ -339,14 +339,14 @@ describe("classify: MCP and upload egress (every mode)", () => {
 })
 
 describe("hook wiring and fail mode", () => {
-  test("hooks.json covers every file-reading tool and MCP, and no-ops without CLAUDE_PLUGIN_ROOT", () => {
+  test("hooks.json covers every file-reading tool, MCP, and Claude web tool, and no-ops without CLAUDE_PLUGIN_ROOT", () => {
     const hooks = JSON.parse(readFileSync(path.join(pluginRoot, "hooks", "hooks.json"), "utf8"))
     const entry = hooks.hooks.PreToolUse[0]
     const matcher = new RegExp(`^(?:${entry.matcher})$`)
-    for (const tool of ["Read", "Grep", "Bash", "Edit", "MultiEdit", "NotebookRead", "NotebookEdit", "Monitor", "PowerShell", "mcp__paperclip__search", "mcp__pubmed-mcp-server__pubmed_search_articles"]) {
+    for (const tool of ["Read", "Grep", "Bash", "Edit", "MultiEdit", "NotebookRead", "NotebookEdit", "Monitor", "PowerShell", "WebFetch", "WebSearch", "mcp__paperclip__search", "mcp__pubmed-mcp-server__pubmed_search_articles"]) {
       expect({ tool, matched: matcher.test(tool) }).toEqual({ tool, matched: true })
     }
-    for (const tool of ["Write", "Glob", "WebSearch"]) expect({ tool, matched: matcher.test(tool) }).toEqual({ tool, matched: false })
+    for (const tool of ["Write", "Glob", "TodoWrite"]) expect({ tool, matched: matcher.test(tool) }).toEqual({ tool, matched: false })
     const command: string = entry.hooks[0].command
     expect(command).toContain("${CLAUDE_PLUGIN_ROOT:-}/hooks/data-boundary-guard.py")
 

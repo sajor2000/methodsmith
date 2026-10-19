@@ -1381,6 +1381,12 @@ def classify(call, mode):
     if tool.startswith("mcp__"):
         reason = mcp_violation(tool, tool_input, cwd, mode)
         return {"kind": "egress", "reason": reason} if reason else None
+    if tool in ("WebFetch", "WebSearch"):
+        for key, value in _strings(tool_input):
+            reason = identifier_reason(value, mode, key)
+            if reason:
+                return {"kind": "egress", "reason": reason}
+        return None
     egress, access = (bash_violations(command, cwd, mode) if isinstance(command, str) else (None, None))
     if egress:
         return {"kind": "egress", "reason": egress}
@@ -1427,7 +1433,7 @@ def grep_tool_violation(tool_input, cwd, mode):
 def deny_message(result, mode, helper):
     reason = result["reason"]
     if result["kind"] == "egress":
-        return (f"methodsmith egress guard: {reason}. MCP tools and uploads receive search terms, MeSH terms, "
+        return (f"methodsmith egress guard: {reason}. Web searches/fetches, MCP tools, and uploads receive search terms, MeSH terms, "
                 "PMIDs, DOIs, and titles only, never data values, identifiers, row text, or data files. This holds "
                 "in every mode: an endpoint approval does not cover third-party services.")
     if mode.get("why") == "unset":

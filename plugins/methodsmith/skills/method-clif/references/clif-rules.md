@@ -191,4 +191,5 @@ Some consortium projects use Python for data wrangling and R for statistical mod
 - **CLIF-Project-Template** (canonical R skeleton with `renv.lock`, `code/`, `config/`, `outlier-thresholds/`, `output/`, `utils/`): https://github.com/Common-Longitudinal-ICU-data-Format/CLIF-Project-Template
 - CLIF-MIMIC pipeline (MIMIC -> CLIF): https://github.com/Common-Longitudinal-ICU-data-Format/CLIF-MIMIC
 - CLIF Lighthouse (validation tool, deprecated in favour of CLIF TableOne in v2.1): https://github.com/Common-Longitudinal-ICU-data-Format/CLIF-Lighthouse-Deprecated
-- Consortium contact: clif_consortium@uchicago.edu
+- Consortium site and contact channels: https://clif-icu.com/
+- CLIF GitHub organization (issues and discussions): https://github.com/Common-Longitudinal-ICU-data-Format

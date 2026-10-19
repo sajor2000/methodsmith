@@ -10,6 +10,14 @@ Methodsmith builds on [Every](https://every.to)'s
 [Compound Engineering](https://github.com/EveryInc/compound-engineering-plugin)
 plugin.
 
+## Research use
+
+**Research use only; not a medical device for clinical care.** Methodsmith
+supports research workflows and is not intended to diagnose, treat, cure,
+mitigate, or prevent disease or to guide patient-specific care. It is not
+validated for clinical use and does not replace qualified clinical,
+statistical, ethics, or institutional review.
+
 ## Visual Overview
 
 ![Methodsmith package workflow: install, set up a project, run skills, and create research artifacts](methodsmith-package-workflow.png)
@@ -416,13 +424,19 @@ The schema helper `scripts/schema-peek.py` prints headings, types, counts, and
 header row, and `col_<k> [masked header]` for a heading that is itself an
 identifier (an identifier shape, or a value in the identifier index).
 
-#### What MCP tools receive
+#### What external tools receive
 
 PubMed, Paperclip, and every other MCP tool receive search terms, MeSH terms,
 PMIDs, DOIs, and paper titles. They never receive data values, identifiers,
 row text, or data files. This holds in **every mode, including after you
 approve the endpoint**: approving the model endpoint does not cover
 third-party services such as NCBI or Paperclip.
+
+Claude Code `WebSearch` queries, `WebFetch` URLs and prompts, MCP tool
+arguments, and detected shell uploads are checked for common identifier
+patterns and values in the project identifier index. Research search terms,
+MeSH terms, PMIDs, DOIs, and paper titles pass when they do not match an
+identifier.
 
 The same hook enforces this for every `mcp__*` call, for shell uploads, and for
 shell calls to NCBI E-utilities (`curl` or `wget` to
@@ -451,7 +465,9 @@ on a match without echoing it, and is silent when no index exists. With a
 **Limits.** The hook is defense in depth, not a sandbox. Enforcement is Claude
 Code only: Codex and OpenCode installs carry the hook entry but it exits
 immediately there, and Gemini, Kiro, Copilot, and Pi skip hooks, so those
-harnesses rely on the skill instructions alone. The script check is heuristic
+harnesses rely on the skill instructions alone. The hook requires `python3`.
+If it is missing, the launcher prints a warning and exits successfully, so the
+guard is inactive and calls are not blocked. The script check is heuristic
 static analysis: a script that builds a data path at run time, or reads data
 through a function the hook does not recognize, can still print values, and
 programs it cannot parse (deliberate obfuscation) are out of scope. Values

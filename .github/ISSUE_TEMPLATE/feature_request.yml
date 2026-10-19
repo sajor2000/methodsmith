@@ -1,0 +1,30 @@
+name: Feature request
+description: Propose a research-methods or workflow improvement.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Do not include PHI, patient-level data, credentials, or private
+        research material. Use synthetic examples.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Describe the research or workflow need.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Explain what Methodsmith should do and what it should not do.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Supporting evidence
+      description: Link primary sources or provide a synthetic example when relevant.
+    validations:
+      required: false

@@ -2,41 +2,47 @@
 
 Source: `https://github.com/Common-Longitudinal-ICU-data-Format/CLIF/blob/main/README.md` (last mirrored 2026-04). Used by the `method-clif` protected-path guardrail to identify whose authorization is required before editing a CLIF table's mCIDE / DDL / outlier-handling files.
 
+Contact details are deliberately not cached here. Names and GitHub handles are enough to identify the responsible person; reach them through the CLIF consortium channels listed on https://clif-icu.com/ or the CLIF GitHub organization rather than a stored address.
+
 ## How the guardrail uses this table
 
 When an edit is proposed against `mCIDE/<table>/**`, `ddl/<table>.sql`, `outlier-handling/<table>**`, or `reference_ranges/<table>**`, look up `<table>` in the table below. The proposed prompt must include `POC: @<github_handle> approved` (or `--poc-approved`) to proceed; otherwise the edit is blocked and the diff is staged under `analysis/clif-protected-edits/`.
 
 ## Table -> POC mapping
 
-| Table                          | POC                                    | Email                                          | GitHub          |
-|--------------------------------|----------------------------------------|------------------------------------------------|-----------------|
-| adt                            | Nicholas Ingraham, MD                  | ingra107@umn.edu                               | ingra107        |
-| code_status                    | Nathan Mesfin, MD                      | mesfin@umn.edu                                 | mesfi005        |
-| crrt_therapy                   | William Parker, MD                     | wparker@uchicago.edu                           | 08wparker       |
-| ecmo_mcs                       | Shan Guleria, MD                       | shan.guleria@uchicagomedicine.org              | shanguleria     |
-| hospitalization                | Nicholas Ingraham, MD                  | ingra107@umn.edu                               | ingra107        |
-| input                          | Shan Guleria, MD                       | shan.guleria@uchicagomedicine.org              | shanguleria     |
-| intermittent_dialysis          | Jay Koyner, MD                         | jkoyner@uchicago.edu                           | (n/a)           |
-| labs                           | Catherine Gao, MD                      | catherine.gao@northwestern.edu                 | cloverbunny     |
-| medication_admin_continuous    | Chad Hochberg, MD                      | chochbe1@jh.edu                                | chochbe1        |
-| medication_admin_intermittent  | Anna Barker, MD, PhD                   | baanna@med.umich.edu                           | baanna23        |
-| medication_orders              | Anna Barker, MD, PhD                   | baanna@med.umich.edu                           | baanna23        |
-| microbiology_culture           | Kevin Buell, MBBS                      | kevin.buell@uchicagomedicine.org               | kevingbuell     |
-| microbiology_nonculture        | Kevin Buell, MBBS                      | kevin.buell@uchicagomedicine.org               | kevingbuell     |
-| microbiology_susceptibility    | Kevin Buell, MBBS                      | kevin.buell@uchicagomedicine.org               | kevingbuell     |
-| output                         | Shan Guleria, MD                       | shan.guleria@uchicagomedicine.org              | shanguleria     |
-| patient                        | Pat Lyons, MD                          | lyonspa@ohsu.edu                               | plyons          |
-| patient_assessments            | Snigdha Jain, MD                       | snigdha.jain@yale.edu                          | snigdhajainyale |
-| patient_procedures             | J.C. Rojas, MD                         | juan_rojas@rush.edu                            | sajor2000       |
-| position                       | Chad Hochberg, MD                      | chochbe1@jh.edu                                | chochbe1        |
-| provider                       | Nicholas Ingraham, MD                  | ingra107@umn.edu                               | ingra107        |
-| respiratory_support            | Nicholas Ingraham, MD                  | ingra107@umn.edu                               | ingra107        |
-| therapy_details                | William Parker, MD, PhD; Bhakti Patel  | wparker@uchicago.edu; bpatel@bsd.uchicago.edu  | 08wparker       |
-| vitals                         | Catherine Gao, MD                      | catherine.gao@northwestern.edu                 | cloverbunny     |
+| Table                          | POC                                    | GitHub          |
+|--------------------------------|----------------------------------------|-----------------|
+| adt                            | Nicholas Ingraham, MD                  | ingra107        |
+| code_status                    | Nathan Mesfin, MD                      | mesfi005        |
+| crrt_therapy                   | William Parker, MD                     | 08wparker       |
+| ecmo_mcs                       | Shan Guleria, MD                       | shanguleria     |
+| hospitalization                | Nicholas Ingraham, MD                  | ingra107        |
+| input                          | Shan Guleria, MD                       | shanguleria     |
+| intermittent_dialysis          | Jay Koyner, MD                         | (n/a)           |
+| labs                           | Catherine Gao, MD                      | cloverbunny     |
+| medication_admin_continuous    | Chad Hochberg, MD                      | chochbe1        |
+| medication_admin_intermittent  | Anna Barker, MD, PhD                   | baanna23        |
+| medication_orders              | Anna Barker, MD, PhD                   | baanna23        |
+| microbiology_culture           | Kevin Buell, MBBS                      | kevingbuell     |
+| microbiology_nonculture        | Kevin Buell, MBBS                      | kevingbuell     |
+| microbiology_susceptibility    | Kevin Buell, MBBS                      | kevingbuell     |
+| output                         | Shan Guleria, MD                       | shanguleria     |
+| patient                        | Pat Lyons, MD                          | plyons          |
+| patient_assessments            | Snigdha Jain, MD                       | snigdhajainyale |
+| patient_procedures             | J.C. Rojas, MD                         | sajor2000       |
+| position                       | Chad Hochberg, MD                      | chochbe1        |
+| provider                       | Nicholas Ingraham, MD                  | ingra107        |
+| respiratory_support            | Nicholas Ingraham, MD                  | ingra107        |
+| therapy_details                | William Parker, MD, PhD; Bhakti Patel  | 08wparker       |
+| vitals                         | Catherine Gao, MD                      | cloverbunny     |
+
+`intermittent_dialysis` has no published GitHub handle. Route that request through
+the consortium channels on https://clif-icu.com/ and record the authorization in
+the prompt as `POC: intermittent_dialysis approved` with a link to the approval.
 
 ## Tables without a published POC
 
-The following CLIF tables have no published POC in the public README. Treat them as protected — any edit requires consortium-level approval (email `clif_consortium@uchicago.edu`):
+The following CLIF tables have no published POC in the public README. Treat them as protected — any edit requires consortium-level approval. Request it through the consortium channels listed on https://clif-icu.com/ or by opening an issue in https://github.com/Common-Longitudinal-ICU-data-Format/CLIF.
 
 - `clinical_notes_facts`
 - `clinical_notes_text`
@@ -55,11 +61,11 @@ These paths affect multiple tables and require a consortium-level review:
 
 | Path                  | Approver                                                                |
 |-----------------------|-------------------------------------------------------------------------|
-| `WORKFLOW.md`         | Consortium leadership; email `clif_consortium@uchicago.edu`             |
+| `WORKFLOW.md`         | Consortium leadership (see https://clif-icu.com/)                       |
 | `ddl/**` (multi-table)| Consortium leadership                                                   |
 | `outlier-handling/**` | The POC of the affected table + consortium leadership                   |
 | `reference_ranges/**` | The POC of the affected table + consortium leadership                   |
 
 ## Refresh policy
 
-Re-pull this table from the upstream README whenever the consortium publishes a new contributors update. The README's POC table is authoritative; this file is a cache used by the guardrail.
+Re-pull this table from the upstream README whenever the consortium publishes a new contributors update. The README's POC table is authoritative; this file is a cache used by the guardrail. Copy names and GitHub handles only — never mirror contact addresses into this cache.

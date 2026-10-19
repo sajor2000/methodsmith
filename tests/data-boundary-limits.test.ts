@@ -268,6 +268,40 @@ describe("limit 2b: identifier index checks on MCP arguments (every mode)", () =
   })
 })
 
+describe("limit 2c: Claude web egress checks (every mode)", () => {
+  test("WebSearch queries and WebFetch URLs/prompts block indexed identifiers without echoing them", () => {
+    for (const config of [SCHEMA_ONLY, APPROVED]) {
+      const root = project(config)
+      expect(buildIndex(root).code).toBe(0)
+      expectAll(root, "allow", [
+        ["WebSearch", { query: "sepsis outcomes randomized trial systematic review" }],
+        ["WebFetch", { url: "https://example.org/article?doi=10.1001/jama.2023.12345", prompt: "Summarize the abstract" }],
+      ])
+      const denied = verdicts(root, [
+        ["WebSearch", { query: "outcomes for Zed Testperson" }],
+        ["WebSearch", { query: "record FAKE0001" }],
+        ["WebFetch", { url: "https://example.org/?record=FAKE0001", prompt: "Summarize the article" }],
+        ["WebFetch", { url: "https://example.org/article", prompt: "Look up Zed Testperson" }],
+        ["WebFetch", { url: "https://example.org/contact?email=patient@example.org", prompt: "Summarize the page" }],
+      ])
+      for (const result of denied) {
+        expect({ ...result, config }).toEqual({ tool: result.tool, input: result.input, decision: "deny", kind: "egress", config })
+      }
+      const message = runGuard(root, "WebSearch", { query: "outcomes for Zed Testperson" })
+      expect(message.reason).toContain("egress guard")
+      expect(message.stdout).not.toContain("Zed")
+      expect(message.stdout).not.toContain("Testperson")
+    }
+  })
+
+  test("the plugin hook is registered for both Claude web tools", () => {
+    const hooks = JSON.parse(readFileSync(path.join(pluginRoot, "hooks", "hooks.json"), "utf8"))
+    const matcher = hooks.hooks.PreToolUse[0].matcher as string
+    expect(matcher).toContain("WebFetch")
+    expect(matcher).toContain("WebSearch")
+  })
+})
+
 describe("limit 3: NCBI E-utilities calls from Bash get the MCP checks (every mode)", () => {
   const pubmedScript = path.join(pluginRoot, "skills", "method-pubmed", "scripts", "pubmed_search.py")
   const eutils = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term="
