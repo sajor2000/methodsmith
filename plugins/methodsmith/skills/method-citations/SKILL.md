@@ -82,6 +82,30 @@ Create a local ledger beside the manuscript package, for example `manuscript/cit
 
 Do not promote `partially_supported`, `unsupported`, or `unverified` records into a finished citation without author review.
 
+### 4. Gate an existing bibliography for fabricated or mismatched references
+
+When the manuscript already has a reference list, export it (or accept it) as BibTeX, RIS, a delimited file, or a plain numbered list, then run the bundled audit before trusting or reusing any entry:
+
+```bash
+SKILL_DIR="<absolute path of the directory containing this SKILL.md>";
+python3 "$SKILL_DIR/scripts/verify_references.py" audit path/to/bibliography.bib --out qc/reference_audit.json
+```
+
+If `python3` is unavailable, probe `python` then `py`; if none is available, resolve a sample of identifiers through the PubMed MCP metadata tools in step 1 and report the sweep as `unverified`, never as passed.
+
+The script resolves every DOI through CrossRef then OpenAlex and every PMID through PubMed, then classifies each entry:
+
+- `OK` — the identifier resolves and the claimed title, year, and first author match;
+- `MISMATCH` — the identifier resolves but a claimed field differs; the record's true values travel in the report for the author to compare;
+- `UNVERIFIED` — no identifier, or no record could be fetched; carry that status into the ledger, never a silent OK;
+- `FABRICATED` — the DOI or PMID is registered nowhere. A fabricated reference blocks delivery: the script exits 2.
+
+Entries parsed from free prose carry a guessed title and year, so the script compares their identifier only and attaches the resolved record for a human to compare; do not mark such an entry MISMATCH on the parser's guess.
+
+Use `--lookup-cache <file>` to reuse or record lookups across runs, and `--offline` to classify from a populated cache when the network is unavailable. Add `--strict` to also fail on MISMATCH.
+
+Merge the audit's `FABRICATED` and `MISMATCH` findings into the ledger before any Zotero insertion, and stop for author review on every finding.
+
 ## Editable Word workflow
 
 Use the document-editing workflow available in the host environment for DOCX manipulation and render QA. The citation-specific rules are:
@@ -100,6 +124,7 @@ Use the document-editing workflow available in the host environment for DOCX man
 Report:
 
 - citation records resolved and unresolved;
+- reference-integrity counts from the audit (`ok`, `mismatch`, `unverified`, `fabricated`) when a bibliography was gated;
 - claims by evidence label (`abstract` versus `full_text`/`figure`) and ledger status;
 - Zotero items inserted, deduplicated, or requiring author selection;
 - field-bearing citations and bibliography count;
@@ -118,6 +143,7 @@ __CE_CITATION_LEDGER__ path=<ledger-path> docx=<field-bearing-master> style=<sty
 | Condition | Response |
 |---|---|
 | PubMed MCP unavailable | Use `method-pubmed` or an approved NCBI fallback and label provenance; do not fabricate a PMID. |
+| Audit script cannot run | Probe `python3`, `python`, `py`; if none is available, spot-check identifiers through PubMed MCP and report `unverified`, never `passed`. |
 | Paperclip unavailable | Continue with PubMed abstract or open PMC full-text evidence only and label each claim at the level read. |
 | Zotero item missing | Add an unresolved ledger record and ask the author to select or import the item; do not create a fake field. |
 | Word integration unavailable | Stop the editable-master claim and deliver only a clearly labeled ledger or static review copy if requested. |

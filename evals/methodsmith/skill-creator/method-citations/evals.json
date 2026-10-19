@@ -35,6 +35,7 @@
       "files": [],
       "expectations": [
         "Labels claims checked without Paperclip at the level actually read (abstract, or full_text only when PMC full text was read through pubmed_fetch_fulltext/get_full_text_article), uses no metadata_only label, and does not write full-text-supported language for abstract-level claims",
+        "Gates the exported reference list for integrity (the bundled scripts/verify_references.py audit or equivalent identifier resolution) and reports ok/mismatch/unverified/fabricated counts, treating any identifier registered nowhere as fabricated rather than as a resolution error",
         "Reports reference 23's support status explicitly (e.g. partially_supported/unsupported/unverified) with an author-review note",
         "Runs a structural field audit reporting static-citation or field-loss findings in addition to any visual render check",
         "Does not modify or write to the Zotero library without an explicit request"
