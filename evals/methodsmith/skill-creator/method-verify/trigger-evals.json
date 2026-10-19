@@ -5,7 +5,7 @@
   {"query": "sanity check pls -- my OR came out 0.6 but hypothesis said harmful exposure, plus I want to make sure no PHI slipped into outputs", "should_trigger": true},
   {"query": "Before moving to the next SAP section, check the prediction pipeline for train/test leakage and patient overlap across splits", "should_trigger": true},
   {"query": "quick check that the analysis N matches the cohort definition and meets the power calculation minimum in analysis/power/", "should_trigger": true},
-  {"query": "Run the PASS/WARN/FAIL verification on the figures and tables I generated this afternoon", "should_trigger": true},
+  {"query": "Run the PASS/WARN/FAIL verification on the figures and tables I generated this afternoon -- and recompute whether Table 2's p-values actually follow from the t statistics and df it prints", "should_trigger": true},
   {"query": "method-work wants a verify signal before closing the task -- run the checks on output/tables/table2.csv", "should_trigger": true},
   {"query": "Is missingness in the analytic dataset within the SAP threshold? Check the outputs and flag anything over 5%", "should_trigger": true},
   {"query": "do a lightweight gate on my notebook outputs: seeds set, lockfile present, figure legends not overlapping data", "should_trigger": true},

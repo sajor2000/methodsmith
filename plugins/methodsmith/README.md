@@ -698,7 +698,7 @@ The compound engineering loop adapted for data science: hypothesize, design stud
 | `/method-compound-refresh` | Refresh stale learnings and decide whether to keep, update, replace, or archive |
 | `/method-sap-workbook` | Generate the biostatistics-style tabular companion to the prose SAP -- Overview, Outputs, Master Variables, and optional long/wide sample sheets that statisticians hand to programmers |
 | `/method-data-qa` | Data QA gate for row counts, joins, keys, types, missingness, and stack-specific integrity risks; emits GO/WARN/NO-GO, a missingness catalog, and PI sign-off block. Recommends principled missing-data methods (no mean imputation or LOCF) and does not claim MNAR is detectable from the data. Runs between data extraction and modeling |
-| `/method-verify` | Mid-workflow analysis verification gate -- checks sample size, data leakage, effect direction, missing data (judged by assumed mechanism, not a percentage cutoff), PHI, figure quality, and reproducibility between analysis steps |
+| `/method-verify` | Mid-workflow analysis verification gate -- checks sample size, data leakage, effect direction, missing data (judged by assumed mechanism, not a percentage cutoff), PHI, figure quality, reproducibility, and internal consistency of reported statistics (P recomputation from t/F/chi2/z, GRIM on means and percentages) between analysis steps |
 | `/method-sprint` | Open or close an auditable sprint with declared scope (subset of SAP sections), planned outputs, and a named human reviewer. Closing dispatches `method-sprint-audit-reviewer` |
 
 The planning scopes are deliberate: start with `/method-plan`; add

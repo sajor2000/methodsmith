@@ -1,6 +1,6 @@
 ---
 name: method-verify
-description: "Runs an analysis-output sanity gate: sample size, leakage, effect direction, missing data, PHI, figures, reproducibility. Use when an analysis step finishes."
+description: "Runs an analysis-output sanity gate: sample size, leakage, effect direction, missing data, PHI, figures, reproducibility, P recomputation. Use when a step finishes."
 argument-hint: "[optional: path to specific output file or directory to verify]"
 ---
 
@@ -58,6 +58,15 @@ Execute each applicable check from `references/check-catalog.md`. Skip checks th
 
 **Number gate.** Load the `method-numbers` skill and run its `check` on the manuscript sources, rendered copies, and tables (it reads `analysis/numbers/registry.json`). A `FAIL` exit, or a gate that could not run, blocks readiness: quote its `file:line: reason: token` lines as printed, and never add a result to the allowlist or edit the registry to make it pass. Run it whenever `analysis/numbers/registry.json` exists or the outputs feed a manuscript, table, caption, or model card; each `FAIL` line is a FAIL check.
 
+**Statistic recomputation gate.** When outputs or tables report t/F/chi2/z statistics with P values, or means and percentages with an N, extract the printed numbers into a claims file (values and reported P as the printed strings — their rounding drives the tolerance) and run the bundled recomputation:
+
+```bash
+SKILL_DIR="<absolute path of the directory containing this SKILL.md>";
+python3 "$SKILL_DIR/scripts/verify_stats.py" check analysis/numbers/stat-claims.json --out qc/stat_check.json
+```
+
+If `python3` is unavailable, probe `python` then `py`; if none is available, recompute a sample of the reported statistics by hand and report the sweep as incomplete, never as passed. Each script `FAIL` (a decision error, an arithmetically impossible summary, or a malformed item) is a FAIL check; each `WARN` is a WARN check.
+
 ### Step 3: Emit verification report
 
 ```
@@ -88,7 +97,7 @@ __CE_VERIFY__ pass=5 warn=2 fail=0 blocking=<true|false>
 - Does not replace `method-checklist` or `method-reporting-checklist-reviewer` — those verify reporting guideline compliance at manuscript time
 - Does not replace `method-signoff` — that skill builds PI-facing review packets and validates the signoff ledger
 - Does not modify analysis files — read-only verification
-- Does not run statistical tests — it checks structural properties (sample size, leakage, direction), not analytical correctness
+- Does not run or rerun statistical analyses — the recomputation gate rechecks printed statistics for internal consistency (P from t/F/chi2/z, GRIM on means and percentages); it does not fit models or verify model correctness
 
 ## References
 

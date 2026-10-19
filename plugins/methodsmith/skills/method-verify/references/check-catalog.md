@@ -10,6 +10,7 @@
 - 6. Figure Quality
 - 7. Reproducibility Check
 - 8. Number Registry Check
+- 9. Statistic Recomputation Check
 
 Each check runs independently. Skip checks that don't apply to the current analysis.
 
@@ -159,3 +160,22 @@ If `analysis/publication/figures/figure-manifest.json` exists, validate it with 
 **Fail:** The gate exits 1, or it could not run. List its `file:line: reason: token` lines as printed.
 
 **When to skip:** No registry exists and the outputs do not yet feed a manuscript, table, caption, or model card.
+
+## 9. Statistic Recomputation Check
+
+**What:** Are reported statistics internally consistent? Does the printed P value follow from the printed t/F/chi2/z and its df, and can the printed mean or percentage exist at the printed N?
+
+**How to check:** Extract the printed statistics from outputs and tables into a claims file — each value and reported P as the printed string, so its rounding is known — then run the bundled script:
+
+```bash
+SKILL_DIR="<absolute path of the directory containing this SKILL.md>";
+python3 "$SKILL_DIR/scripts/verify_stats.py" check analysis/numbers/stat-claims.json --out qc/stat_check.json
+```
+
+The script recomputes the two-sided P value from t, F, chi2 and z statistics using std-lib incomplete beta and gamma functions (no scipy needed), compares the reported P against the rounding envelope of the recomputation at the declared alpha, and runs GRIM checks that look for an integer count reproducing each mean or percentage at its printed rounding. A claims item that cannot be parsed fails closed rather than being skipped.
+
+**Pass:** The reported P lies inside the recomputed rounding envelope (or a statistic has no reported P, in which case the recomputed P is attached); an integer count reproduces the mean or percentage.
+**Warn:** The reported P is inconsistent but stays on the same side of alpha; a mean or percentage is impossible only under an inferred granularity (confirm the measurement scale before failing it).
+**Fail:** The reported and recomputed P values fall on opposite sides of the declared alpha (a decision error); a mean or percentage is arithmetically impossible under the declared granularity or the printed denominator; or a claims item is malformed.
+
+**When to skip:** No inferential statistics (t/F/chi2/z with P values) and no means or percentages with N appear in the outputs or tables.

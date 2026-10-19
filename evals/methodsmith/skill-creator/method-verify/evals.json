@@ -9,6 +9,7 @@
       "expectations": [
         "Cross-references the analysis N against analysis/data-qa-report.md (N=8,234) using the design-specific sample-size check rather than fixed percentage thresholds",
         "Compares the observed effect direction with the hypothesis in analysis/research-question.yaml and, on mismatch, checks the exposure reference level and outcome coding before WARNing",
+        "When the model outputs report inferential statistics (z or t with P values), extracts the printed statistics into a claims file and runs the scripts/verify_stats.py recomputation, counting each script FAIL (decision error or malformed item) as a FAIL check",
         "Judges missing data by the stated mechanism and SAP-consistent handling, not by a percent-missing pass/fail threshold",
         "Skips the leakage scan if no train/test split exists",
         "Emits a numbered Verification Report with PASS/WARN/FAIL lines and a summary count",
