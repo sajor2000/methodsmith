@@ -59,7 +59,8 @@ ELIF design == systematic_review:
   IF subtype == network_meta: primary = PRISMA-NMA
   IF subtype == individual_patient_data: primary = PRISMA-IPD
   IF subtype == scoping_review: primary = PRISMA-SCR
-  IF subtype == prediction_model: extension += CHARMS as data extraction and appraisal  # Moons et al., PLoS Med 2014, PMID 25314315; TRIPOD-SRMA (PMID 37137496) and PROBAST+AI (PMID 40127903) are the dedicated reporting and risk-of-bias tools but are not yet in the registry
+  IF subtype == prediction_model: extension += CHARMS as data extraction and appraisal  # Moons et al., PLoS Med 2014, PMID 25314315; PROBAST+AI (Moons et al., BMJ 2025, PMID 40127903) is the registry's risk-of-bias and applicability tool for the included models (role: appraisal, never a reporting primary); TRIPOD-SRMA (PMID 37137496) is the dedicated reporting checklist but is not yet in the registry
+  # Appraisal of included studies uses the registry's appraisal tools; they are never auto-added to reporting_checklist_extensions: RoB 2 (Sterne et al., BMJ 2019, PMID 31462531) for randomised trials, ROBINS-I (Sterne et al., BMJ 2016, PMID 27733354) for non-randomised studies of interventions, AMSTAR 2 (Shea et al., BMJ 2017, PMID 28935701) for included systematic reviews (overviews)
   # DTA, NMA, IPD, and ScR are stand-alone checklists built on PRISMA 2009, now superseded by PRISMA 2020; also check PRISMA 2020 items 24-27 (registration, support, competing interests, data/code availability)
   IF protocol_stage == true: protocol = PRISMA-P  # PRISMA-P 2015 (Moher et al., Syst Rev 2015, PMID 25554246)
 

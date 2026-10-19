@@ -41,14 +41,14 @@ async function readReference(name: string): Promise<string> {
 }
 
 describe("reporting guideline registry", () => {
-  test("keeps the 39-entry registry and checklist files in parity", async () => {
+  test("keeps the 43-entry registry and checklist files in parity", async () => {
     const raw = await readReference("guideline-registry.yaml")
     const registry = load(raw) as Registry
     const files = (await fs.readdir(referencesRoot))
       .filter((file) => file.endsWith("-checklist.md"))
       .sort()
 
-    expect(Object.keys(registry.guidelines)).toHaveLength(39)
+    expect(Object.keys(registry.guidelines)).toHaveLength(43)
     expect(Object.keys(registry.evidence).sort()).toEqual(Object.keys(registry.guidelines).sort())
     expect(Object.values(registry.guidelines).map((entry) => entry.file).sort()).toEqual(files)
   })

@@ -94,3 +94,14 @@ untouched and tracked as [issue #123](https://github.com/sajor2000/methodsmith/i
 - Behavioral eval cases are unchanged because no skill description changed;
   `bun run legacy:fingerprints` is therefore not required. Re-run it if a
   description changes before merge.
+
+## Progress
+
+- **#123 resolved.** After PR #125 merged, release-please refreshed PR #112
+  against the new base; it closed as superseded.
+- **#119 implemented** on `feat/appraisal-checklists`: RoB 2, ROBINS-I,
+  PROBAST+AI (supersedes PROBAST-2019; aliases `probast`, `probast-2019`), and
+  AMSTAR 2 (supersedes AMSTAR 1) checklists with `role: appraisal` registry
+  entries, a distinct appraisal layer in routing, and registry parity tests;
+  the registry grows 39 -> 43. Citations verified against PubMed on
+  2026-10-18.

@@ -8,7 +8,7 @@ numbers to their analysis code. Built for clinical statistics, machine learning,
 and meta-analysis. Your team keeps scientific judgment and responsibility for
 the results.
 
-**67 skills · 55 specialist agents · 39 reporting standards.** Works with Claude
+**67 skills · 55 specialist agents · 43 reporting standards.** Works with Claude
 Code, Codex, Pi, Gemini CLI, OpenCode, Kiro, and Qwen Code.
 
 > **Research use only; not a medical device for clinical care.** Methodsmith
@@ -711,7 +711,7 @@ prose and citations.
 
 For the academic paper lifecycle: literature → checklist → cohort → power → SAP → manuscript artifacts.
 
-The registry covers 39 standards across study types and AI extensions.
+The registry covers 43 standards across study types and AI extensions.
 [Guideline sources](../../docs/guideline-sources.md) lists each
 checklist's primary citation, PMID, DOI, verification status, and superseded
 versions. It distinguishes reporting guidelines from appraisal tools, planning
@@ -850,7 +850,7 @@ Agents are specialized subagents invoked by skills.
 | `method-methods-reviewer` | Statistical test selection and assumption verification, preferring model diagnostics over normality pre-tests |
 | `method-multiplicity-reviewer` | Multiple comparisons, p-hacking, and selective reporting; co-primary endpoints that must all succeed need no alpha correction |
 | `method-reproducibility-reviewer` | Seeds, package versions, paths, and environment specs |
-| `method-reporting-checklist-reviewer` | Reporting guideline compliance across 39 guidelines — auto-routes by study type to the newest version of each guideline (old names such as TRIPOD 2015 and QUADAS-2 resolve to the successor that replaced them), covers protocol-stage guidelines (SPIRIT 2025, PRISMA-P), layers AI extensions, writes append-only compliance report (opt-in) |
+| `method-reporting-checklist-reviewer` | Reporting guideline compliance across 43 guidelines — auto-routes by study type to the newest version of each guideline (old names such as TRIPOD 2015 and QUADAS-2 resolve to the successor that replaced them), covers protocol-stage guidelines (SPIRIT 2025, PRISMA-P), layers AI extensions, writes append-only compliance report (opt-in) |
 | `method-sap-drift-detector` | Structural and semantic drift between SAP and analysis code, including estimand, missing-data, and inference-method drift; also flags blinding-state violations, missing amendment log entries, primary-endpoint changes after data lock, and code drift after amendments |
 | `method-data-mapping-reviewer` | Codebook / SAP / extract column-mapping correctness — name drift, unit mismatches, level-set drift, derived-variable formulae, PHI in codebook |
 | `method-phi-leak-reviewer` | HIPAA Safe Harbor identifier scan across data files, codebooks, notebooks, manuscripts, figure captions, and rendered output after the saved sensitive-data boundary (or a one-time confirmation) allows it |

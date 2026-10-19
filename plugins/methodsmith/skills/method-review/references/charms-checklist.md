@@ -258,10 +258,10 @@ Key items to guide the framing of the review aim, search strategy, and study inc
 
 ### Risk of Bias Assessment Across Domains (plugin addition, not a CHARMS item)
 
-**Description:** For formal risk-of-bias and applicability judgements use PROBAST+AI (Moons et al., BMJ 2025, PMID 40127903); CHARMS supports extraction. Summarize critical appraisal findings across CHARMS domains for all included studies, identifying the prevalence of methodological concerns and their likely direction of bias on reported model performance.
+**Description:** For formal risk-of-bias and applicability judgements use PROBAST+AI (Moons et al., BMJ 2025, PMID 40127903; `references/probast-ai-checklist.md`); CHARMS supports extraction. Summarize critical appraisal findings across CHARMS domains for all included studies, identifying the prevalence of methodological concerns and their likely direction of bias on reported model performance.
 
 **What to look for in code/outputs:**
-- Risk of bias or methodological concern coded per domain per study using a structured appraisal table (commonly using PROBAST alongside CHARMS for formal bias ratings)
+- Risk of bias or methodological concern coded per domain per study using a structured appraisal table (commonly using PROBAST+AI alongside CHARMS for formal bias ratings)
 - Code generating a summary visualization of methodological quality across included studies
 - Sensitivity analyses in the meta-analysis restricting to studies with adequate sample size, external validation, or no stepwise selection
 - Meta-regression examining the association between methodological quality indicators and reported discrimination or calibration
