@@ -41,8 +41,9 @@ const SURFACES = [
 type Kind = "skills" | "agents" | "checklists"
 
 // Phrases that state the plugin's own inventory. Counts of something else
-// ("30 key skills" in the skill map, "46 guidelines" for a competitor) do not
-// match because the number must sit directly before these words.
+// ("30 key skills" in the skill map, a competitor's "49 stated (guidelines and
+// risk-of-bias tools)") do not match because the number must sit directly
+// before these words.
 const PATTERNS: Array<{ kind: Kind; pattern: RegExp }> = [
   { kind: "skills", pattern: /\b(\d+) (?:slash )?skills\b/gi },
   { kind: "agents", pattern: /\b(\d+) (?:specialist )?(?:agents|reviewers|review agents|reviewer agents)\b/gi },
