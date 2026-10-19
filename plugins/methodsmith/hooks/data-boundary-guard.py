@@ -114,7 +114,7 @@ RUN_WRAPPERS = {"uv": "run", "poetry": "run", "pipenv": "run", "pixi": "run", "c
 SEPARATORS = {";", "&", "&&", "||", "|", "|&", "(", ")", ";;"}
 REDIRECTS = {"<", ">", ">>", "<>", ">|", "&>", "&>>", ">&", "<&"}
 
-DOI_OR_PMC = re.compile(r"\b10\.\d{4,9}/\S+|\bPMC\d+\b", re.IGNORECASE)
+DOI_OR_PMC = re.compile(r"\b10\.\d{4,9}/[^\s&?#@<>()'\"]+|\bPMC\d+\b", re.IGNORECASE)
 RECIPIENT_KEYS = {"email", "emails", "recipient", "recipients", "to", "cc"}
 UPLOADISH_TOOL = re.compile(r"upload|import|share|attach|send|export|publish|put|create-file", re.IGNORECASE)
 UPLOAD_VERBS = {"curl", "wget", "scp", "sftp", "rsync", "http", "https", "xh", "aws", "gsutil",
@@ -1307,7 +1307,9 @@ def _strings(value, key=""):
 
 def identifier_reason(text, mode, key=""):
     """Why a string sent to a third party carries an identifier, or None. Never includes the match."""
-    text = DOI_OR_PMC.sub(" ", text)
+    from urllib.parse import unquote_plus  # percent-encoded identifiers (name%40hospital.org) are checked too
+
+    text = DOI_OR_PMC.sub(" ", unquote_plus(text))
     for label, pattern in IDENTIFIER_PATTERNS:
         if label == "an email address" and key in RECIPIENT_KEYS:
             continue
@@ -1352,15 +1354,13 @@ def ncbi_violation(cmd, mode):
     verb, args = program(cmd[0]), cmd[1:]
     if verb not in HTTP_CLIENTS and not any(os.path.basename(t) == PUBMED_SCRIPT for t in cmd):
         return None
-    from urllib.parse import unquote_plus  # only outbound queries need it
-
     where = "an NCBI E-utilities query" if any(NCBI_HOST in t or os.path.basename(t) == PUBMED_SCRIPT for t in cmd) \
         else f"a `{verb}` request"
     for index, token in enumerate(args):
         if os.path.basename(token) == PUBMED_SCRIPT:
             continue
         own = verb in HTTP_CLIENTS and own_contact(args[index - 1] if index else "", token)
-        reason = identifier_reason(unquote_plus(token), mode, "email" if own else "")
+        reason = identifier_reason(token, mode, "email" if own else "")
         if reason:
             return f"{where}: {reason[len('an argument '):]}" if reason.startswith("an argument ") else reason
     return None
