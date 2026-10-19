@@ -5,6 +5,31 @@ release pull requests. Canonical current release notes are the repository's
 [GitHub Releases](https://github.com/sajor2000/ce-datascience/releases) and
 open release PRs. Do not hand-add entries from feature or documentation work.
 
+## [5.1.0](https://github.com/sajor2000/methodsmith/compare/methodsmith-v5.0.0...methodsmith-v5.1.0) (2026-10-19)
+
+
+### Features
+
+* **clif-meta:** add formal aggregate synthesis workflows ([#111](https://github.com/sajor2000/methodsmith/issues/111)) ([9e40c82](https://github.com/sajor2000/methodsmith/commit/9e40c822ef6952f626550e88025c212b8a8b252d))
+* **evals:** add run tooling, structural code_query gates, and ML decision sidecar ([#116](https://github.com/sajor2000/methodsmith/issues/116)) ([df37c8c](https://github.com/sajor2000/methodsmith/commit/df37c8cbe2ef9b280510283c7e58cc4723206b79))
+* **model-choice:** add ML prediction training protocol ([#114](https://github.com/sajor2000/methodsmith/issues/114)) ([ea7134c](https://github.com/sajor2000/methodsmith/commit/ea7134c6435a26e9ab948ecfc7a02bb5d6d85d4d))
+* **review:** add CONSORT-Outcomes and SPIRIT-Outcomes 2022 checklists ([df53c42](https://github.com/sajor2000/methodsmith/commit/df53c429782c871bbb73c652366eb51eba2b089b))
+* **review:** add CONSORT-Outcomes and SPIRIT-Outcomes 2022 checklists ([59124c7](https://github.com/sajor2000/methodsmith/commit/59124c7905895906460b4423d94f0334e4bce37a)), closes [#121](https://github.com/sajor2000/methodsmith/issues/121)
+* **review:** add RoB 2, ROBINS-I, PROBAST+AI, and AMSTAR 2 appraisal checklists ([d3f6935](https://github.com/sajor2000/methodsmith/commit/d3f69356a9487c2bf775ce24f21633304253a006))
+* **review:** add RoB 2, ROBINS-I, PROBAST+AI, and AMSTAR 2 appraisal checklists ([3ddea99](https://github.com/sajor2000/methodsmith/commit/3ddea997e517e9443a6ad381ec5044ccfc744d2d))
+* **review:** add TIDieR, RIGHT, SRQR, and PRISMA-S reporting checklists ([bc53799](https://github.com/sajor2000/methodsmith/commit/bc537990981b0512db60df4723bb064da032e851))
+* **review:** add TIDieR, RIGHT, SRQR, and PRISMA-S reporting checklists ([507c7aa](https://github.com/sajor2000/methodsmith/commit/507c7aa6dd8652a62eb368f08de4d0f99ccd76e0)), closes [#120](https://github.com/sajor2000/methodsmith/issues/120)
+
+
+### Bug Fixes
+
+* **data-boundary:** stop DOI tails and percent-encoding from hiding identifiers ([b46f84f](https://github.com/sajor2000/methodsmith/commit/b46f84f37b5ec2c29b0c04f4d1fbe6fc75e80c37))
+* **data-boundary:** stop DOI tails and percent-encoding from hiding identifiers ([85ca9b8](https://github.com/sajor2000/methodsmith/commit/85ca9b8593086ba2b8d46670426c325d1a059fd9))
+* **repo:** close public-release gaps before publishing ([3e54442](https://github.com/sajor2000/methodsmith/commit/3e54442111da86ab456e447377a4640dbd787117))
+* **repo:** close public-release gaps before publishing ([ec257a3](https://github.com/sajor2000/methodsmith/commit/ec257a37d5fd1bd6cb590f934d07536ccb42e83d))
+* **review:** strengthen scientific integrity gates ([#113](https://github.com/sajor2000/methodsmith/issues/113)) ([73cbef7](https://github.com/sajor2000/methodsmith/commit/73cbef7baea148ea5c7f692bbfa9b3e0c7692204))
+* **website:** polish landing page and installation guidance ([#117](https://github.com/sajor2000/methodsmith/issues/117)) ([b0dea55](https://github.com/sajor2000/methodsmith/commit/b0dea55ccb38f43ae9c646dff7c4392c6fa3328b))
+
 ## [5.0.0](https://github.com/sajor2000/methodsmith/compare/methodsmith-v4.1.0...methodsmith-v5.0.0) (2026-10-16)
 
 
