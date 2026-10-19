@@ -172,3 +172,20 @@ In priority order:
 5. Add journal selection and ICMJE COI skills.
 6. Add one committed reproducible demo project.
 7. Document the `gh skill install` route.
+
+## Closure record (2026-10-19)
+
+- Gap #2 (reference integrity): closed by `method-citations`
+  `scripts/verify_references.py` (PR #138) — extract/classify/audit with
+  OK/MISMATCH/UNVERIFIED/FABRICATED verdicts.
+- Gap #4 (statistic recomputation): closed by `method-verify` check 9
+  `scripts/verify_stats.py` (PR #140) — P recomputation from t/F/chi2/z with
+  rounding envelopes at the declared alpha, and rounding-aware GRIM.
+- Gap #5 (submission lane): journal selection closed by the
+  `method-journal-select` skill. ICMJE COI remains open as a decision: the
+  checklists already demand COI disclosures and nothing in the lane collects
+  them, but a workflow step inside `method-submission-package` (collect
+  declarations, produce form-ready data, cross-check the manuscript's COI
+  statement) may serve better than a standalone skill.
+- Gaps #1, #3, #6, #7: deliberately not taken (maintainer action, audience
+  decision, optional).

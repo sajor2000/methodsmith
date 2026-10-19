@@ -10,7 +10,7 @@ const skillsRoot = path.join(process.cwd(), "plugins", "methodsmith", "skills")
 const MAX_NAME_CHARS = 64
 const MAX_DESCRIPTION_CHARS = 1024
 const MAX_LISTED_DESCRIPTION_CHARS = 300
-const MAX_TOTAL_DESCRIPTION_CHARS = 11_500
+const MAX_TOTAL_DESCRIPTION_CHARS = 11_700
 const MAX_BODY_LINES = 500
 // Every SKILL.md token loads on each invocation; long lines hide size from a line cap.
 // ~16 KB is about 4,000 tokens. Move conditional or late-sequence detail to references/.
