@@ -7,7 +7,7 @@ They supplement the repo-root `AGENTS.md`.
 
 ## Runtime vs Authoring Context
 
-**This plugin's `AGENTS.md` and `CLAUDE.md` files are authoring context — they do not ship with the installed plugin.** Skills are packaged and installed into end-user environments (their own repos, or folders that may not even be git repos), where they run against *the user's* `AGENTS.md`/`CLAUDE.md`, not this repo's.
+**This plugin's `AGENTS.md` is authoring context — it shapes how contributors edit the plugin here; an installed copy is never loaded as project context.** Skills are packaged and installed into end-user environments (their own repos, or folders that may not even be git repos), where they run against *the user's* `AGENTS.md`/`CLAUDE.md`, not this repo's. The plugin carries no `CLAUDE.md` of its own: `claude plugin validate` flags a plugin-root `CLAUDE.md` because it is not loaded as project context either — ship context through a skill (`skills/<name>/SKILL.md`), never through these files.
 
 Consequences:
 
@@ -57,8 +57,7 @@ agents/
 └── method-*.md        # All agents live flat under agents/, prefixed with method-
 
 skills/
-├── method-*/          # Core workflow skills (method-plan, method-review, etc.)
-└── */             # All other skills
+└── method-*/          # All skills carry the method- prefix (method-plan, method-review, ...)
 ```
 
 Agents are grouped topically in `README.md` (Review, Document Review, Research, Design, Workflow, Docs) for reader navigation — those groupings are conceptual, not filesystem subdirectories.

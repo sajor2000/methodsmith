@@ -4,9 +4,11 @@ This repository houses the `methodsmith` plugin — rigorous methods for statist
 
 It also contains:
 - the Bun/TypeScript CLI that converts Claude Code plugins into other agent platform formats
-- shared release and metadata infrastructure for the CLI, marketplace, and plugin
+- shared release and metadata infrastructure for the CLI, the three marketplaces (Claude, Cursor, Codex), and the plugin
+- behavioral eval cases and skill-creator eval sets under `evals/`
+- the marketing site, brand assets, and animation sources under `website/`
 
-`AGENTS.md` is the canonical repo instruction file. Root `CLAUDE.md` exists only as a compatibility shim for tools and conversions that still look for it.
+`AGENTS.md` is the canonical repo instruction file. Root `CLAUDE.md` is a compatibility shim that only imports it — edit `AGENTS.md`, never the shim.
 
 ## Quick Start
 
@@ -50,9 +52,12 @@ in sync. `docs/setup.md` is the canonical detailed setup guide.
 ```
 src/              CLI entry point, parsers, converters, target writers
 plugins/          Plugin workspaces (methodsmith)
-.claude-plugin/   Claude marketplace catalog metadata
+.claude-plugin/   Claude marketplace catalog; .cursor-plugin/ and .agents/ mirror it for Cursor and Codex
+scripts/          Release, eval, docs, and maintenance tooling
 tests/            Converter, writer, and CLI tests + fixtures
-docs/             Requirements, plans, solutions, and target specs
+docs/             Brainstorms, plans, solutions, audits, brand assets, setup guide
+evals/            Behavioral eval cases and skill-creator eval sets
+website/          Marketing site, brand assets, animation scene sources
 ```
 
 ## Repo Surfaces
@@ -60,8 +65,10 @@ docs/             Requirements, plans, solutions, and target specs
 Changes in this repo may affect one or more of these surfaces:
 
 - `methodsmith` under `plugins/methodsmith/`
-- the Claude marketplace catalog under `.claude-plugin/`
+- the marketplace catalogs: `.claude-plugin/` (Claude), `.cursor-plugin/` (Cursor), `.agents/` (Codex), kept in parity by `bun run release:validate`
 - the converter/install CLI in `src/` and `package.json`
+- behavioral evals under `evals/` — a material skill or agent behavior change must update its cases
+- the website and brand assets under `website/` and `docs/brand/` — displayed inventory counts are enforced by `tests/displayed-counts.test.ts`
 
 Do not assume a repo change is "just CLI" or "just plugin" without checking which surface owns the affected files.
 
@@ -85,6 +92,7 @@ Useful validation commands:
 
 ```bash
 bun run release:validate
+bun run plugin:validate   # claude plugin validate; needs the claude CLI
 cat .claude-plugin/marketplace.json | jq .
 cat plugins/methodsmith/.claude-plugin/plugin.json | jq .
 ```
@@ -125,7 +133,7 @@ Every skill also has an Anthropic skill-creator eval set under
 `evals/methodsmith/skill-creator/<skill>/`. `evals.json` holds three realistic
 prompts with verifiable expectations; `trigger-evals.json` holds 10
 should-trigger and 10 near-miss should-not-trigger queries for skill-creator's
-description loop (`scripts/run_loop.py`). Update both when a skill's behavior
+description loop. Update both when a skill's behavior
 or scope changes. `tests/skill-creator-evals.test.ts` enforces coverage and shape.
 
 See
@@ -233,10 +241,12 @@ This applies equally to any platform's variables — a skill converted from Code
 
 ## Repository Docs Convention
 
-- **Requirements** live in `docs/brainstorms/` — requirements exploration and ideation.
+- **Requirements and ideation** live in `docs/brainstorms/` and `docs/ideation/`.
 - **Plans** live in `docs/plans/` — implementation plans and progress tracking.
 - **Solutions** live in `docs/solutions/` — documented decisions and patterns.
-- **Specs** live in `docs/specs/` — target platform format specifications.
+- **Audits** live in `docs/audits/` — recorded review passes.
+- **Brand assets** live in `docs/brand/`; the site builds from `website/`.
+- `docs/setup.md` is the canonical setup guide; `docs/guideline-sources.md` is generated from the guideline registry (`bun run docs:guideline-sources`) — never edit it by hand.
 
 ### Solution categories (`docs/solutions/`)
 
