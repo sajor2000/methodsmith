@@ -5,6 +5,7 @@
 - Primary Guidelines
 - AI Extension Layer
 - Trial Design Extension Layer
+- Cross-cutting Extension Layer
 - Observational Extension Layer
 - Appraisal Layer
 - Extension Selection Rules
@@ -29,6 +30,7 @@ Each `study_type` maps to exactly one primary guideline. When `study_type` is ab
 | `prediction-model` | TRIPOD+AI (regression or machine learning; supersedes TRIPOD 2015) | `references/tripod-ai-checklist.md` |
 | `target-trial-emulation` | TARGET (standalone) | `references/target-checklist.md` |
 | `quality-improvement` | SQUIRE 2.0 | `references/squire-checklist.md` |
+| `practice-guideline` | RIGHT | `references/right-checklist.md` |
 | `early-clinical-ai-evaluation` | DECIDE-AI (early, small-scale live clinical evaluation of an AI decision-support system) | `references/decide-ai-checklist.md` |
 | `exploratory` | _(none required)_ | _(reviewer skips unless user overrides)_ |
 | `other` | _(ask user)_ | _(reviewer asks which guideline to apply)_ |
@@ -40,6 +42,8 @@ Each `study_type` maps to exactly one primary guideline. When `study_type` is ab
 **Systematic review subtypes:** a diagnostic test accuracy review uses PRISMA-DTA (`references/prisma-dta-checklist.md`; PMID 29362800) in place of PRISMA 2020, appraised with QUADAS-3 (`references/quadas-3-checklist.md`; PMID 41698208); a network meta-analysis uses PRISMA-NMA (PMID 26030634); an IPD meta-analysis uses PRISMA-IPD (PMID 25919529); a scoping review uses PRISMA-ScR (PMID 30178033); a review of prediction-model studies adds CHARMS for data extraction and appraisal (PMID 25314315). The subtype extensions predate PRISMA 2020, so also check PRISMA 2020 items 24-27 (registration, support, competing interests, data and code availability).
 
 **Mixed methods:** route the quantitative strand to its primary and add GRAMMS (`references/gramms-checklist.md`; O'Cathain et al. 2008, PMID 18416914); GRAMMS is never the primary.
+
+**Qualitative research:** COREQ is the primary for interview and focus-group studies. SRQR (`references/srqr-checklist.md`; O'Brien et al. 2014, PMID 24979285) covers every qualitative design; route to it when the design is not an interview or focus-group study, or when the journal or protocol names it. SRQR and COREQ overlap for interviews and focus groups: apply one, chosen with a stated reason, never both.
 
 **Prediction models:** TRIPOD+AI supersedes TRIPOD 2015 for every prediction-model study, regression or machine learning (Collins et al. 2024, PMID 38626948). A request for TRIPOD or TRIPOD 2015 (aliases `tripod`, `tripod-2015`) resolves to TRIPOD+AI; the superseded checklist is not shipped. The same rule applies to every guideline: always route to the newest version, and resolve an old version name to the successor that replaced it.
 
@@ -79,6 +83,15 @@ When `study_type: rct`, layer design extensions on the CONSORT 2025 core (or on 
 | cluster randomised design | CONSORT-CLUSTER (Campbell et al. 2012, PMID 22951546) | `references/consort-cluster-checklist.md` |
 | adaptive design (pre-planned adaptations based on accumulating data) | CONSORT-ADAPTIVE / ACE (Dimairo et al. 2020, PMID 32554564) | `references/consort-adaptive-checklist.md` |
 | N-of-1 trial or series of N-of-1 trials | CONSORT-NOF1 / CENT 2015 (Vohra et al. 2015, PMID 25976398) | `references/consort-nof1-checklist.md` |
+
+## Cross-cutting Extension Layer
+
+These extensions layer on the primary for the relevant study types rather than extending one trial design.
+
+| Condition | Extension guideline | Checklist file |
+|---|---|---|
+| Intervention description in any evaluative design, trial or not (extends item 5 of CONSORT 2010, which CONSORT 2025 supersedes, and item 11 of SPIRIT 2013, which SPIRIT 2025 supersedes; apply with the current core) | TIDieR (Hoffmann et al. 2014, PMID 24609605) | `references/tidier-checklist.md` |
+| Literature search reporting in any review (extends PRISMA 2020; apply with the PRISMA core, the subtype core, or PRISMA-P at the protocol stage) | PRISMA-S (Rethlefsen et al. 2021, PMID 34285662) | `references/prisma-s-checklist.md` |
 
 ## Observational Extension Layer
 
@@ -127,6 +140,7 @@ Appraisal tools assess risk of bias, methodological quality, or confidence; they
 | PRISMA-NMA | PRISMA for network meta-analyses (2015) | 32 (27 + S1-S5) | Network meta-analyses (stand-alone) |
 | PRISMA-IPD | PRISMA for individual participant data reviews (2015) | 31 (27 + A1-A4) | IPD meta-analyses (stand-alone) |
 | PRISMA-ScR | PRISMA for scoping reviews (2018) | 22 (20 essential + 2 optional) | Scoping reviews and evidence maps (stand-alone) |
+| PRISMA-S | PRISMA extension for reporting literature searches (with the PRISMA core) | 16 | Search reporting in systematic reviews |
 | CHARMS | Data extraction and appraisal for systematic reviews of prediction models | 7 framing items + 11 domains | SR of prediction models (with PRISMA) |
 | QUADAS-3 | Quality Assessment of Diagnostic Accuracy Studies (2026; supersedes QUADAS-2) | 4 domains (appraisal tool) | Risk of bias in DTA systematic reviews |
 | ROB2 | Risk of Bias 2 for randomised trials (appraisal tool) | 5 domains + domain 1b for cluster trials, signalling questions per domain | Risk of bias in randomised trial results |
@@ -137,10 +151,13 @@ Appraisal tools assess risk of bias, methodological quality, or confidence; they
 | STARD-AI | STARD for AI-centred diagnostic accuracy (replaces STARD 2015) | 40 | AI diagnostic accuracy |
 | CARE | CAse REport guidelines | 13 | Case reports |
 | COREQ | Consolidated Criteria for Reporting Qualitative Research | 32 | Qualitative |
+| SRQR | Standards for Reporting Qualitative Research | 21 | Qualitative research (alternative to COREQ) |
+| RIGHT | Reporting Items for practice Guidelines in HealThcare | 22 | Practice guidelines |
 | ARRIVE | Animal Research: Reporting of In Vivo Experiments | 21 | Animal research |
 | CHEERS | Consolidated Health Economic Evaluation Reporting Standards | 28 | Health economics (CHEERS-AI for AI interventions) |
 | SQUIRE | Standards for QUality Improvement Reporting Excellence (2.0) | 18 | Quality improvement |
 | GRAMMS | Good Reporting of A Mixed Methods Study | 6 | Mixed methods |
+| TIDieR | Template for Intervention Description and Replication | 12 | Intervention description (any evaluative design) |
 | CONSORT-AI | CONSORT extension for AI interventions (written against CONSORT 2010, superseded by CONSORT 2025) | 14 | AI + RCT |
 | SPIRIT-AI | SPIRIT extension for AI trial protocols (written against SPIRIT 2013, superseded by SPIRIT 2025) | 15 | AI + trial protocol |
 | CONSORT-CLUSTER | CONSORT extension for cluster randomised trials (2012; written against CONSORT 2010) | 19 extended items (item 10 replaced by 10a-10c) | Cluster RCT |

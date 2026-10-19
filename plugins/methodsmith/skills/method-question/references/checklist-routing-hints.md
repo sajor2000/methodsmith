@@ -4,8 +4,8 @@ Default mapping from `suggested_design` → primary EQUATOR checklist. This is a
 
 | Design | Primary | Common extensions |
 |--------|---------|-------------------|
-| RCT (no AI) | CONSORT (2025) | SPIRIT 2025 (protocol), CONSORT-CLUSTER (cluster RCT), CONSORT-ADAPTIVE (adaptive), CONSORT-NOF1 (N-of-1), CONSORT-NPT (non-pharmacological), CONSORT-Harms |
-| RCT (AI intervention; `ai_involvement: ai-primary` or `llm-based`) | CONSORT (2025) | CONSORT-AI; SPIRIT 2025 + SPIRIT-AI (protocol) |
+| RCT (no AI) | CONSORT (2025) | SPIRIT 2025 (protocol), CONSORT-CLUSTER (cluster RCT), CONSORT-ADAPTIVE (adaptive), CONSORT-NOF1 (N-of-1), CONSORT-NPT (non-pharmacological), CONSORT-Harms, TIDieR (intervention description) |
+| RCT (AI intervention; `ai_involvement: ai-primary` or `llm-based`) | CONSORT (2025) | CONSORT-AI; SPIRIT 2025 + SPIRIT-AI (protocol); TIDieR (intervention description) |
 | RCT — pilot or feasibility | CONSORT extension for pilot trials | — |
 | Pragmatic trial | CONSORT extension for pragmatic trials | — |
 | Observational cohort (general) | STROBE | — |
@@ -24,14 +24,15 @@ Default mapping from `suggested_design` → primary EQUATOR checklist. This is a
 | ML-based science (AI prediction model) | TRIPOD+AI (or the underlying design's primary) | REFORMS |
 | Generative AI / LLM paper | Ask whether the study is chatbot health advice, a trial, a diagnostic test, or a prediction model | Apply CHART only to chatbot health-advice reporting; add TRIPOD-LLM for any LLM development or evaluation; do not auto-route DEAL (opt-in on request) or the PDSQI-9 evaluation instrument |
 | Early clinical evaluation of an AI decision-support system (`early-clinical-ai-evaluation`) | DECIDE-AI | — |
-| Systematic review / meta-analysis | PRISMA 2020; PRISMA-DTA, PRISMA-NMA, or PRISMA-IPD replace it for those subtypes | QUADAS-3 for DTA appraisal; CHARMS + PROBAST+AI for reviews of prediction models; RoB 2 or ROBINS-I to appraise included primary studies; AMSTAR 2 for included reviews (overviews) |
-| Scoping review | PRISMA-ScR | — |
+| Systematic review / meta-analysis | PRISMA 2020; PRISMA-DTA, PRISMA-NMA, or PRISMA-IPD replace it for those subtypes | PRISMA-S for literature-search reporting; QUADAS-3 for DTA appraisal; CHARMS + PROBAST+AI for reviews of prediction models; RoB 2 or ROBINS-I to appraise included primary studies; AMSTAR 2 for included reviews (overviews) |
+| Scoping review | PRISMA-ScR | PRISMA-S for literature-search reporting |
 | Case report | CARE | — |
-| Qualitative | COREQ | SRQR if alternative preferred |
+| Qualitative | COREQ (interviews and focus groups) | SRQR for other qualitative designs or journal preference; pick one with a stated reason, never both |
 | Mixed-methods | Primary of the quantitative strand | GRAMMS (never primary) |
 | Animal study | ARRIVE 2.0 | — |
 | Economic evaluation | CHEERS 2022 | CHEERS-AI for AI interventions |
 | Quality improvement | SQUIRE 2.0 | — |
+| Practice guideline report | RIGHT | — |
 | Real-world evidence (regulatory) | STaRT-RWE (planning/reporting template, not a checklist) | RECORD-PE if pharmacoepi |
 
 AI involvement uses the canonical `ai_involvement` values `none`, `ai-assisted`, `ai-primary`, and `llm-based`; an AI extension applies only when its scope matches the study.
