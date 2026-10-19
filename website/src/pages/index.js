@@ -48,7 +48,7 @@ const AUDIENCES = [
 
 const TRUST = [
   ['Research use only', 'Methodsmith is not a medical device for clinical care and is not intended to diagnose, treat, or guide decisions about individual patients. Research outputs require qualified human review.', 'Read the research-use scope', '/docs/setup#research-use'],
-  ['43 reporting standards', 'Reporting guidelines, appraisal tools and templates, including CONSORT, STROBE, PRISMA, TRIPOD+AI and TARGET, encoded with their official item IDs. A test enforces routing to the newest version of each guideline.', 'Check the guideline sources', '/docs/guideline-sources'],
+  ['47 reporting standards', 'Reporting guidelines, appraisal tools and templates, including CONSORT, STROBE, PRISMA, TRIPOD+AI and TARGET, encoded with their official item IDs. A test enforces routing to the newest version of each guideline.', 'Check the guideline sources', '/docs/guideline-sources'],
   ['An explicit sensitive-data boundary', 'Claude Code’s pre-tool hook restricts data reads in schema-only mode and checks identifiers in supported WebSearch, WebFetch, MCP, and shell egress inputs in every mode. Other agents rely on skill instructions. These safeguards are not a sandbox or a substitute for institutional approval.', 'Read the safeguards and their limits', '/docs/setup#sensitive-data-boundary'],
   ['55 specialist agents', 'Methods, causal inference, leakage, calibration, fairness and reproducibility reviewers are part of a broader team of research and workflow agents. Review findings are deduplicated and confidence-gated.', 'Explore the skills and agents', 'https://github.com/sajor2000/methodsmith/blob/main/plugins/methodsmith/README.md#agents'],
   ['Numbers traced to the analysis', 'Manuscripts, tables and abstracts cite a registry written by the analysis code. A fail-closed gate traces each number to its SAP output, script commit and source hash. It does not read numbers inside images.', 'See how number provenance works', 'https://github.com/sajor2000/methodsmith/blob/main/plugins/methodsmith/README.md#numbers-locked-to-raw-data'],
@@ -135,7 +135,7 @@ export default function Home() {
         </header>
 
         <div className="ms-inventory container" aria-label="Included in Methodsmith">
-          <p>67 skills, 55 specialist agents, 43 reporting standards.</p>
+          <p>67 skills, 55 specialist agents, 47 reporting standards.</p>
           <Link href="https://github.com/sajor2000/methodsmith/blob/main/plugins/methodsmith/README.md#skills">
             Browse the full toolkit
           </Link>

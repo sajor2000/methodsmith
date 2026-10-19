@@ -105,3 +105,10 @@ untouched and tracked as [issue #123](https://github.com/sajor2000/methodsmith/i
   entries, a distinct appraisal layer in routing, and registry parity tests;
   the registry grows 39 -> 43. Citations verified against PubMed on
   2026-10-18.
+- **#120 implemented** on `feat/reporting-checklists`: TIDieR, RIGHT, SRQR,
+  and PRISMA-S checklists registered as `TIDIER`, `RIGHT`, `SRQR`, and
+  `PRISMA-S` (registry 43 -> 47, verification date advanced to 2026-10-19).
+  PRISMA-S item text is quoted verbatim under its CC BY 4.0 licence; TIDieR,
+  RIGHT, and SRQR are paraphrased (BMJ, Annals, and Acad Med carry no open
+  licence). Routing gains a cross-cutting extension layer (TIDieR, PRISMA-S),
+  a practice-guideline primary (RIGHT), and a pick-one SRQR/COREQ rule.

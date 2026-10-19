@@ -23,11 +23,11 @@ type Registry = {
 }
 
 const GROUPS: Array<[string, string[]]> = [
-  ["Trials and protocols", ["CONSORT", "CONSORT-ADAPTIVE", "CONSORT-AI", "CONSORT-CLUSTER", "CONSORT-NOF1", "SPIRIT", "SPIRIT-AI", "ROB2"]],
+  ["Trials and protocols", ["CONSORT", "CONSORT-ADAPTIVE", "CONSORT-AI", "CONSORT-CLUSTER", "CONSORT-NOF1", "SPIRIT", "SPIRIT-AI", "TIDIER", "ROB2"]],
   ["Observational", ["STROBE", "STROBE-MR", "STREGA", "RECORD", "RECORD-PE", "TARGET", "START-RWE", "ROBINS-I"]],
   ["Prediction and AI", ["TRIPOD+AI", "TRIPOD-LLM", "DEAL", "MI-CLAIM", "CLAIM", "DECIDE-AI", "REFORMS", "CHART", "PDSQI-9", "PROBAST+AI"]],
-  ["Reviews and diagnostic", ["PRISMA", "PRISMA-DTA", "PRISMA-IPD", "PRISMA-NMA", "PRISMA-P", "PRISMA-SCR", "CHARMS", "QUADAS-3", "STARD", "STARD-AI", "AMSTAR-2"]],
-  ["Other", ["ARRIVE", "CARE", "CHEERS", "COREQ", "GRAMMS", "SQUIRE"]],
+  ["Reviews and diagnostic", ["PRISMA", "PRISMA-DTA", "PRISMA-IPD", "PRISMA-NMA", "PRISMA-P", "PRISMA-SCR", "PRISMA-S", "CHARMS", "QUADAS-3", "STARD", "STARD-AI", "AMSTAR-2"]],
+  ["Other", ["ARRIVE", "CARE", "CHEERS", "COREQ", "GRAMMS", "RIGHT", "SRQR", "SQUIRE"]],
 ]
 
 const REPO_BLOB = "https://github.com/sajor2000/methodsmith/blob/main"

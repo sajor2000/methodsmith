@@ -26,6 +26,7 @@ IF design == RCT:
   IF cluster_design: extension += CONSORT-CLUSTER  # Campbell et al., BMJ 2012, PMID 22951546
   IF adaptive_design: extension += CONSORT-ADAPTIVE  # ACE, Dimairo et al., BMJ 2020, PMID 32554564
   IF n_of_1_design: extension += CONSORT-NOF1  # CENT 2015, Vohra et al., BMJ 2015, PMID 25976398
+  extension += TIDIER  # TIDieR: intervention description (Hoffmann et al., BMJ 2014, PMID 24609605); extends the intervention items of CONSORT 2010 and SPIRIT 2013, which CONSORT 2025 and SPIRIT 2025 replaced; applies to any evaluative design
   # design extensions were written against CONSORT 2010, now superseded by CONSORT 2025; map their core items to CONSORT 2025 numbers. Never add REFORMS to an RCT.
 
 ELIF design == target_trial_emulation:  # observational data explicitly emulating a target trial
@@ -59,12 +60,15 @@ ELIF design == systematic_review:
   IF subtype == network_meta: primary = PRISMA-NMA
   IF subtype == individual_patient_data: primary = PRISMA-IPD
   IF subtype == scoping_review: primary = PRISMA-SCR
+  extension += PRISMA-S  # literature-search reporting (Rethlefsen et al., J Med Libr Assoc 2021, PMID 34285662); extends PRISMA 2020, applied with the PRISMA or subtype core
   IF subtype == prediction_model: extension += CHARMS as data extraction and appraisal  # Moons et al., PLoS Med 2014, PMID 25314315; PROBAST+AI (Moons et al., BMJ 2025, PMID 40127903) is the registry's risk-of-bias and applicability tool for the included models (role: appraisal, never a reporting primary); TRIPOD-SRMA (PMID 37137496) is the dedicated reporting checklist but is not yet in the registry
   # Appraisal of included studies uses the registry's appraisal tools; they are never auto-added to reporting_checklist_extensions: RoB 2 (Sterne et al., BMJ 2019, PMID 31462531) for randomised trials, ROBINS-I (Sterne et al., BMJ 2016, PMID 27733354) for non-randomised studies of interventions, AMSTAR 2 (Shea et al., BMJ 2017, PMID 28935701) for included systematic reviews (overviews)
   # DTA, NMA, IPD, and ScR are stand-alone checklists built on PRISMA 2009, now superseded by PRISMA 2020; also check PRISMA 2020 items 24-27 (registration, support, competing interests, data/code availability)
   IF protocol_stage == true: protocol = PRISMA-P  # PRISMA-P 2015 (Moher et al., Syst Rev 2015, PMID 25554246)
 
-ELIF design == qualitative: primary = COREQ
+ELIF design == qualitative:
+  primary = COREQ  # interviews and focus groups
+  IF design beyond interviews/focus groups OR journal requires SRQR: primary = SRQR  # O'Brien et al., Acad Med 2014, PMID 24979285; COREQ and SRQR overlap for interviews and focus groups - pick one with a stated reason, never both
 ELIF design == mixed_methods:
   primary = route the quantitative strand through this tree (GRAMMS is never primary)
   extension += GRAMMS  # verified on EQUATOR; update in development (PMID 41841629)
@@ -79,6 +83,7 @@ ELIF design == ml_methods:
   primary = route the underlying design through this tree (TRIPOD+AI for an AI prediction model)
   extension += REFORMS (ML-based science; REFORMS is never primary)
 ELIF design == pathology_deep_learning: no dedicated verified guideline; route by aim (STARD-AI / TRIPOD+AI, plus CLAIM for imaging). DEAL is an LLM checklist: require explicit request before DEAL
+ELIF design == practice_guideline: primary = RIGHT  # practice guideline report (Chen et al., Ann Intern Med 2017, PMID 27893062)
 ELSE: ask the user which supported guideline applies
 
 ALWAYS (any design): IF ai_involvement == llm-based AND the study develops, fine-tunes, prompt-engineers, or evaluates an LLM on any task (classification, generation, summarization, QA, extraction): extension += TRIPOD-LLM (TRIPOD+AI stays primary when the LLM is a prediction model; CHART stays primary for chatbot health-advice studies); add REFORMS only for ML-based science claims (never for chatbot-advice studies or RCTs); DEAL (LLM-specific, DEAL-A or DEAL-B) only on explicit request
