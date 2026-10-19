@@ -27,7 +27,7 @@ describe("reporting guideline registry", () => {
       .filter((file) => file.endsWith("-checklist.md"))
       .sort()
 
-    expect(Object.keys(entries)).toHaveLength(47)
+    expect(Object.keys(entries)).toHaveLength(49)
     expect(registeredFiles).toEqual(checklistFiles)
 
     for (const [name, entry] of Object.entries(entries)) {

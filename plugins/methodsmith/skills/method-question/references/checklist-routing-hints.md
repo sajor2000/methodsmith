@@ -4,8 +4,8 @@ Default mapping from `suggested_design` → primary EQUATOR checklist. This is a
 
 | Design | Primary | Common extensions |
 |--------|---------|-------------------|
-| RCT (no AI) | CONSORT (2025) | SPIRIT 2025 (protocol), CONSORT-CLUSTER (cluster RCT), CONSORT-ADAPTIVE (adaptive), CONSORT-NOF1 (N-of-1), CONSORT-NPT (non-pharmacological), CONSORT-Harms, TIDieR (intervention description) |
-| RCT (AI intervention; `ai_involvement: ai-primary` or `llm-based`) | CONSORT (2025) | CONSORT-AI; SPIRIT 2025 + SPIRIT-AI (protocol); TIDieR (intervention description) |
+| RCT (no AI) | CONSORT (2025) | SPIRIT 2025 + SPIRIT-Outcomes 2022 (protocol), CONSORT-CLUSTER (cluster RCT), CONSORT-ADAPTIVE (adaptive), CONSORT-NOF1 (N-of-1), CONSORT-NPT (non-pharmacological), CONSORT-Harms, TIDieR (intervention description), CONSORT-Outcomes 2022 (outcome reporting) |
+| RCT (AI intervention; `ai_involvement: ai-primary` or `llm-based`) | CONSORT (2025) | CONSORT-AI; SPIRIT 2025 + SPIRIT-AI (protocol); TIDieR (intervention description); CONSORT-Outcomes 2022 (outcome reporting) |
 | RCT — pilot or feasibility | CONSORT extension for pilot trials | — |
 | Pragmatic trial | CONSORT extension for pragmatic trials | — |
 | Observational cohort (general) | STROBE | — |

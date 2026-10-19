@@ -92,6 +92,8 @@ These extensions layer on the primary for the relevant study types rather than e
 |---|---|---|
 | Intervention description in any evaluative design, trial or not (extends item 5 of CONSORT 2010, which CONSORT 2025 supersedes, and item 11 of SPIRIT 2013, which SPIRIT 2025 supersedes; apply with the current core) | TIDieR (Hoffmann et al. 2014, PMID 24609605) | `references/tidier-checklist.md` |
 | Literature search reporting in any review (extends PRISMA 2020; apply with the PRISMA core, the subtype core, or PRISMA-P at the protocol stage) | PRISMA-S (Rethlefsen et al. 2021, PMID 34285662) | `references/prisma-s-checklist.md` |
+| Outcome reporting in a trial report (written against CONSORT 2010, which CONSORT 2025 supersedes; apply with the CONSORT 2025 core; offer with the SPIRIT extension for the protocol) | CONSORT-Outcomes 2022 (Butcher et al. 2022, PMID 36511921) | `references/consort-outcomes-checklist.md` |
+| Outcome reporting in a trial protocol (written against SPIRIT 2013, which SPIRIT 2025 supersedes; apply with the SPIRIT 2025 core; offer with the CONSORT extension for the report) | SPIRIT-Outcomes 2022 (Butcher et al. 2022, PMID 36512367) | `references/spirit-outcomes-checklist.md` |
 
 ## Observational Extension Layer
 
@@ -158,6 +160,8 @@ Appraisal tools assess risk of bias, methodological quality, or confidence; they
 | SQUIRE | Standards for QUality Improvement Reporting Excellence (2.0) | 18 | Quality improvement |
 | GRAMMS | Good Reporting of A Mixed Methods Study | 6 | Mixed methods |
 | TIDieR | Template for Intervention Description and Replication | 12 | Intervention description (any evaluative design) |
+| CONSORT-Outcomes 2022 | CONSORT extension for outcome reporting in trial reports (written against CONSORT 2010, which CONSORT 2025 supersedes) | 17 | Outcome reporting in trial reports (with the CONSORT core) |
+| SPIRIT-Outcomes 2022 | SPIRIT extension for outcome reporting in trial protocols (written against SPIRIT 2013, which SPIRIT 2025 supersedes) | 9 | Outcome reporting in trial protocols (with the SPIRIT core) |
 | CONSORT-AI | CONSORT extension for AI interventions (written against CONSORT 2010, superseded by CONSORT 2025) | 14 | AI + RCT |
 | SPIRIT-AI | SPIRIT extension for AI trial protocols (written against SPIRIT 2013, superseded by SPIRIT 2025) | 15 | AI + trial protocol |
 | CONSORT-CLUSTER | CONSORT extension for cluster randomised trials (2012; written against CONSORT 2010) | 19 extended items (item 10 replaced by 10a-10c) | Cluster RCT |

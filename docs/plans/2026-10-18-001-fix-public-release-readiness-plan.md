@@ -112,3 +112,11 @@ untouched and tracked as [issue #123](https://github.com/sajor2000/methodsmith/i
   RIGHT, and SRQR are paraphrased (BMJ, Annals, and Acad Med carry no open
   licence). Routing gains a cross-cutting extension layer (TIDieR, PRISMA-S),
   a practice-guideline primary (RIGHT), and a pick-one SRQR/COREQ rule.
+- **#121 implemented** on `feat/outcomes-extensions`: CONSORT-Outcomes 2022
+  (17 items) and SPIRIT-Outcomes 2022 (9 items) checklists registered as
+  `CONSORT-OUT` and `SPIRIT-OUT` (registry 47 -> 49). Both are JAMA 2022
+  copyright (all rights reserved), so item text is paraphrased; both carry
+  earlier-core notes like CONSORT-AI/SPIRIT-AI (written against CONSORT 2010 /
+  SPIRIT 2013, which the 2025 cores supersede; apply with the 2025 cores) and
+  route as a matched pair: the CONSORT extension for reports, the SPIRIT
+  extension for protocols.
