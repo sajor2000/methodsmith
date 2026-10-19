@@ -451,7 +451,7 @@ describe("corporate install artifacts", () => {
     const docsConfig = await fs.readFile(path.join(repoRoot, "website", "docusaurus.config.js"), "utf8")
     const markdownContracts = [
       {
-        install: rootReadme.match(/## Get started like Compound Engineering[\s\S]*?(?=\n### Use the plugin after installation)/)?.[0],
+        install: rootReadme.match(/## Get started[\s\S]*?(?=\n### Use the plugin after installation)/)?.[0],
         firstUse: rootReadme.match(/### Use the plugin after installation[\s\S]*?(?=\n### Locked-down or demo laptop)/)?.[0],
       },
       {
