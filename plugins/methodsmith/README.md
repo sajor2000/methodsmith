@@ -731,7 +731,7 @@ templates, data-quality tools, and provisional candidates.
 | `/method-figure` | Create publication figures in R (ggplot2) or Python (matplotlib, Jupyter/Marimo) in a journal-neutral clinical figure style (calibration-in-the-large via an offset model, cumulative incidence under competing risks), and validate figure manifests for source data, code, outputs, captions, alt text, and checklist traceability |
 | `/method-numbers` | Lock every manuscript, Table 1, caption, and abstract number to a registry of aggregates written by R or Python analysis code (`{{num:<id>}}` placeholders), and run a fail-closed gate that traces each number to its SAP output, script commit, and source hash |
 | `/method-submission-package` | Build a manuscript package manifest and Quarto-ready shell from SAP, Table 1, figure, checklist, and registry artifacts |
-| `/method-citations` | Resolve PubMed/Paperclip evidence and deliver a Word manuscript with editable Zotero citation fields |
+| `/method-citations` | Resolve PubMed/Paperclip evidence, gate the bibliography for fabricated references, and deliver a Word manuscript with editable Zotero citation fields |
 | `/method-write` | Draft, revise, or audit evidence-bound scientific manuscripts without imposing one journal's style |
 | `/method-voice` | Apply a precise, clinically detached house style to narrative clinical AI research prose |
 | `/method-section-check` | Keep Methods and Results factual while preserving rationale required by reporting guidelines, protocols, regulations, or reproducibility standards |
