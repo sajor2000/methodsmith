@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use Methodsmith, please cite the software as below."
+title: "Methodsmith"
+type: software
+authors:
+  - family-names: Rojas
+    given-names: Juan Carlos
+repository-code: "https://github.com/sajor2000/methodsmith"
+url: "https://sajor2000.github.io/methodsmith/"
+license: MIT
+abstract: >-
+  A research workflow plugin for coding agents that supports study planning,
+  reproducible statistical analysis, methodological review, and manuscript
+  preparation.

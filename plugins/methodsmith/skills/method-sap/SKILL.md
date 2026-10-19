@@ -67,7 +67,9 @@ Choose methods only after the claim, estimand, unit of analysis, and data struct
 
 For randomized designs, prespecify adjustment covariates before unblinding: baseline only, chosen for prognostic strength (never by testing baseline imbalance), including the randomization stratification factors. State whether the summary is conditional or unconditional (marginal); for a marginal target with a binary or time-to-event outcome, use standardization/g-computation with bootstrap or literature-justified robust SEs (FDA 2023 covariate-adjustment guidance).
 
-For nontrivial choices, record 1–3 citations in `Decision_Evidence`: primary model family, missing-data strategy, competing-risk handling, multilevel structure, agreement metric, composite outcome, causal adjustment, or benchmarking model. Find a methods anchor with the tools in `references/evidence-access.md`, read it before citing it, and record PMID/DOI plus the evidence label on the row.
+For nontrivial choices, record 1–3 citations in `Decision_Evidence`: primary model family, missing-data strategy, competing-risk handling, multilevel structure, agreement metric, composite outcome, causal adjustment, bias-analysis method, or benchmarking model. Find a methods anchor with the tools in `references/evidence-access.md`, read it before citing it, and record PMID/DOI plus the evidence label on the row.
+
+For any observational claim, attach a bias analysis for the systematic errors that could move the estimate. Read `references/bias-sensitivity.md` when a claim needs an unmeasured-confounding or other bias sensitivity analysis, or when the user asks for an E-value; it covers the E-value and its limits, the known-but-unmeasured-confounder bound, and quantitative bias analysis practice.
 
 ## Evidence access
 
@@ -82,6 +84,7 @@ At the first literature lookup of a session, check once which of these servers i
 - No method choice before `unit_of_analysis` and dataset grain are defined for that analysis.
 - No high-stakes method choice without at least one citation in `Decision_Evidence`.
 - No analysis without an explicit missing-data strategy and at least one diagnostic entry. Per estimand and variable group, the strategy names the assumed mechanism (MCAR/MAR/MNAR) and why; the primary approach (complete-case only when missingness is plausibly independent of the outcome given model covariates, otherwise multiple imputation or likelihood-based methods); for MI, the imputation model (outcome, all analysis-model variables and interactions, auxiliaries), the number of imputations (at least the percentage of incomplete cases; White, Royston & Wood 2011), and pooling by Rubin's rules; and an MNAR sensitivity analysis (delta-adjusted or tipping-point) for the primary endpoint.
+- No observational causal claim without a named bias analysis for unmeasured confounding. When an E-value is reported, also report the estimate and its confidence interval, state the scale conversion when the effect measure is not a risk ratio, and never present the E-value as a threshold or as evidence for causality. For a confounder that is known but unmeasured, use the bounding-factor calculation rather than an E-value alone.
 - No estimand without every anticipated intercurrent event (e.g., treatment discontinuation, rescue medication, switching, death before the outcome time point) named with its strategy. Flag hypothetical and principal-stratum strategies as resting on untestable assumptions and attach a sensitivity analysis.
 - No threshold, recode, or exclusion criterion only in prose; record it in `Decision_Evidence`.
 - No vague phrase such as “appropriate tests were used”; name the method, estimand, and evidence-backed rationale.

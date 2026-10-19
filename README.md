@@ -27,6 +27,12 @@ and checking that make the work reproducible and grounded: pre-specified SAPs,
 reviewed code, reporting checklists and numbers traced to the analysis.
 **67 skills, 55 specialist agents, and 39 reporting standards.**
 
+> **Research use only; not a medical device for clinical care.** Methodsmith
+> supports research workflows and is not intended to diagnose, treat, cure,
+> mitigate, or prevent disease or to guide patient-specific care. It is not
+> validated for clinical use and does not replace qualified clinical,
+> statistical, ethics, or institutional review.
+
 ## What Methodsmith can do
 
 | Stage | What it helps you do |
@@ -109,9 +115,9 @@ next safe step.
   of each guideline can load, and a test enforces it. Sources are listed in
   [Guideline sources](https://sajor2000.github.io/methodsmith/docs/guideline-sources).
 - **A PHI guard.** A pre-tool hook keeps data values out of the model in
-  schema-only projects and keeps identifiers out of MCP tools and uploads in
-  every mode. Outputs are aggregate, with small cells suppressed. Details in
-  [Sensitive-data boundary](#sensitive-data-boundary).
+  schema-only projects and checks identifiers in supported web, MCP, and shell
+  egress calls in every mode. Outputs are aggregate, with small cells
+  suppressed. Details in [Sensitive-data boundary](#sensitive-data-boundary).
 - **55 specialist reviewers**: methods, causal inference, multiplicity, leakage,
   calibration, fairness, reproducibility, PHI and more, run in parallel and
   deduplicated before you see them.
@@ -574,13 +580,19 @@ The schema helper `scripts/schema-peek.py` prints headings, types, counts, and
 header row, and `col_<k> [masked header]` for a heading that is itself an
 identifier (an identifier shape, or a value in the identifier index).
 
-#### What MCP tools receive
+#### What external tools receive
 
 PubMed, Paperclip, and every other MCP tool receive search terms, MeSH terms,
 PMIDs, DOIs, and paper titles. They never receive data values, identifiers,
 row text, or data files. This holds in **every mode, including after you
 approve the endpoint**: approving the model endpoint does not cover
 third-party services such as NCBI or Paperclip.
+
+Claude Code `WebSearch` queries, `WebFetch` URLs and prompts, MCP tool
+arguments, and detected shell uploads are checked for common identifier
+patterns and values in the project identifier index. Research search terms,
+MeSH terms, PMIDs, DOIs, and paper titles pass when they do not match an
+identifier.
 
 The same hook enforces this for every `mcp__*` call, for shell uploads, and for
 shell calls to NCBI E-utilities (`curl` or `wget` to
@@ -609,7 +621,9 @@ on a match without echoing it, and is silent when no index exists. With a
 **Limits.** The hook is defense in depth, not a sandbox. Enforcement is Claude
 Code only: Codex and OpenCode installs carry the hook entry but it exits
 immediately there, and Gemini, Kiro, Copilot, and Pi skip hooks, so those
-harnesses rely on the skill instructions alone. The script check is heuristic
+harnesses rely on the skill instructions alone. The hook requires `python3`.
+If it is missing, the launcher prints a warning and exits successfully, so the
+guard is inactive and calls are not blocked. The script check is heuristic
 static analysis: a script that builds a data path at run time, or reads data
 through a function the hook does not recognize, can still print values, and
 programs it cannot parse (deliberate obfuscation) are out of scope. Values
@@ -1084,7 +1098,7 @@ inside your coding agent. Literature skills query public services such as
 PubMed when you ask them to, and your agent's model provider sees what the agent
 reads. That is why the PHI guard keeps data values out of the model in
 schema-only projects and keeps identifiers out of MCP tools. See [Sensitive-data boundary](#sensitive-data-boundary)
-and [What MCP tools receive](#what-mcp-tools-receive).
+and [What external tools receive](#what-external-tools-receive).
 
 **R or Python?** Either. Setup detects the language, notebook format and data
 layer from the project and only asks about what it cannot infer.

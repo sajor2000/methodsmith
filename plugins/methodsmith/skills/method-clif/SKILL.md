@@ -195,6 +195,6 @@ Read each file at the step that names it (backtick paths, loaded on demand):
 - `references/clif-rules.md` — Core rules (Parquet, UTC datetimes, mCIDE vocab, project layout, sensitive-data boundary, template workflow). Read at Step 2, always.
 - `references/version-families.md` — Selection and migration contract for CLIF/mCIDE 2.1 and 3.0. Read before selecting a version family or validating v3 categories.
 - `references/mcide-vocab.md` — Cached 2.1 allow-lists plus pointers to authoritative mCIDE CSV sources; never use it for v3.
-- `references/poc-table.md` — CLIF table / mCIDE subdirectory to responsible POC (name, email, GitHub handle), for the protected-path guardrail.
+- `references/poc-table.md` — CLIF table / mCIDE subdirectory to responsible POC (name and GitHub handle), for the protected-path guardrail. Names and handles only; no contact addresses are cached.
 - `references/clifpy-recipes.md` — Python recipes (ClifOrchestrator, SOFA, wide dataset, validation). Load when generating Python CLIF code.
 - `references/r-template-recipes.md` — R recipes (arrow, cohort, QC, meta-analysis, propensity, federated). Load when generating R CLIF code.

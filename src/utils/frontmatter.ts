@@ -64,7 +64,7 @@ function formatYamlValue(value: unknown): string {
   if (raw.includes("\n")) {
     return `|\n${raw.split("\n").map((line) => `  ${line}`).join("\n")}`
   }
-  if (raw.includes(":") || raw.startsWith("[") || raw.startsWith("{") || raw === "*" || parsesAsNonString(raw)) {
+  if (raw.length === 0 || raw.includes(":") || raw.startsWith("[") || raw.startsWith("{") || raw === "*" || parsesAsNonString(raw)) {
     return JSON.stringify(raw)
   }
   return raw
