@@ -289,9 +289,7 @@
   },
   "keepOldCopies": {
     "$comment": "Paths that are copied, not moved, for one release because old links still point at them.",
-    "paths": [
-      "website/static/media/ce-datascience-overview.mp4"
-    ]
+    "paths": []
   },
   "upstreamCompoundEngineering": {
     "skills": [
