@@ -15,7 +15,7 @@
 
 </div>
 
-**Methodsmith** (formerly ce-datascience) is a plugin for Claude Code and Codex that brings <!-- rebrand:keep -->
+**Methodsmith** is a plugin for Claude Code and Codex that brings <!-- rebrand:keep -->
 the habits of a careful methods team to your coding agent. It plans the analysis
 before it runs, reviews it before anyone reads the results, and records what each
 study taught you, so the next one starts ahead. Clinical statistics, Python and ML
@@ -26,6 +26,22 @@ approve the plan and judge the findings. Methodsmith does the drafting, running
 and checking that make the work reproducible and grounded: pre-specified SAPs,
 reviewed code, reporting checklists and numbers traced to the analysis.
 **67 skills, 55 specialist agents, and 39 reporting standards.**
+
+## What Methodsmith can do
+
+| Stage | What it helps you do |
+|---|---|
+| **Frame and plan** | Turn a research question into a study design, estimands, an analysis plan, power or sample-size calculations, and preregistration packages. |
+| **Build analyses** | Check data and cohorts, then build reproducible R/Python analyses for clinical studies, machine learning, meta-analysis, CLIF, and omics. |
+| **Review the work** | Review methods, statistics, and code for leakage, calibration, fairness, and reproducibility issues before results are reported. |
+| **Prepare results** | Create tables, figures, model cards, manuscript drafts, and submission packages; trace registered numbers to SAP outputs, code commits, and source-file hashes. |
+| **Carry learning forward** | Record reviewed decisions and validated methods so the next study can start from them. |
+
+You choose the research question, approve the analysis plan, resolve review
+findings, and sign off the conclusions. Methodsmith drafts, runs, and checks
+the work; it does not make the scientific decisions for you. See the
+[worked examples](#what-can-it-do) and the
+[sensitive-data boundary and its limits](#sensitive-data-boundary).
 
 ## Install
 
@@ -48,6 +64,10 @@ and other agents: see [Get started](#get-started-like-compound-engineering) belo
 or the [setup guide](https://sajor2000.github.io/methodsmith/docs/setup).
 
 ## See it work
+
+<a href="https://sajor2000.github.io/methodsmith/#tour"><img src="website/static/media/methodsmith-tour-poster.jpg" width="100%" alt="Opening frame of the 90-second Methodsmith tour: From question to paper, with a methods team at your side. You stay the scientist. Select to watch the video on the Methodsmith site."></a>
+
+<sub><a href="https://sajor2000.github.io/methodsmith/#tour">Watch the 90-second tour</a>: guideline routing, literature search, question framing, the analysis plan, data checks in R or Python, figures, and a first Results draft. Silent, scripted illustration on synthetic data; screens are mock-ups of the formats the skills define, not a recording of a live run.</sub>
 
 <img src="website/static/brand/demo.svg" width="100%" alt="Terminal replay on synthetic data. /method-workflow detects an observational study and recommends method-sap. /method-sap links claim C1 to an ICH E9(R1) estimand and lists two decisions that block finalization. /method-review reports two P1, one P2 and one P3 finding, applies small-cell suppression, and returns Not ready.">
 

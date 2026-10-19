@@ -18,7 +18,8 @@ Renames ce-datascience to Methodsmith (plugin `methodsmith`, prefix `method-`).
 - The repo slug `sajor2000/ce-datascience` -> `sajor2000/methodsmith` and the
   Pages URL -> `sajor2000.github.io/methodsmith`. GitHub redirects the old URLs.
 - Paths in `keepOldCopies` are copied, not moved, for one release, because old
-  links still point at them (the overview video).
+  links still point at them. The list is empty now that the overview video it
+  held has been retired.
 
 ## What it keeps on purpose
 

@@ -1,18 +1,18 @@
 # Site animation source
 
-`methodsmith_overview.py` is the source for the silent overview video. The docs
-home page no longer embeds it (the human-in-the-loop diagram from
-`docs/brand/scripts/build_brand.py` does that job); the MP4 stays published
-because older links point at it. Rebuild the committed MP4 from the repository root:
+`methodsmith_overview.py` is the source for the retired silent overview video.
+Its MP4 is no longer committed or published; the docs home page embeds the
+90-second tour (`website/static/media/methodsmith-tour.mp4`) instead. To render
+the old overview locally from the repository root:
 
 ```bash
 bash website/animations/render-overview-video.sh
 ```
 
 The renderer uses an isolated Python 3.12 environment through `uv`; it does
-not modify the repository's application dependencies. Review the resulting
-`website/static/media/methodsmith-overview.mp4` and its poster frame
-(`methodsmith-overview-poster.jpg`, which needs `ffmpeg`) before committing them.
+not modify the repository's application dependencies. It writes
+`website/static/media/methodsmith-overview.mp4` and a poster frame
+(`methodsmith-overview-poster.jpg`, which needs `ffmpeg`); do not commit them.
 
 ## README diagrams
 

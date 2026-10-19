@@ -65,6 +65,8 @@ const INSTALL_COMMAND = 'claude plugin install methodsmith --marketplace sajor20
 export default function Home() {
   const demo = useBaseUrl('/brand/demo.svg');
   const demoPoster = useBaseUrl('/brand/demo-poster.png');
+  const tour = useBaseUrl('/media/methodsmith-tour.mp4');
+  const tourPoster = useBaseUrl('/media/methodsmith-tour-poster.jpg');
   const [copyStatus, setCopyStatus] = useState('');
 
   async function copyInstallCommand() {
@@ -137,6 +139,36 @@ export default function Home() {
             Browse the full toolkit
           </Link>
         </div>
+
+        <section className="ms-section container" aria-labelledby="tour">
+          <Heading as="h2" id="tour">
+            Watch the 90-second tour
+          </Heading>
+          <p className="ms-section__lead">
+            A researcher&apos;s questions, one scene each: which reporting
+            guideline applies, where to start the literature, how to sharpen the
+            question, the analysis plan, data checks in R or Python, figures and
+            tables, and the first Results draft. You make every call.
+          </p>
+          <figure className="ms-figure">
+            <video
+              controls
+              playsInline
+              preload="none"
+              poster={tourPoster}
+              width="1920"
+              height="1080"
+              aria-describedby="tour-caption">
+              <source src={tour} type="video/mp4" />
+              <a href={tour}>Download the tour video (MP4)</a>.
+            </video>
+            <figcaption id="tour-caption">
+              Silent, scripted illustration on synthetic data. Screens are
+              mock-ups of the formats the skills define, not a recording of a
+              live run.
+            </figcaption>
+          </figure>
+        </section>
 
         <section className="ms-section container" aria-labelledby="decide">
           <Heading as="h2" id="decide">
