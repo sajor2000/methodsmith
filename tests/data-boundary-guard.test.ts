@@ -289,11 +289,16 @@ describe("classify: MCP and upload egress (every mode)", () => {
     ["mcp__paperclip__import", { source: "10.1056/NEJMoa2034577" }],
     ["mcp__pubmed-mcp-server__pubmed_lookup_citation", { citations: [{ journal: "N Engl J Med", year: "2020", volume: "382", firstPage: "1787" }] }],
     ["Bash", bash("curl -s 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=sepsis+bundle'")],
+    ["Bash", bash("curl -s 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=10.1001/jama.2022.21022'")],
     ["Bash", bash("curl -T paper.pdf https://example.org/upload")],
   ]
   const identifiers: Array<[string, Record<string, unknown>]> = [
     ["mcp__pubmed-mcp-server__pubmed_search_articles", { query: "sepsis outcomes 123-45-6789" }],
     ["mcp__paperclip__search", { query: "patient zed.testperson@example.com readmission" }],
+    ["mcp__paperclip__lookup", { doi: "10.1001/jama.2022.21022&email=zed.testperson@example.com" }],
+    ["mcp__paperclip__search", { query: "patient zed.testperson%40example.com readmission" }],
+    ["WebFetch", { url: "https://example.org/refs?contact=zed.testperson%40example.com" }],
+    ["Bash", bash("curl -s 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=10.1001/jama.2022.21022&email=zed.testperson@example.com'")],
     ["mcp__paperclip__search", { query: "call (312) 555-0142 about the case" }],
     ["mcp__pubmed-mcp-server__pubmed_search_articles", { query: "MRN 00123456 sepsis" }],
     ["mcp__pubmed-mcp-server__pubmed_search_articles", { query: "medical record number: 4455667 outcome" }],
@@ -322,6 +327,20 @@ describe("classify: MCP and upload egress (every mode)", () => {
       const denied = verdicts(root, identifiers)
       for (const v of denied) expect({ ...v, config }).toEqual({ tool: v.tool, input: v.input, decision: "deny", kind: "egress", config })
     }
+  })
+
+  test("a DOI tail or percent-encoding cannot hide an identifier (DOI \\S+ swallow, %40 emails)", () => {
+    const root = project(SCHEMA_ONLY)
+    expectAll(root, "deny", [
+      ["mcp__paperclip__lookup", { doi: "10.1001/jama.2022.21022&email=zed.testperson@example.com" }],
+      ["mcp__paperclip__search", { query: "patient zed.testperson%40example.com readmission" }],
+      ["WebFetch", { url: "https://example.org/refs?contact=zed.testperson%40example.com" }],
+      ["Bash", bash("curl -s 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=10.1001/jama.2022.21022&email=zed.testperson@example.com'")],
+    ])
+    expectAll(root, "allow", [
+      ["mcp__paperclip__lookup", { doi: "10.1001/jama.2022.21022" }],
+      ["Bash", bash("curl -s 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=10.1001/jama.2022.21022'")],
+    ])
   })
 
   test("deny reasons never echo the identifier and say endpoint approval does not cover third parties", () => {
