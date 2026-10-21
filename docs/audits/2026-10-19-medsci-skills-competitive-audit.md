@@ -189,3 +189,28 @@ In priority order:
   statement) may serve better than a standalone skill.
 - Gaps #1, #3, #6, #7: deliberately not taken (maintainer action, audience
   decision, optional).
+
+## Closure record (2026-10-21)
+
+The ten gaps were filed as tracked issues (#141-#148). Current state:
+
+- Gap #1: open as #141 — Zenodo archive and DOI; maintainer action, awaiting
+  the account link on zenodo.org.
+- Gap #3: closed by the docs-only fallback (PR #154) — the no-terminal path is
+  documented for every Claude Code surface; the packaged classroom installer
+  stays out of scope unless the issue is reopened.
+- Gap #5: closed — journal selection landed as `method-journal-select`
+  (PR #151), and ICMJE COI took the Option B path recorded above: a
+  collect-and-cross-check step inside `method-submission-package` (PR #153)
+  with a behavioral eval case for the funding/COI-statement mismatch blocker.
+- Gap #6: open as #144 — a single BCG public-data meta-analysis demo is
+  scoped; awaiting R + metafor confirmation and a maintainer go before the
+  live run.
+- Gap #7: closed by PR #150 — the `gh skill install` route verified on
+  gh 2.100.0 (pinned installs, plugins/ convention discovery) and documented,
+  with the tests/fixtures sweep noted as a caveat.
+- Gap #8: open as #146 — locale-pack architecture and country order proposed
+  (UK first as the template pack); awaiting the maintainer go.
+- Gap #9: wontfix, recorded as #147.
+- Gap #10: closed by the machine-checked `THIRD-PARTY-NOTICES.md` (PR #149),
+  generated from this registry and the checklist licence headers.
