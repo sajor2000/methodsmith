@@ -81,6 +81,16 @@ The same one-step install works inside a running Claude Code session
 These version requirements differ between the terminal and in-session commands;
 see the [Claude Code publishing guide](https://code.claude.com/docs/en/plugins/publish#tell-users-how-to-install).
 
+### No terminal at all
+
+After Claude Code itself is installed, the plugin install needs no terminal on
+any Claude Code surface (desktop app or terminal): open a session and paste
+`/plugin install methodsmith --marketplace sajor2000/methodsmith` in the prompt,
+then run `/methodsmith:method-setup`. Turn on auto-update for the methodsmith
+marketplace (`/plugin` -> Marketplaces -> methodsmith -> Enable auto-update) so
+new versions arrive on their own. Only the source-checkout and
+offline-artifact routes below need a terminal or a packaged file.
+
 ### Claude Code via GitHub CLI (skills only)
 
 GitHub CLI 2.90+ (verified with 2.100.0) can install the skills without the

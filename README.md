@@ -335,6 +335,11 @@ Or, inside a running Claude Code session (2.1.275 or later):
 /plugin install methodsmith --marketplace sajor2000/methodsmith
 ```
 
+No terminal at all: the in-session install works on any Claude Code surface
+(desktop app or terminal). Paste the `/plugin install ...` line above in the
+prompt, run `/methodsmith:method-setup`, and enable auto-update under
+`/plugin` -> Marketplaces. Details: [docs/setup.md](docs/setup.md).
+
 From a source checkout, with the optional bare `/method-*` aliases, on macOS,
 Linux, WSL, or Git Bash:
 
