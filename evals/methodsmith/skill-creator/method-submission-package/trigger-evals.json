@@ -8,7 +8,7 @@
   {"query": "Is the paper submission-ready? Check that the SAP, Table 1, figures, reporting checklist, and provenance files are all present and generate a package readiness report.", "should_trigger": true},
   {"query": "pls build the journal package for the ARDS phenotype study, OSF prereg is already done and should be linked in", "should_trigger": true},
   {"query": "Create the quarto manuscript skeleton (manuscript.qmd + package-manifest.json) wired to our existing tables and figures so we can submit to Critical Care.", "should_trigger": true},
-  {"query": "Our study is wrapping up - collect all the publication artifacts into a traceable submission bundle for the Annals of Internal Medicine.", "should_trigger": true},
+  {"query": "Our NEJM Evidence submission is due - assemble the package, prepare the ICMJE COI form data for all four authors, and make sure the manuscript's conflict-of-interest statement matches our funding note.", "should_trigger": true},
   {"query": "Generate Table 1 baseline characteristics stratified by treatment arm from analysis/sap-tables/03-variables.csv for the manuscript.", "should_trigger": false},
   {"query": "Make a JAMA-style Kaplan-Meier figure for 90-day survival by vasopressin exposure for the manuscript.", "should_trigger": false},
   {"query": "Add Zotero citations to manuscript/main.docx and verify each reference supports its claim before we submit.", "should_trigger": false},

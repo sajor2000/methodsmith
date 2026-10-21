@@ -27,6 +27,7 @@ Build a traceable manuscript package manifest. The skill wires known study artif
 3. Include selected reporting checklist files from the guideline registry.
 4. Include preregistration and model-card artifacts when applicable.
 4b. **AI-use disclosure.** When AI-assisted technologies contributed to the manuscript, confirm the disclosure names the tool and its purpose, appears in both the cover letter and the manuscript, lists no AI tool as an author, and leaves a named human accountable for the content (ICMJE Recommendations, Section V and Section II.A.4). Treat a missing or vague disclosure as a package blocker.
+4c. **ICMJE COI disclosures.** Collect each author's ICMJE disclosure data: relevant financial activities with commercial entities, funding received for this work, and affiliation (ICMJE Recommendations, Section II.D). Write the form-ready data as one structured entry per author under `manuscript/coi/` — data only; each author completes and signs their own ICMJE form. Cross-check the manuscript's COI statement against the collected data and against every funder named in the manuscript, cover letter, or registry entry. A missing COI statement, a funder present in one source but absent from another, or a "no conflicts" statement contradicted by the collected data blocks the package until reconciled.
 5. If the deliverable is a Word manuscript, run `method-citations` before
    final packaging and include the field-bearing DOCX master plus its citation
    ledger; a flattened DOCX or static bibliography is not the editable master.

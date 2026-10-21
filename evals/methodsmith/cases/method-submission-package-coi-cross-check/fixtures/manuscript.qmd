@@ -1,0 +1,21 @@
+---
+title: "Vasopressin timing and 28-day mortality in ICU patients: a retrospective cohort study"
+format: quarto
+---
+
+## Funding
+
+This work was supported by grant R01-EXAMPLE-777 from the Example Heart Institute (salary support for the analyst time) and by the Department of Internal Medicine research fund.
+
+## Conflicts of interest
+
+All authors declare no conflicts of interest.
+
+## Author list
+
+- A. Analyst (Department of Internal Medicine)
+- R. Reviewer (Department of Internal Medicine)
+
+## AI use
+
+No AI-assisted technologies contributed to this manuscript.
