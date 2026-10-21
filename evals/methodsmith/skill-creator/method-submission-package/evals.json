@@ -13,6 +13,8 @@
         "Includes the STROBE reporting checklist in the manifest",
         "Does not write new manuscript prose, results, or scientific claims",
         "Runs the method-numbers number gate on the manuscript sources, rendered copies, and tables before the manifest, and never sets ready-for-signoff unless it printed PASS",
+        "Collects per-author ICMJE COI disclosure data under manuscript/coi/ as form-ready data only, never signing a form for an author",
+        "Cross-checks the manuscript's COI statement against the collected disclosures and every funder named in the manuscript, cover letter, or registry entry, and blocks the package on a missing or inconsistent statement",
         "The builder itself executes the number gate and blocks when the helper is missing, no reportable numbers are checked, or a typed result fails"
       ]
     },
@@ -37,7 +39,8 @@
         "Does not convert the Word manuscript to Quarto; generates the same package manifest for a non-Quarto project (no manuscript.qmd stub)",
         "Runs or requires method-citations before final packaging",
         "Records the field-bearing DOCX master and the citation ledger in the manifest's word_master and citation_ledger fields after the final script run, and does not treat a flattened DOCX or static bibliography as the editable master",
-        "Does not set readiness to ready-for-signoff or call the package submission-ready without a named human reviewer recorded in signoff_reviewer"
+        "Does not set readiness to ready-for-signoff or call the package submission-ready without a named human reviewer recorded in signoff_reviewer",
+        "Runs the same ICMJE COI collection and cross-check for the Word deliverable"
       ]
     }
   ]
