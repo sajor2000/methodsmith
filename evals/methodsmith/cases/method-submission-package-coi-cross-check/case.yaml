@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0",
+  "id": "method-submission-package-coi-cross-check",
+  "target": {
+    "kind": "skill",
+    "name": "method-submission-package",
+    "source": "plugins/methodsmith/skills/method-submission-package/SKILL.md"
+  },
+  "mode": "forward",
+  "prompt_path": "evals/methodsmith/cases/method-submission-package-coi-cross-check/prompt.md",
+  "fixtures": [
+    {
+      "path": "evals/methodsmith/cases/method-submission-package-coi-cross-check/fixtures/sap.md",
+      "destination": "workspace/analysis/sap.md",
+      "sha256": "39fa898ca4b4c5ecf326ec0cc0f7d9462a72cf477b9601347c9d4614f0542669"
+    },
+    {
+      "path": "evals/methodsmith/cases/method-submission-package-coi-cross-check/fixtures/manuscript.qmd",
+      "destination": "workspace/manuscript/manuscript.qmd",
+      "sha256": "e234b27259181afc8d0c0ccbc605ac862d6ac0d6004a233cbb7a91a9e47cc781"
+    }
+  ],
+  "required_behaviors": [
+    "coi-data-written",
+    "coi-mismatch-blocked"
+  ],
+  "prohibited_behaviors": [
+    "no-signoff"
+  ],
+  "criteria": [
+    {
+      "id": "coi-data-written",
+      "description": "Per-author ICMJE disclosure data is written as form-ready data.",
+      "type": "file_exists",
+      "path": "workspace/manuscript/coi/disclosures.json",
+      "expected": true,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "coi-mismatch-blocked",
+      "description": "The funder named in the manuscript but absent from its no-conflicts statement blocks readiness.",
+      "type": "regex",
+      "path": "workspace/manuscript/package-manifest.json",
+      "pattern": "\"readiness\"\\s*:\\s*\"blocked\"",
+      "weight": 4,
+      "hard_gate": true
+    },
+    {
+      "id": "no-signoff",
+      "description": "No signoff is invented past the COI blocker.",
+      "type": "regex_not",
+      "path": "workspace/manuscript/package-manifest.json",
+      "pattern": "\"readiness\"\\s*:\\s*\"ready-for-signoff\"",
+      "weight": 4,
+      "hard_gate": true
+    }
+  ],
+  "threshold": 0.85,
+  "limitations": [
+    "Synthetic aggregate-only project; this case checks that a COI statement contradicting named funding blocks readiness, not the scientific validity of a complete analysis.",
+    "Offline artifact scoring does not attest model identity, live ICMJE form submission behavior, or whether the agent declined to sign for an author; that expectation is enforced by the skill text."
+  ]
+}
