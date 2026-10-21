@@ -54,6 +54,7 @@
     "eval:score": "bun run scripts/evals/score.ts",
     "eval:report": "bun run scripts/evals/report.ts",
     "docs:guideline-sources": "bun run scripts/docs/guideline-sources.ts",
+    "docs:third-party-notices": "bun run scripts/docs/third-party-notices.ts",
     "legacy:fingerprints": "bun run scripts/maintenance/description-fingerprints.ts",
     "rebrand": "bun run scripts/rebrand/rename.ts"
   },
