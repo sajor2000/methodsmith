@@ -363,6 +363,23 @@ The `--aliases` flag is optional; it installs safe local aliases so the
 demo-friendly bare `/method-*` commands work. The namespaced command above is the
 reliable default for every native Claude plugin install.
 
+### Claude Code via GitHub CLI (skills only)
+
+GitHub CLI 2.90+ (verified with 2.100.0) can install the skills without the
+plugin machinery. Install every skill, pinned to the latest release tag, or one
+skill by name (add `--pin methodsmith-v5.1.1` to hold a fixed version):
+
+```bash
+gh skill install sajor2000/methodsmith --all --agent claude-code --scope user
+gh skill install sajor2000/methodsmith method-citations --agent claude-code --scope user
+```
+
+This route copies skills only — no reviewer agents, no commands, no hooks, and
+no auto-update (update by re-running the command after a new release) — writes
+them flat into your skills folder, and `--all` also picks up the sample skills
+from the repository's `tests/fixtures/`; prefer the single-skill form, or delete
+the extras afterwards. See the [setup guide](docs/setup.md) for details.
+
 ### Codex, easiest path
 
 macOS, Linux, WSL, or Git Bash:
@@ -971,6 +988,7 @@ Run generated installs from the repo root (`cd "$CE_DS_REPO"`). Use
 | Platform | Easiest command |
 |---|---|
 | Claude Code, no checkout | `claude plugin install methodsmith --marketplace sajor2000/methodsmith` then `/methodsmith:method-setup` |
+| Claude Code via GitHub CLI 2.90+ | `gh skill install sajor2000/methodsmith --all --agent claude-code --scope user` (skills only; caveats in the setup guide) |
 | Claude Code, one-command setup | `bash install.sh claude --aliases` then `/method-setup` |
 | Claude Code, Windows PowerShell | `.\install.ps1 claude -Aliases` then `/method-setup` |
 | Claude Code | `claude --plugin-dir "$CE_DS_REPO/plugins/methodsmith"` then `/methodsmith:method-setup` |
@@ -1022,6 +1040,7 @@ How a new version reaches you depends on the agent.
 | Agent | Automatic? | Update by hand |
 |---|---|---|
 | Claude Code | Yes, once auto-update is on for the `methodsmith` marketplace. `bash install.sh claude` and `.\install.ps1 claude` turn it on (add `--no-auto-update` or `-NoAutoUpdate` to skip). After a one-line `claude plugin install ... --marketplace sajor2000/methodsmith`, turn it on yourself: run `/plugin`, open **Marketplaces**, select `methodsmith`, and choose **Enable auto-update**. | `claude plugin update methodsmith@methodsmith`, then `/reload-plugins` |
+| GitHub CLI skills-only install | No. | Re-run your `gh skill install` command after a new release. |
 | Codex | No. Codex has no documented automatic plugin update. | `codex plugin marketplace upgrade methodsmith`, then restart Codex. Refresh the generated agents with `bunx github:sajor2000/methodsmith install methodsmith --to codex` |
 | OpenCode, Pi, Gemini CLI, Kiro | No. These use generated files. | `bunx github:sajor2000/methodsmith install methodsmith --to opencode` (or `--to pi`, `--to gemini`, `--to kiro`; add `--output <workspace>` for a project install) |
 | Qwen Code | No. | `qwen extensions update methodsmith` |

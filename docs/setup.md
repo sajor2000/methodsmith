@@ -81,6 +81,29 @@ The same one-step install works inside a running Claude Code session
 These version requirements differ between the terminal and in-session commands;
 see the [Claude Code publishing guide](https://code.claude.com/docs/en/plugins/publish#tell-users-how-to-install).
 
+### Claude Code via GitHub CLI (skills only)
+
+GitHub CLI 2.90+ (verified with 2.100.0) can install the skills without the
+plugin machinery. Install every skill, pinned to the latest release tag:
+
+```bash
+gh skill install sajor2000/methodsmith --all --agent claude-code --scope user
+```
+
+Or one skill by name (add `--pin methodsmith-v5.1.1` to hold a fixed version,
+for example for a paper that cites the version it used):
+
+```bash
+gh skill install sajor2000/methodsmith method-citations --agent claude-code --scope user
+```
+
+Three caveats. This route copies skills only: no reviewer agents, no commands,
+no hooks, and no auto-update (update by re-running the command after a new
+release). Skills are written flat into your skills folder, where they can
+collide with same-named skills you own. And `--all` also picks up the sample
+skills from the repository's `tests/fixtures/`; prefer the single-skill form,
+or delete the extras afterwards.
+
 From a source checkout (also adds the optional bare `/method-*` aliases), on macOS,
 Linux, WSL, or Git Bash:
 
