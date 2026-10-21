@@ -246,7 +246,7 @@ This applies equally to any platform's variables — a skill converted from Code
 - **Solutions** live in `docs/solutions/` — documented decisions and patterns.
 - **Audits** live in `docs/audits/` — recorded review passes.
 - **Brand assets** live in `docs/brand/`; the site builds from `website/`.
-- `docs/setup.md` is the canonical setup guide; `docs/guideline-sources.md` is generated from the guideline registry (`bun run docs:guideline-sources`) — never edit it by hand.
+- `docs/setup.md` is the canonical setup guide; `docs/guideline-sources.md` is generated from the guideline registry (`bun run docs:guideline-sources`) — never edit it by hand. `THIRD-PARTY-NOTICES.md` is generated from the guideline registry and the checklist licence headers (`bun run docs:third-party-notices`) — never edit it by hand either; update the registry or the checklist header instead and regenerate.
 
 ### Solution categories (`docs/solutions/`)
 
