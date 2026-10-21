@@ -6,6 +6,15 @@ requests. For the current release status and notes, use the repository's
 open release PRs; do not hand-add release entries from feature or documentation
 work.
 
+## [5.2.0](https://github.com/sajor2000/methodsmith/compare/cli-v5.1.1...cli-v5.2.0) (2026-10-21)
+
+
+### Features
+
+* **guidelines:** publish machine-checked third-party notices file ([#149](https://github.com/sajor2000/methodsmith/issues/149)) ([1daea92](https://github.com/sajor2000/methodsmith/commit/1daea926b4519a61eccfe871a4b1b4acfb3e9bd3)), closes [#148](https://github.com/sajor2000/methodsmith/issues/148)
+* **method-citations:** gate bibliographies for fabricated references ([#138](https://github.com/sajor2000/methodsmith/issues/138)) ([3b3781f](https://github.com/sajor2000/methodsmith/commit/3b3781f3ab312054d5c9947b0fe6e504671a3307))
+* **method-verify:** recompute reported statistics for internal consistency ([#140](https://github.com/sajor2000/methodsmith/issues/140)) ([1811214](https://github.com/sajor2000/methodsmith/commit/1811214c117f95fc3f6f1d1fa567b28f06d443fa))
+
 ## [5.1.1](https://github.com/sajor2000/methodsmith/compare/cli-v5.1.0...cli-v5.1.1) (2026-10-19)
 
 

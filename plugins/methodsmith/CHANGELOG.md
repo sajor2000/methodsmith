@@ -5,6 +5,14 @@ release pull requests. Canonical current release notes are the repository's
 [GitHub Releases](https://github.com/sajor2000/ce-datascience/releases) and
 open release PRs. Do not hand-add entries from feature or documentation work.
 
+## [5.2.0](https://github.com/sajor2000/methodsmith/compare/methodsmith-v5.1.1...methodsmith-v5.2.0) (2026-10-21)
+
+
+### Features
+
+* **method-citations:** gate bibliographies for fabricated references ([#138](https://github.com/sajor2000/methodsmith/issues/138)) ([3b3781f](https://github.com/sajor2000/methodsmith/commit/3b3781f3ab312054d5c9947b0fe6e504671a3307))
+* **method-verify:** recompute reported statistics for internal consistency ([#140](https://github.com/sajor2000/methodsmith/issues/140)) ([1811214](https://github.com/sajor2000/methodsmith/commit/1811214c117f95fc3f6f1d1fa567b28f06d443fa))
+
 ## [5.1.1](https://github.com/sajor2000/methodsmith/compare/methodsmith-v5.1.0...methodsmith-v5.1.1) (2026-10-19)
 
 
