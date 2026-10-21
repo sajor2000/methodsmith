@@ -1,0 +1,44 @@
+{
+  "skill_name": "method-journal-select",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Our ICU delirium prediction-model manuscript (manuscript/main.docx, external validation on MIMIC-IV plus a single-center holdout) is ready. It needs to be MEDLINE-indexed, we can't pay an APC over $2,000, and review shouldn't take a year. Where should we send it? Give me a real recommendation, not a list.",
+      "expected_output": "Profiles the work, asks for must-haves only when they change the ranking, builds a 5-8 candidate pool from each journal's own aims-and-scope pages, gathers PubMed scope-fit evidence per candidate, screens indexing claims, and returns a ranked sourced table with a recommended target and two backups, leaving the choice to the author.",
+      "files": [],
+      "expectations": [
+        "Builds the candidate pool from each journal's own aims-and-scope page read via web tools, not from memory or third-party summaries",
+        "Gathers scope-fit evidence by searching PubMed restricted to each candidate journal for similar recent studies, and reports counts and recency rather than a bare scope verdict",
+        "Applies the stated constraints (MEDLINE indexing, APC cap, review speed) as filters and says which candidate failed which constraint",
+        "Verifies each candidate's indexing claims against the NLM Catalog or DOAJ and flags any claim that cannot be verified instead of accepting or silently dropping it",
+        "Marks every unsourced cell unknown with no invented impact factors, acceptance rates, or turnaround times",
+        "Recommends one target plus two backups with rationale and a per-journal next-step list, and leaves the final choice to the author",
+        "Emits the __CE_JOURNAL_SELECT__ handoff line with target, backups, candidate, sourced-cell and unknown-cell counts"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "A colleague suggested we submit the sepsis RCT to 'Annals of Clinical and Critical Care Science'. I'd never heard of it and their site says indexed in Scopus and PubMed. Can you check before we commit?",
+      "expected_output": "Verifies the journal's indexing claims against the NLM Catalog and DOAJ, finds the claims unverifiable or the venue predatory-patterned, and reports the flags with sources rather than approving or silently dropping the venue.",
+      "files": [],
+      "expectations": [
+        "Checks the claimed Scopus/PubMed indexing against the NLM Catalog or DOAJ rather than trusting the journal's own site",
+        "Reports the specific check, the claim as printed, and the source that failed to verify it",
+        "Flags predatory patterns (copycat name, unverifiable indexing, APC-only model) explicitly instead of silently dropping the journal from consideration",
+        "Does not assert predatory status as a fact beyond the verifiable flags, and does not approve the venue while its claims are unverified"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "No manuscript yet, just an abstract for a qualitative study of nurse-led escalation pathways, and we want full open access with an APC under $1,500. Can you rank candidate journals now so we know what we're writing toward?",
+      "expected_output": "Ranks candidates from the abstract under the stated access-policy constraint, marks the fit judgment provisional pending the full manuscript, and keeps every unsourced metric unknown.",
+      "files": [],
+      "expectations": [
+        "Ranks on the abstract or a study profile without demanding a full manuscript, and marks the fit judgment provisional",
+        "Applies the full-open-access and APC-cap constraints as hard filters with sourced policy pages",
+        "Keeps the pool sourced from journal aims-and-scope pages and scope-fit evidence from PubMed journal-scoped searches",
+        "Marks unsourced metrics unknown rather than filling them in, and leaves the final choice to the author"
+      ]
+    }
+  ]
+}

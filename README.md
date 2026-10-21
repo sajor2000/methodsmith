@@ -25,7 +25,7 @@ papers, and meta-analysis; R or Python.
 approve the plan and judge the findings. Methodsmith does the drafting, running
 and checking that make the work reproducible and grounded: pre-specified SAPs,
 reviewed code, reporting checklists and numbers traced to the analysis.
-**67 skills, 55 specialist agents, and 49 reporting standards.**
+**68 skills, 55 specialist agents, and 49 reporting standards.**
 
 ```bash
 # Install in Claude Code (2.1.292 or later), then set up a project
@@ -255,6 +255,7 @@ new names.
 | `/ce-grill` | `/method-grill` |
 | `/ce-handoff` | `/method-handoff` |
 | `/ce-ideate` | `/method-ideate` |
+| `/ce-journal-select` | `/method-journal-select` |
 | `/ce-language-detect` | `/method-language-detect` |
 | `/ce-literature-search` | `/method-lit-search` |
 | `/ce-manuscript-citations` | `/method-citations` |
@@ -789,12 +790,17 @@ primary sources. What that means in practice:
 ### Prepare a manuscript for handoff
 
 ```text
+/method-journal-select
 /method-submission-package
 /method-citations
 /method-write
 /method-presubmit
 /method-signoff
 ```
+
+Pick the target journal with `/method-journal-select` before packaging: its
+per-journal next-step list (article type, word limits, required checklist)
+sets what the package must satisfy.
 
 Use `/method-voice`, `/method-section-check`, or
 `/method-anti-slop` directly only for a focused prose pass. The combined

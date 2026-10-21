@@ -8,7 +8,7 @@ numbers to their analysis code. Built for clinical statistics, machine learning,
 and meta-analysis. Your team keeps scientific judgment and responsibility for
 the results.
 
-**67 skills · 55 specialist agents · 49 reporting standards.** Works with Claude
+**68 skills · 55 specialist agents · 49 reporting standards.** Works with Claude
 Code, Codex, Pi, Gemini CLI, OpenCode, Kiro, and Qwen Code.
 
 > **Research use only; not a medical device for clinical care.** Methodsmith
@@ -109,6 +109,7 @@ new names.
 | `/ce-grill` | `/method-grill` |
 | `/ce-handoff` | `/method-handoff` |
 | `/ce-ideate` | `/method-ideate` |
+| `/ce-journal-select` | `/method-journal-select` |
 | `/ce-language-detect` | `/method-language-detect` |
 | `/ce-literature-search` | `/method-lit-search` |
 | `/ce-manuscript-citations` | `/method-citations` |
@@ -602,7 +603,7 @@ one-line warning, so a hook bug never blocks unrelated work.
 | Component | Count |
 |-----------|-------|
 | Agents | 55 |
-| Skills | 67 |
+| Skills | 68 |
 
 Publication workflows use shared artifact registries and publication profiles so tables, figures, manuscript packages, registry exports, review packs, and signoff ledgers stay consistent. The initial publication profiles are JAMA and generic biomedical.
 
@@ -730,6 +731,7 @@ templates, data-quality tools, and provisional candidates.
 | `/method-table1` | Generate a publication-ready Table 1 shell, spec, and validation report from the SAP variables catalog; `--design rct\|observational\|descriptive` sets the comparison columns (SMD column for observational comparisons, no baseline p-values for randomized trials) |
 | `/method-figure` | Create publication figures in R (ggplot2) or Python (matplotlib, Jupyter/Marimo) in a journal-neutral clinical figure style (calibration-in-the-large via an offset model, cumulative incidence under competing risks), and validate figure manifests for source data, code, outputs, captions, alt text, and checklist traceability |
 | `/method-numbers` | Lock every manuscript, Table 1, caption, and abstract number to a registry of aggregates written by R or Python analysis code (`{{num:<id>}}` placeholders), and run a fail-closed gate that traces each number to its SAP output, script commit, and source hash |
+| `/method-journal-select` | Match a finished manuscript or abstract to candidate journals with sourced scope fit, PubMed scope-fit evidence, a legitimacy screen on indexing claims, and a ranked target with backups |
 | `/method-submission-package` | Build a manuscript package manifest and Quarto-ready shell from SAP, Table 1, figure, checklist, and registry artifacts |
 | `/method-citations` | Resolve PubMed/Paperclip evidence, gate the bibliography for fabricated references, and deliver a Word manuscript with editable Zotero citation fields |
 | `/method-write` | Draft, revise, or audit evidence-bound scientific manuscripts without imposing one journal's style |

@@ -33,6 +33,7 @@ Methodsmith 5.0 renamed every command and agent from the `method-` prefix to
 | `/ce-grill` | `/method-grill` |
 | `/ce-handoff` | `/method-handoff` |
 | `/ce-ideate` | `/method-ideate` |
+| `/ce-journal-select` | `/method-journal-select` |
 | `/ce-language-detect` | `/method-language-detect` |
 | `/ce-literature-search` | `/method-lit-search` |
 | `/ce-manuscript-citations` | `/method-citations` |

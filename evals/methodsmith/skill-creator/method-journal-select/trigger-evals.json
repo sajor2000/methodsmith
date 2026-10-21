@@ -1,0 +1,22 @@
+[
+  {"query": "Our ICU delirium prediction-model manuscript is done. Where should we submit it? Needs MEDLINE indexing and we can't pay a big APC.", "should_trigger": true},
+  {"query": "Rank candidate journals for our sepsis RCT manuscript with scope-fit evidence and give me a target plus two backups.", "should_trigger": true},
+  {"query": "We want full open access under $2,000 APC for this survey study - which journals actually fit and are legitimately indexed?", "should_trigger": true},
+  {"query": "A colleague swears by 'Annals of Clinical and Critical Care Science' for our AKI paper but I can't find it in the NLM Catalog. Is it legit or should we cross it off?", "should_trigger": true},
+  {"query": "Paper got rejected from Critical Care Medicine. What are realistic backup targets for a single-center before-after study on vasopressor timing?", "should_trigger": true},
+  {"query": "Which journals publish pragmatic trials in general internal medicine with a reasonable decision speed? Build me a sourced comparison table.", "should_trigger": true},
+  {"query": "Choose target journals for the MIMIC-IV secondary analysis before we format the manuscript, so we write toward their article types and word limits.", "should_trigger": true},
+  {"query": "Match this abstract to 5-8 candidate journals, search each journal for similar recent studies, and flag any whose indexing claims don't verify.", "should_trigger": true},
+  {"query": "Is the Journal of Clinical Monitoring and Computing in scope for our operating-room alarm fatigue observational study?", "should_trigger": true},
+  {"query": "Our manuscript is ready but we're torn between JAMA Network Open, Critical Care Medicine, and Chest. Do a sourced comparison and recommend one.", "should_trigger": true},
+  {"query": "Search PubMed for RCTs of early mobilization in ventilated adults since 2018 and export PMIDs and abstracts to a CSV.", "should_trigger": false},
+  {"query": "Assemble the submission bundle for JAMA Network Open: SAP, Table 1, figures, STROBE checklist, and the readiness report.", "should_trigger": false},
+  {"query": "Write the cover letter to the editor explaining why our findings matter to their readers.", "should_trigger": false},
+  {"query": "Reformat the manuscript's reference list from Vancouver to AMA style for the new target journal.", "should_trigger": false},
+  {"query": "What's the current impact factor of Critical Care Medicine and how has it trended over the last five years?", "should_trigger": false},
+  {"query": "Draft the point-by-point response to reviewers for the Critical Care Medicine resubmission.", "should_trigger": false},
+  {"query": "Which reporting checklist should a secondary analysis of EHR data follow - STROBE, RECORD, or both?", "should_trigger": false},
+  {"query": "Run the pre-submission voice and anti-slop gate on the Discussion section before we send the manuscript anywhere.", "should_trigger": false},
+  {"query": "Pool the odds ratios from the six ICU studies we shortlisted for the meta-analysis.", "should_trigger": false},
+  {"query": "Set up the Zotero group library and insert the citations as live Word fields for the submission.", "should_trigger": false}
+]
