@@ -1,0 +1,27 @@
+{
+  "locale": "uk",
+  "description": "United Kingdom: NHS number and Scottish CHI (checksum-validated) plus the unit postcode as a quasi-identifier.",
+  "identifiers": [
+    {
+      "label": "an NHS number",
+      "pattern": "(?<!\\d)\\d{3}[ -]?\\d{3}[ -]?\\d{4}(?!\\d)",
+      "checksum": "nhs"
+    },
+    {
+      "label": "a CHI number",
+      "pattern": "(?<!\\d)\\d{2}[ -]?\\d{2}[ -]?\\d{2}[ -]?\\d{3}[ -]?\\d(?!\\d)",
+      "checksum": "chi"
+    },
+    {
+      "label": "a UK unit postcode",
+      "pattern": "\\b(?:[A-Z]{1,2}\\d[A-Z\\d]?\\s?\\d[A-Z]{2})\\b"
+    }
+  ],
+  "columns": [
+    { "pattern": "^(?:uk_?)?(?:nhs)(?:_?(?:number|no|num))?$", "kind": "id" },
+    { "pattern": "^(?:nhs_)?(?:health|hospital)_?number$", "kind": "id" },
+    { "pattern": "^chi(?:_?(?:number|no|num))?$", "kind": "id" },
+    { "pattern": "^(?:uk_)?postcode$", "kind": "address" },
+    { "pattern": "^(?:uk_)?post_code$", "kind": "address" }
+  ]
+}
