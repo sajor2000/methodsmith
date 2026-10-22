@@ -20,7 +20,9 @@
     "ordered-prose"
   ],
   "prohibited_behaviors": [
-    "no-fragment-enumeration"
+    "no-fragment-enumeration",
+    "no-bullet-points",
+    "no-embedded-tables"
   ],
   "criteria": [
     {
@@ -39,6 +41,24 @@
       "path": "workspace/response.md",
       "pattern": "(whether [^.;]{10,140}; ?){2,}",
       "weight": 4,
+      "hard_gate": true
+    },
+    {
+      "id": "no-bullet-points",
+      "description": "The delivered manuscript text contains no bullet points.",
+      "type": "regex_not",
+      "path": "workspace/response.md",
+      "pattern": "^\\s*[-*\u2022]\\s+",
+      "weight": 3,
+      "hard_gate": true
+    },
+    {
+      "id": "no-embedded-tables",
+      "description": "No markdown table rows are embedded in the delivered manuscript text.",
+      "type": "regex_not",
+      "path": "workspace/response.md",
+      "pattern": "^\\s*\\|.*\\|",
+      "weight": 3,
       "hard_gate": true
     },
     {
