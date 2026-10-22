@@ -6,6 +6,13 @@ requests. For the current release status and notes, use the repository's
 open release PRs; do not hand-add release entries from feature or documentation
 work.
 
+## [5.4.1](https://github.com/sajor2000/methodsmith/compare/cli-v5.4.0...cli-v5.4.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* **review:** schema-peek masks locale-flagged headings, fails closed ([#166](https://github.com/sajor2000/methodsmith/issues/166)) ([7f356ed](https://github.com/sajor2000/methodsmith/commit/7f356ed035db9889d1afceea01f5e7f3ff2a92de))
+
 ## [5.4.0](https://github.com/sajor2000/methodsmith/compare/cli-v5.3.0...cli-v5.4.0) (2026-10-22)
 
 
