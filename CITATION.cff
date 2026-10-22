@@ -1,14 +1,17 @@
 cff-version: 1.2.0
-message: "If you use Methodsmith, please cite the software as below."
-title: "Methodsmith"
+title: methodsmith
 type: software
+description: Rigorous methods for statistics, machine learning, and meta-analysis — a Claude Code plugin with enforced reporting standards, provenance-checked numbers, and a sensitive-data boundary.
 authors:
-  - family-names: Rojas
-    given-names: Juan Carlos
-repository-code: "https://github.com/sajor2000/methodsmith"
-url: "https://sajor2000.github.io/methodsmith/"
+  - given-names: Juan Carlos
+    family-names: Rojas
+    alias: sajor2000
+  - name: Factory Droid (assisted development)
+keywords:
+  - statistics
+  - meta-analysis
+  - machine learning
+  - reproducible research
+  - claude-code-plugin
 license: MIT
-abstract: >-
-  A research workflow plugin for coding agents that supports study planning,
-  reproducible statistical analysis, methodological review, and manuscript
-  preparation.
+repository-code: "https://github.com/sajor2000/methodsmith"
