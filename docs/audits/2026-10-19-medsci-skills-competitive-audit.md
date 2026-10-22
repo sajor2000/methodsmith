@@ -203,14 +203,21 @@ The ten gaps were filed as tracked issues (#141-#148). Current state:
   (PR #151), and ICMJE COI took the Option B path recorded above: a
   collect-and-cross-check step inside `method-submission-package` (PR #153)
   with a behavioral eval case for the funding/COI-statement mismatch blocker.
-- Gap #6: open as #144 — a single BCG public-data meta-analysis demo is
-  scoped; awaiting R + metafor confirmation and a maintainer go before the
-  live run.
+- Gap #6: closed as #144 — one committed reproducible demo project
+  (`demo/bcg-meta-analysis/`, PR #160): a public-data meta-analysis
+  (metafor::dat.bcg, 13 RCTs, no PHI) with the real run's outputs checked
+  in, deterministic to rerun, mapped to the plugin's drafting lane, and
+  carrying an honest limitations note.
 - Gap #7: closed by PR #150 — the `gh skill install` route verified on
   gh 2.100.0 (pinned installs, plugins/ convention discovery) and documented,
   with the tests/fixtures sweep noted as a caveat.
-- Gap #8: open as #146 — locale-pack architecture and country order proposed
-  (UK first as the template pack); awaiting the maintainer go.
+- Gap #8: closed as #146 — locale packs shipped as pure data (PR #159,
+  docs parity in #162): `hooks/locales/uk.json` is the template pack (NHS
+  number and Scottish CHI with checksum validators, the unit postcode as a
+  quasi-identifier, column-name patterns), opt-in via
+  `phi_environment.locale`; checksum-INVALID synthetic fixtures pass by
+  design; a malformed or unknown pack fails closed. New countries need no
+  guard-code changes.
 - Gap #9: wontfix, recorded as #147.
 - Gap #10: closed by the machine-checked `THIRD-PARTY-NOTICES.md` (PR #149),
   generated from this registry and the checklist licence headers.
