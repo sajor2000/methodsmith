@@ -1,7 +1,7 @@
 {
   "name": "methodsmith",
   "displayName": "Methodsmith",
-  "version": "5.2.0",
+  "version": "5.3.0",
   "description": "Rigorous methods for statistics, machine learning, and meta-analysis, from question to paper. Every study compounds.",
   "author": {
     "name": "Juan Carlos Rojas"
