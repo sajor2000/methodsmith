@@ -25,6 +25,8 @@ Each row resolves to a live PubMed record by PMID, PMCID (when the article is in
 | ALS prediction-model development and validation study | PMID [29598923](https://pubmed.ncbi.nlm.nih.gov/29598923/), DOI [10.1016/S1474-4422(18)30089-9](https://doi.org/10.1016/S1474-4422(18)30089-9) | Prediction-model sentence architecture |
 | Ten simple rules for structuring papers (Mensh and Kording) | PMID [28957311](https://pubmed.ncbi.nlm.nih.gov/28957311/), PMCID [PMC5619685](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5619685/), DOI [10.1371/journal.pcbi.1005619](https://doi.org/10.1371/journal.pcbi.1005619) | Paragraph architecture: one contribution per paragraph in context-content-conclusion order |
 | Preparing manuscript: scientific writing for publication (Bajwa and Sawhney) | PMID [27729696](https://pubmed.ncbi.nlm.nih.gov/27729696/), PMCID [PMC5037950](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5037950/), DOI [10.4103/0019-5049.190625](https://doi.org/10.4103/0019-5049.190625) | IMRaD preparation discipline |
+| The Principles of Biomedical Scientific Writing: Results (Bahadoran et al.) | PMID [31372173](https://pubmed.ncbi.nlm.nih.gov/31372173/), PMCID [PMC6635678](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6635678/), DOI [10.5812/ijem.92113](https://doi.org/10.5812/ijem.92113) | Legend content: title, statistical detail, symbol and pattern definitions, abbreviations |
+| Ten simple rules for better figures (Rougier et al.) | PMID [25210732](https://pubmed.ncbi.nlm.nih.gov/25210732/), PMCID [PMC4161295](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4161295/), DOI [10.1371/journal.pcbi.1003833](https://doi.org/10.1371/journal.pcbi.1003833) | Caption conventions for figures |
 
 The reporting guidelines define minimum content, not a universal manuscript order or a method-quality score. Apply them early enough to expose missing information. Do not use a checklist to certify that the underlying design or analysis was valid.
 
@@ -42,6 +44,7 @@ The reporting guidelines define minimum content, not a universal manuscript orde
 - Write one central contribution per paragraph, moving from context to content to conclusion, and state it in the paragraph's first or last sentence (Mensh and Kording, DOI 10.1371/journal.pcbi.1005619).
 - Keep the manuscript as continuous prose: no bullet points, no embedded tables or figures. Displays are separate items, each first cited in the text and numbered by first mention in reading order (Bajwa and Sawhney, DOI 10.4103/0019-5049.190625).
 - State uncertainty once, precisely, and only where the design warrants it; stock hedges ("it is important to note", "could potentially", "tends to suggest") and stacked qualifiers are editing debris, not caution.
+- Give every table and every figure its own legend, written to stand alone independent of the main text: a brief title, what the display shows with population and denominator, the statistical details a reader needs, definitions of symbols, lines, or bar patterns, and the abbreviations used in the display (Bahadoran et al., DOI 10.5812/ijem.92113; Rougier et al., DOI 10.1371/journal.pcbi.1003833).
 
 ### Randomized trials
 
