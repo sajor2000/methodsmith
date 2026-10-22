@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "id": "method-write-ordered-prose",
+  "target": {
+    "kind": "skill",
+    "name": "method-write",
+    "source": "plugins/methodsmith/skills/method-write/SKILL.md"
+  },
+  "mode": "forward",
+  "prompt_path": "evals/methodsmith/cases/method-write-ordered-prose/prompt.md",
+  "fixtures": [
+    {
+      "path": "evals/methodsmith/cases/method-write-ordered-prose/fixtures/sap.md",
+      "destination": "workspace/analysis/sap.md",
+      "sha256": "f90a21a3e9cf4805816388e7ed456c0e25b24d75ba85403ddd4367ab678d8929"
+    }
+  ],
+  "required_behaviors": [
+    "response-written",
+    "ordered-prose"
+  ],
+  "prohibited_behaviors": [
+    "no-fragment-enumeration",
+    "no-bullet-points",
+    "no-embedded-tables"
+  ],
+  "criteria": [
+    {
+      "id": "response-written",
+      "description": "The drafted text is delivered as response.md.",
+      "type": "file_exists",
+      "path": "workspace/response.md",
+      "expected": true,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "no-fragment-enumeration",
+      "description": "Study steps are not rendered as semicolon-chained 'whether' bullet fragments.",
+      "type": "regex_not",
+      "path": "workspace/response.md",
+      "pattern": "(whether [^.;]{10,140}; ?){2,}",
+      "weight": 4,
+      "hard_gate": true
+    },
+    {
+      "id": "no-bullet-points",
+      "description": "The delivered manuscript text contains no bullet points.",
+      "type": "regex_not",
+      "path": "workspace/response.md",
+      "pattern": "^\\s*[-*\u2022]\\s+",
+      "weight": 3,
+      "hard_gate": true
+    },
+    {
+      "id": "no-embedded-tables",
+      "description": "No markdown table rows are embedded in the delivered manuscript text.",
+      "type": "regex_not",
+      "path": "workspace/response.md",
+      "pattern": "^\\s*\\|.*\\|",
+      "weight": 3,
+      "hard_gate": true
+    },
+    {
+      "id": "ordered-prose",
+      "description": "The recorded steps appear in explicit execution order.",
+      "type": "regex",
+      "path": "workspace/response.md",
+      "pattern": "([Ff]irst|[Ss]econd|[Tt]hird)",
+      "weight": 2,
+      "hard_gate": false
+    }
+  ],
+  "threshold": 0.85,
+  "limitations": [
+    "Synthetic aggregate-only project; this case checks enumeration style and reading-order delivery, not the scientific validity of a complete analysis.",
+    "Offline artifact scoring does not attest model identity or number-registry behavior; that is covered by method-write-number-placeholders."
+  ]
+}

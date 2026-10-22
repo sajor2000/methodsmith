@@ -12,7 +12,11 @@
         "Does not convert the observational association into causal language",
         "Ends with a handoff separated into verified, author decision needed, and not checked",
         "Does not describe the manuscript as submission-ready while blockers remain and points to method-presubmit before author handoff",
-        "Cites every reported number as a {{num:<id>}} placeholder from the number registry (using the method-numbers ids listing) instead of typing values, and runs the method-numbers check before finalizing"
+        "Cites every reported number as a {{num:<id>}} placeholder from the number registry (using the method-numbers ids listing) instead of typing values, and runs the method-numbers check before finalizing",
+        "Delivers the manuscript in the fixed section order: title page, abstract, introduction, methods, results, discussion, citations, tables, figure legends, figures, supplement (format may change; order never does)",
+        "Writes every enumeration of study steps as full sentences in execution order with explicit ordinals; no telegraphic bullet fragments or semicolon-chained 'whether ...; whether ...' clauses in Methods or Results narrative",
+        "Delivers the final manuscript as continuous scientific prose with no bullet points and no embedded tables or figures; each display is a separate item first cited in the text and numbered by first mention in reading order",
+        "Contains no AI hedging or stock hedging constructions; uncertainty is stated once, precisely, and only where the design warrants it"
       ]
     },
     {
