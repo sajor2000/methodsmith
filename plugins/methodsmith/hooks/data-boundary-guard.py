@@ -244,6 +244,83 @@ def index_hit(text, index):
     return any(_indexed(index, gram) for gram in grams)
 # --- end identifier index ---
 
+# --- locale packs: opt-in per-project identifier shapes, data in hooks/locales/<locale>.json ---
+# A locale is set as `phi_environment.locale` in .ce-datascience/config.local.yaml. The pack is data:
+# regexes plus (optional) named checksum validators, so new countries need no guard-code changes.
+# Checksum-valid matches are treated as identifiers; checksum-INVALID matches (synthetic/test
+# fixtures) are allowed, and a malformed or unknown pack fails closed.
+
+_locale_cache: dict = {}
+
+
+def _checksum_nhs(digits):
+    """NHS number: 10 digits, mod 11 over weights 10..2; a computed check of 10 is invalid."""
+    d = [int(c) for c in digits]
+    total = sum(w * v for w, v in zip(range(10, 1, -1), d[:9]))
+    check = (11 - total % 11) % 11
+    return check != 10 and d[9] == check
+
+
+def _checksum_chi(digits):
+    """Scottish CHI: 10 digits DDMMYYNNNC, mod 11 over weights 4,5,6,7,2,3,4,5,6."""
+    d = [int(c) for c in digits]
+    if not (1 <= int(digits[0:2]) <= 31 and 1 <= int(digits[2:4]) <= 12):
+        return False
+    total = sum(w * v for w, v in zip((4, 5, 6, 7, 2, 3, 4, 5, 6), d[:9]))
+    check = (11 - total % 11) % 11
+    return check != 10 and d[9] == check
+
+
+LOCALE_CHECKSUMS = {"nhs": _checksum_nhs, "chi": _checksum_chi}
+LOCALE_MALFORMED = object()  # every identifier check fires, like a malformed identifier index
+
+ACTIVE_LOCALE = None
+
+
+def active_pack():
+    return locale_pack(ACTIVE_LOCALE)
+
+
+def locale_pack(name):
+    if not name:
+        return None
+    if name in _locale_cache:
+        return _locale_cache[name]
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "locales", f"{name}.json"),
+                  encoding="utf-8") as fh:
+            raw = json.load(fh)
+        if not isinstance(raw, dict) or not isinstance(raw.get("identifiers"), list) or not raw["identifiers"]:
+            raise ValueError("locale pack has no identifiers")
+        identifiers = []
+        for entry in raw["identifiers"]:
+            if not isinstance(entry, dict) or not isinstance(entry.get("pattern"), str):
+                raise ValueError("locale pack identifier is malformed")
+            checksum = entry.get("checksum")
+            if checksum and checksum not in LOCALE_CHECKSUMS:
+                raise ValueError("locale pack names an unknown checksum validator")
+            identifiers.append((str(entry.get("label", "a locale identifier")), re.compile(entry["pattern"]), checksum))
+        columns = []
+        for entry in raw.get("columns", []):
+            if not isinstance(entry, dict) or not isinstance(entry.get("pattern"), str):
+                raise ValueError("locale pack column is malformed")
+            columns.append((re.compile(entry["pattern"]), str(entry.get("kind", "id"))))
+        pack = {"identifiers": identifiers, "columns": columns}
+    except Exception:
+        pack = LOCALE_MALFORMED
+    _locale_cache[name] = pack
+    return pack
+
+
+# --- end locale packs ---
+
+def _header_patterns():
+    """Built-in header patterns plus the active locale's column patterns."""
+    pack = active_pack()
+    extra = [] if pack is None or pack is LOCALE_MALFORMED else pack["columns"]
+    return list(HEADER_KINDS) + extra
+
+
 INDEX_REL = os.path.join(".ce-datascience", "identifier-index.local.json")
 OUTPUTS = "outputs.txt"  # method-safe-run lists the files its runs wrote here, one project-relative path per line
 
@@ -456,8 +533,11 @@ def _project_mode(ce_root, main):
         aggregate.update({path, real})
     aggregate = sorted(aggregate)
     index_paths = [os.path.join(base, INDEX_REL) for base in [ce_root] + ([main] if main else [])]
+    locale_value = (phi or {}).get("locale")
+    locale = _scalar(locale_value) if isinstance(locale_value, str) and locale_value.strip() else None
     return {"mode": mode, "why": why, "detail": detail, "roots": [ce_root], "data_roots": sorted(data_roots),
-            "aggregate_dirs": aggregate, "index_paths": index_paths, "output_lists": [os.path.join(runs, OUTPUTS)]}
+            "aggregate_dirs": aggregate, "index_paths": index_paths, "output_lists": [os.path.join(runs, OUTPUTS)],
+            "locale": locale or None}
 
 
 RANK = {"off": 0, "approved": 1, "no-sensitive-data": 1, "schema-only": 2}
@@ -498,7 +578,7 @@ def resolve_mode(context):
             best = project
     if best is None:
         return {"mode": "off", "why": None, "detail": "", "roots": [], "data_roots": [], "aggregate_dirs": [],
-                "index_paths": [], "output_lists": [], "cwd": cwd}
+                "index_paths": [], "output_lists": [], "cwd": cwd, "locale": None}
     return dict(best, roots=roots, data_roots=sorted(data_roots), aggregate_dirs=sorted(aggregate),
                 index_paths=index_paths, output_lists=output_lists, cwd=cwd)
 
@@ -1083,7 +1163,7 @@ def table_problem(text, ext, mode):
     for header, cells in rows:
         for cell in cells:
             if header and any(pattern.match(re.sub(r"[^a-z0-9]+", "_", cell.lower()).strip("_"))
-                              for _, pattern in HEADER_KINDS):
+                              for _, pattern in _header_patterns()):
                 return "a column heading names an identifier"
             if any(pattern.search(cell) for _, pattern in IDENTIFIER_PATTERNS):
                 return "a cell looks like an identifier"
@@ -1315,6 +1395,15 @@ def identifier_reason(text, mode, key=""):
             continue
         if pattern.search(text):
             return f"an argument contains {label}"
+    pack = active_pack()
+    if pack is LOCALE_MALFORMED:
+        return ("the configured locale pack is malformed or names an unknown checksum validator, so locale "
+                "identifiers cannot be checked; fix or remove phi_environment.locale")
+    if pack:
+        for label, pattern, checksum in pack["identifiers"]:
+            for match in pattern.finditer(text):
+                if not checksum or LOCALE_CHECKSUMS[checksum](re.sub(r"\D", "", match.group(0))):
+                    return f"an argument contains {label}"
     index = load_index(mode)
     if index is INVALID_INDEX:
         return ("the project's identifier index (.ce-datascience/identifier-index.local.json) is malformed, so "
@@ -1370,6 +1459,8 @@ def ncbi_violation(cmd, mode):
 
 def classify(call, mode):
     """Return None to allow, or {"kind": "egress"|"access", "reason": ...} to deny."""
+    global ACTIVE_LOCALE
+    ACTIVE_LOCALE = mode.get("locale")
     if mode["mode"] == "off":
         return None
     tool = call.get("tool_name", "") or ""
