@@ -18,7 +18,8 @@
         "Delivers the final manuscript as continuous scientific prose with no bullet points and no embedded tables or figures; each display is a separate item first cited in the text and numbered by first mention in reading order",
         "Contains no AI hedging or stock hedging constructions; uncertainty is stated once, precisely, and only where the design warrants it",
         "Provides a separate, self-contained legend for every table and every figure — brief title, what is shown with population and denominator, statistical details, symbol or pattern definitions, and abbreviations — so each display reads independently of the main text",
-        "Before and while writing prose that reports an edited table, figure, or analysis, shows the author the underlying source artifact (Rmd, Quarto qmd, Jupyter notebook, or marimo notebook) — the exact cells, lines, or diff — and never alters an analysis or display silently"
+        "Before and while writing prose that reports an edited table, figure, or analysis, shows the author the underlying source artifact (Rmd, Quarto qmd, Jupyter notebook, or marimo notebook) — the exact cells, lines, or diff — and never alters an analysis or display silently",
+        "Before drafting any manuscript prose, confirms the writing gate with the author — notebooks final with no edits, no pending or sensitivity analyses, all tables and figures reviewed as rendered and correct, and writing plus interpretation of findings agreed with the PI scientist — and starts writing only after all four hold"
       ]
     },
     {
