@@ -453,6 +453,15 @@ default to `output`, `results`, `analysis/publication`, and
 `analysis/sap-tables`; set `phi_environment.aggregate_dirs` to change them.
 `data_root` always wins: nothing under it is readable.
 
+**Locale packs.** Projects outside the US add national identifier shapes with
+`locale: uk` (or another pack) under `phi_environment` in
+`config.local.yaml`. A pack is data — `hooks/locales/<locale>.json` holds
+identifier regexes, optional named checksum validators (a match counts as an
+identifier only when its checksum validates, so checksum-invalid synthetic
+test values pass), and column-name patterns — so new countries need no
+guard-code changes. An absent key changes nothing; a malformed or unknown
+pack fails closed.
+
 The schema helper `scripts/schema-peek.py` prints headings, types, counts, and
 % missing, never a cell value. It prints `col_1..col_n` when a file has no
 header row, and `col_<k> [masked header]` for a heading that is itself an
