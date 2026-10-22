@@ -12,8 +12,10 @@ count is shown, so one cannot be recovered from the other by subtraction.
 If the first row looks like data (numbers, dates, ID-like values, duplicate
 names, or a value repeated in its own column), headings are printed as
 col_1..col_n with the reason. A single heading that is itself an identifier
-(SSN, email, phone, MRN/ID, or date-of-birth shape, or a value in the
-project's identifier index) is printed as col_<k> [masked header].
+(SSN, email, phone, MRN/ID, or date-of-birth shape, a value in the
+project's identifier index, or a heading matching the active locale's
+column patterns) is printed as col_<k> [masked header]; a malformed or
+unknown locale pack fails closed with LocaleError.
 
 Supports CSV/TSV/PSV (optionally .gz) with the standard library; Parquet,
 Feather, and Arrow via pyarrow; and the XLSX header row via openpyxl. Plain
@@ -154,6 +156,7 @@ def index_hit(text, index):
 # --- end identifier index ---
 
 INDEX_REL = os.path.join(".ce-datascience", "identifier-index.local.json")
+CONFIG_REL = os.path.join(".ce-datascience", "config.local.yaml")
 THRESHOLD = 11
 MISSING = {"", "na", "n/a", "nan", "null", "none", ".", "nat", "#n/a"}
 INT_RE = re.compile(r"^[+-]?\d+$")
@@ -163,6 +166,94 @@ DATE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+
 BOOL_VALUES = {"true", "false", "t", "f", "yes", "no"}
 ID_LIKE = re.compile(r"^[A-Za-z]{0,6}[-_]?\d{3,}$")
 HEADER_SCAN_ROWS = 1000
+
+# --- locale packs: opt-in per-project identifier shapes, data in hooks/locales/<locale>.json ---
+# A locale is set as `phi_environment.locale` in .ce-datascience/config.local.yaml (worktree
+# first, then the main checkout), mirroring hooks/data-boundary-guard.py. Headings matching
+# the active locale's column patterns are masked like any other identifier heading, so a
+# locale-flagged column never appears by name in the peek. A malformed or unknown pack fails
+# closed: the peek refuses to print and reports LocaleError.
+
+
+class LocaleError(Exception):
+    pass
+
+
+LOCALE_MALFORMED = object()  # fail closed: the peek refuses to print
+
+
+def active_locale(root=None):
+    """phi_environment.locale from the nearest machine-local config above the file or the
+    working directory, or None. Worktree config first, then the main checkout."""
+    for start in (os.path.dirname(os.path.abspath(root)) if root else None, os.getcwd()):
+        if start is None:
+            continue
+        probe = start
+        config = None
+        while True:
+            candidate = os.path.join(probe, CONFIG_REL)
+            if os.path.isfile(candidate):
+                config = candidate
+                break
+            parent = os.path.dirname(probe)
+            if parent == probe:
+                break
+            probe = parent
+        if not config:
+            continue
+        try:
+            with open(config, encoding="utf-8") as fh:
+                lines = fh.read().splitlines()
+        except (OSError, UnicodeDecodeError):
+            continue
+        in_phi = False
+        for line in lines:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            indent = len(line) - len(line.lstrip(" \t"))
+            if indent == 0:
+                in_phi = stripped.startswith("phi_environment:")
+                continue
+            if in_phi and ":" in stripped:
+                key, value = stripped.split(":", 1)
+                if key.strip() == "locale":
+                    value = value.split(" #", 1)[0].strip().strip("'\"")
+                    return value if value and value.lower() not in ("null", "~") else None
+    return None
+
+
+def _locales_dir():
+    """The plugin's hooks/locales directory found above this script, or None."""
+    probe = os.path.dirname(os.path.abspath(__file__))
+    while True:
+        candidate = os.path.join(probe, "hooks", "locales")
+        if os.path.isdir(candidate):
+            return candidate
+        parent = os.path.dirname(probe)
+        if parent == probe:
+            return None
+        probe = parent
+
+
+def locale_columns(name):
+    """The named locale's column patterns, LOCALE_MALFORMED, or None when no locale is set."""
+    if not name:
+        return None
+    locales = _locales_dir()
+    try:
+        with open(os.path.join(locales, f"{name}.json"), encoding="utf-8") as fh:
+            raw = json.load(fh)
+        if not isinstance(raw, dict):
+            raise ValueError("locale pack is not a map")
+        columns = []
+        for entry in raw.get("columns", []):
+            if not isinstance(entry, dict) or not isinstance(entry.get("pattern"), str):
+                raise ValueError("locale pack column is malformed")
+            columns.append((re.compile(entry["pattern"]), str(entry.get("kind", "id"))))
+        return columns
+    except Exception:
+        return LOCALE_MALFORMED
 
 
 def small(n):
@@ -262,10 +353,14 @@ def find_index(path):
     return None
 
 
-def shown_name(k, name, index):
+def shown_name(k, name, index, locale=None):
     """A heading, or col_<k> [masked header] when the heading is itself an identifier."""
     text = str(name)
     if any(pattern.search(text) for _, pattern in IDENTIFIER_PATTERNS) or (index and index_hit(text, index)):
+        return f"col_{k} [masked header]"
+    if locale is LOCALE_MALFORMED:
+        raise LocaleError("the configured locale pack is malformed or unknown")
+    if locale and any(pattern.search(text) for pattern, _ in locale):
         return f"col_{k} [masked header]"
     return text
 
@@ -273,7 +368,8 @@ def shown_name(k, name, index):
 def render(path, rows, columns, note=None):
     """columns: list of (name, type, non_null or None)."""
     index = find_index(path.split(" [", 1)[0])
-    columns = [(shown_name(k, name, index), t, n) for k, (name, t, n) in enumerate(columns, 1)]
+    locale = locale_columns(active_locale(path))
+    columns = [(shown_name(k, name, index, locale), t, n) for k, (name, t, n) in enumerate(columns, 1)]
     print(f"## {os.path.basename(path)}")
     shown_rows = "unknown" if rows is None else (f"<{THRESHOLD}" if small(rows) else str(rows))
     print(f"Rows: {shown_rows}")

@@ -637,7 +637,8 @@ identifier regexes, optional named checksum validators (a match counts as an
 identifier only when its checksum validates, so checksum-invalid synthetic
 test values pass), and column-name patterns — so new countries need no
 guard-code changes. An absent key changes nothing; a malformed or unknown
-pack fails closed.
+pack fails closed. The schema helper masks locale-flagged headings the
+same way and refuses to print on a malformed or unknown pack.
 
 The schema helper `scripts/schema-peek.py` prints headings, types, counts, and
 % missing, never a cell value. It prints `col_1..col_n` when a file has no
