@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { existsSync, readFileSync, writeFileSync } from "fs"
 import path from "path"
-import { APPROVED, bash, guard, runGuard, verdicts } from "./data-boundary-harness"
+import { APPROVED, bash, guard, pluginRoot, runGuard, verdicts } from "./data-boundary-harness"
 import { project } from "./data-boundary-harness"
 
 const UK = "phi_environment:\n  mode: approved\n  confirmed_on: 2026-10-15\n  locale: uk\n"
@@ -113,6 +113,44 @@ describe("locale packs: identifier scans (approved project, locale uk)", () => {
   test("without the locale key, a tight-form checksum-valid NHS number passes (opt-in is explicit)", () => {
     const v = verdicts(project(APPROVED), [["mcp__paperclip__search", { query: "cohort 9434765919", source: "pmc" }]])
     expect(v[0].decision).toBe("allow")
+  })
+})
+
+describe("locale packs: schema-peek header masking", () => {
+  const peek = (root: string, rel: string) => {
+    const proc = Bun.spawnSync(["python3", path.join(pluginRoot, "scripts", "schema-peek.py"), rel], { cwd: root })
+    return proc
+  }
+  const out = (root: string, rel: string) => {
+    const proc = peek(root, rel)
+    return proc.stdout.toString() + proc.stderr.toString()
+  }
+
+  test("a locale-flagged heading is masked when the locale is active, shown otherwise", () => {
+    const uk = project(UK)
+    writeFileSync(path.join(uk, "data", "schema.csv"), "nhs_number,postcode,age_group\nA,B,C\nD,E,F\n")
+    const masked = out(uk, "data/schema.csv")
+    expect(masked).toContain("col_1 [masked header]")
+    expect(masked).toContain("col_2 [masked header]")
+    expect(masked).toContain("age_group")
+    expect(masked).not.toContain("nhs_number")
+    expect(masked).not.toContain("postcode,")
+    const plain = project(APPROVED)
+    writeFileSync(path.join(plain, "data", "schema.csv"), "nhs_number,postcode,age_group\nA,B,C\nD,E,F\n")
+    const shown = out(plain, "data/schema.csv")
+    expect(shown).toContain("nhs_number")
+    expect(shown).toContain("postcode")
+    expect(shown).not.toContain("[masked header]")
+  })
+
+  test("an unknown locale name fails closed: the peek refuses to print and exits nonzero", () => {
+    const root = project("phi_environment:\n  mode: approved\n  confirmed_on: 2026-10-15\n  locale: zz\n")
+    writeFileSync(path.join(root, "data", "schema.csv"), "nhs_number,age_group\nA,B\nC,D\n")
+    const proc = peek(root, "data/schema.csv")
+    expect(proc.exitCode).not.toBe(0)
+    const printed = proc.stdout.toString() + proc.stderr.toString()
+    expect(printed).toContain("LocaleError")
+    expect(printed).not.toContain("nhs_number")
   })
 })
 
