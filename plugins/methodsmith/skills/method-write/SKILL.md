@@ -55,6 +55,8 @@ Keep open loops visible as `evidence needed`, `analysis needed`, or `author deci
 
 For a full empirical manuscript, default to this order when the available artifacts permit it: displays and result ledger, Results, Methods, Discussion, Introduction, abstract, then title. Follow another order when the article type, journal, or user's materials require it.
 
+Draft in writing order; deliver in reading order. The drafting sequence above governs when you draft sections, never the order in which they appear. Present every manuscript draft in the same order: title page, abstract, introduction, methods, results, discussion, citations, tables, figure legends, figures, supplement. The format may change between venues — journal heading names, template, file type, styling, numbering — but the order never does.
+
 Use `method-section-check` for Methods, Results, legends, and table notes. Use `method-voice` only when its clinical register fits the assignment. Keep citations attached to the claims they support; obtain each one through Evidence access, read before citing, and record the level read. Do not turn an association into causation, a secondary analysis into a primary finding, or absence of evidence into evidence of no effect.
 
 Numbers come only from the number registry: cite every count, percent, estimate, CI, and P value as `{{num:<id>}}` (load the `method-numbers` skill; its `ids` command lists ids, kinds, and SAP outputs without values), and never type a result number, including in the abstract, legends, and table notes. When a needed number has no entry, write `{{num:missing.<what>}}` and list it under `author decision needed`; the gate keeps it visible until the analysis registers it.
@@ -65,7 +67,7 @@ First perform a developmental pass. For each section, write one sentence stating
 
 Then test the paper from a skeptical scientific reader's position. Surface credible alternative explanations, bias, measurement limits, scope conditions, and likely reviewer objections. Address them only with available evidence or calibrated limitations. Do not manufacture controversy or quietly replace the authors' scientific claim.
 
-Only after the argument and evidence are stable, perform the line edit. Preserve technical terms, uncertainty, citations, author voice, and meaning. Remove generic framing, inflated claims, and unsupported authority language. Use `method-anti-slop` as a calibrated review pass, not a ban on warranted hedging, Methods passive voice, or precise domain terminology.
+Only after the argument and evidence are stable, perform the line edit. Preserve technical terms, uncertainty, citations, author voice, and meaning. Remove generic framing, inflated claims, and unsupported authority language. Write enumeration as sentences, not fragments: never render protocol, extraction, or analysis steps as telegraphic bullet fragments or semicolon-chained clauses (for example, bullets reading "whether ...; whether ...; for D1-D4, whether ..."). State what was recorded, and in what order, in full sentences with explicit ordinals ("we recorded, first, whether ...; second, whether ...; and third, ..."). Reserve bullet or numbered fragments for genuine item lists such as checklists, display footnotes, and author instructions, never for Methods or Results narrative. Use `method-anti-slop` as a calibrated review pass, not a ban on warranted hedging, Methods passive voice, or precise domain terminology.
 
 ### Audit or finalize
 
