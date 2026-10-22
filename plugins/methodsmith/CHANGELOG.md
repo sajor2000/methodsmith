@@ -5,6 +5,19 @@ release pull requests. Canonical current release notes are the repository's
 [GitHub Releases](https://github.com/sajor2000/ce-datascience/releases) and
 open release PRs. Do not hand-add entries from feature or documentation work.
 
+## [5.3.0](https://github.com/sajor2000/methodsmith/compare/methodsmith-v5.2.0...methodsmith-v5.3.0) (2026-10-22)
+
+
+### Features
+
+* **journal-select:** add the method-journal-select skill ([#151](https://github.com/sajor2000/methodsmith/issues/151)) ([2f55e3b](https://github.com/sajor2000/methodsmith/commit/2f55e3b70737d01ca88a02080069f7a9b49bd929))
+* **submission-package:** collect and cross-check ICMJE COI disclosures ([#153](https://github.com/sajor2000/methodsmith/issues/153)) ([7a61c2c](https://github.com/sajor2000/methodsmith/commit/7a61c2ce3b17420b1c9bc7f13f4d19180de07c52)), closes [#143](https://github.com/sajor2000/methodsmith/issues/143)
+
+
+### Bug Fixes
+
+* **write:** ordered prose and a fixed delivery order for drafts ([#156](https://github.com/sajor2000/methodsmith/issues/156)) ([3cdfe32](https://github.com/sajor2000/methodsmith/commit/3cdfe32fbef4ecce33b057c73358fb0dcb74bae9))
+
 ## [5.2.0](https://github.com/sajor2000/methodsmith/compare/methodsmith-v5.1.1...methodsmith-v5.2.0) (2026-10-21)
 
 
