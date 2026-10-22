@@ -16,7 +16,8 @@
         "Delivers the manuscript in the fixed section order: title page, abstract, introduction, methods, results, discussion, citations, tables, figure legends, figures, supplement (format may change; order never does)",
         "Writes every enumeration of study steps as full sentences in execution order with explicit ordinals; no telegraphic bullet fragments or semicolon-chained 'whether ...; whether ...' clauses in Methods or Results narrative",
         "Delivers the final manuscript as continuous scientific prose with no bullet points and no embedded tables or figures; each display is a separate item first cited in the text and numbered by first mention in reading order",
-        "Contains no AI hedging or stock hedging constructions; uncertainty is stated once, precisely, and only where the design warrants it"
+        "Contains no AI hedging or stock hedging constructions; uncertainty is stated once, precisely, and only where the design warrants it",
+        "Provides a separate, self-contained legend for every table and every figure — brief title, what is shown with population and denominator, statistical details, symbol or pattern definitions, and abbreviations — so each display reads independently of the main text"
       ]
     },
     {
