@@ -6,6 +6,21 @@ requests. For the current release status and notes, use the repository's
 open release PRs; do not hand-add release entries from feature or documentation
 work.
 
+## [5.4.0](https://github.com/sajor2000/methodsmith/compare/cli-v5.3.0...cli-v5.4.0) (2026-10-22)
+
+
+### Features
+
+* **review:** committed reproducible demo project (BCG meta-analysis) ([#160](https://github.com/sajor2000/methodsmith/issues/160)) ([a78ee08](https://github.com/sajor2000/methodsmith/commit/a78ee089bcce66f80f6a5b6eba2e666d5e7824c9)), closes [#144](https://github.com/sajor2000/methodsmith/issues/144)
+* **review:** locale packs for national identifier shapes, UK first ([#159](https://github.com/sajor2000/methodsmith/issues/159)) ([40f0ad1](https://github.com/sajor2000/methodsmith/commit/40f0ad13e5012c8e4e6e065dd792966082812588)), closes [#146](https://github.com/sajor2000/methodsmith/issues/146)
+
+
+### Bug Fixes
+
+* **review:** locale-pack paragraph in every boundary doc, not one ([#162](https://github.com/sajor2000/methodsmith/issues/162)) ([bd1fffd](https://github.com/sajor2000/methodsmith/commit/bd1fffd2f0a565968b78a6543466f21e93de3251))
+* **write:** every table and figure carries its own self-contained legend ([#157](https://github.com/sajor2000/methodsmith/issues/157)) ([af7dc69](https://github.com/sajor2000/methodsmith/commit/af7dc696f848898f6ac3cb3deee2d1103e0a17e6))
+* **write:** show the author the notebook source for display and analysis edits ([#164](https://github.com/sajor2000/methodsmith/issues/164)) ([06c8b75](https://github.com/sajor2000/methodsmith/commit/06c8b75cb9734372e35542ee6a7ec78ae7ad7633))
+
 ## [5.3.0](https://github.com/sajor2000/methodsmith/compare/cli-v5.2.0...cli-v5.3.0) (2026-10-22)
 
 

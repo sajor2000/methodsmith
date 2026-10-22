@@ -5,6 +5,19 @@ release pull requests. Canonical current release notes are the repository's
 [GitHub Releases](https://github.com/sajor2000/ce-datascience/releases) and
 open release PRs. Do not hand-add entries from feature or documentation work.
 
+## [5.4.0](https://github.com/sajor2000/methodsmith/compare/methodsmith-v5.3.0...methodsmith-v5.4.0) (2026-10-22)
+
+
+### Features
+
+* **review:** locale packs for national identifier shapes, UK first ([#159](https://github.com/sajor2000/methodsmith/issues/159)) ([40f0ad1](https://github.com/sajor2000/methodsmith/commit/40f0ad13e5012c8e4e6e065dd792966082812588)), closes [#146](https://github.com/sajor2000/methodsmith/issues/146)
+
+
+### Bug Fixes
+
+* **write:** every table and figure carries its own self-contained legend ([#157](https://github.com/sajor2000/methodsmith/issues/157)) ([af7dc69](https://github.com/sajor2000/methodsmith/commit/af7dc696f848898f6ac3cb3deee2d1103e0a17e6))
+* **write:** show the author the notebook source for display and analysis edits ([#164](https://github.com/sajor2000/methodsmith/issues/164)) ([06c8b75](https://github.com/sajor2000/methodsmith/commit/06c8b75cb9734372e35542ee6a7ec78ae7ad7633))
+
 ## [5.3.0](https://github.com/sajor2000/methodsmith/compare/methodsmith-v5.2.0...methodsmith-v5.3.0) (2026-10-22)
 
 
