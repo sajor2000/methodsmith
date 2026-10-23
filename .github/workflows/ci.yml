@@ -14,7 +14,12 @@ concurrency:
 
 jobs:
   pr-title:
-    if: github.event_name == 'pull_request'
+    # Skip release-please PRs: their pull_request runs fail with a GitHub
+    # workflow-file error that produces no logs (#165). A release PR carries
+    # only release-owned version bumps and changelog text, both validated by
+    # release:validate when the commit is pushed to main. A skipped required
+    # check counts as satisfied for branch protection.
+    if: github.event_name == 'pull_request' && github.head_ref != 'release-please--branches--main'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
@@ -39,6 +44,9 @@ jobs:
             revert
 
   test:
+    # Same release-please skip as pr-title above (#165): the release commit
+    # still runs this full suite when it lands on main.
+    if: github.event_name != 'pull_request' || github.head_ref != 'release-please--branches--main'
     runs-on: ubuntu-latest
 
     steps:
