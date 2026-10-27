@@ -66,6 +66,28 @@ describe("resolve_mode: one authority for the boundary", () => {
     expect(stale.decision).toBe("deny")
   })
 
+  test("a half-moved project still applies the old folder's data_root, never its mode", () => {
+    const legacyConfig = "phi_environment:\n  mode: approved\nstack_profile:\n  data_root: secure\n"
+    const halfMoved = (config?: string) => {
+      const root = project(config)
+      mkdirSync(path.join(root, ".ce-datascience")) // rebrand:keep
+      writeFileSync(path.join(root, ".ce-datascience", "config.local.yaml"), legacyConfig) // rebrand:keep
+      mkdirSync(path.join(root, "secure"))
+      writeFileSync(path.join(root, "secure", "notes.txt"), "FAKE0001 synthetic note\n")
+      return root
+    }
+    const configured = halfMoved("phi_environment:\n  mode: schema-only\n")
+    expect(resolve(configured)).toEqual({ mode: "schema-only", why: "configured" })
+    expect(runGuard(configured, "Read", { file_path: path.join(configured, "secure", "notes.txt") }).decision).toBe("deny")
+    const bare = halfMoved()
+    expect(resolve(bare)).toEqual({ mode: "schema-only", why: "unset" })
+    expect(runGuard(bare, "Read", { file_path: path.join(bare, "secure", "notes.txt") }).decision).toBe("deny")
+    // The old folder never widens: a current approved config stays approved, and its own reads stay allowed.
+    const approved = halfMoved(APPROVED)
+    expect(resolve(approved)).toEqual({ mode: "approved", why: "configured" })
+    expect(runGuard(approved, "Read", { file_path: path.join(approved, "secure", "notes.txt") }).decision).toBe("allow")
+  })
+
   test("a linked worktree without .methodsmith/ uses the main checkout's config (bypass 2)", () => {
     const main = project(SCHEMA_ONLY, { git: "real" })
     writeFileSync(path.join(main, ".gitignore"), ".methodsmith/\ndata/\n")
@@ -661,5 +683,22 @@ describe("schema-only: searches and MCP tools that slipped past the access check
     ])
     // Outside schema-only the same read is not limited.
     expectAll(project(APPROVED), "allow", [["mcp__filesystem__read_text_file", { path: "data/cohort.csv" }]])
+  })
+
+  test("an MCP path argument containing a space is still checked as a path", () => {
+    const root = project("phi_environment:\n  mode: schema-only\nstack_profile:\n  data_root: Secure Data\n")
+    mkdirSync(path.join(root, "Secure Data"))
+    writeFileSync(path.join(root, "Secure Data", "notes.txt"), "FAKE0001 synthetic note\n")
+    expectAll(root, "deny", [
+      ["mcp__filesystem__read_text_file", { path: path.join(root, "My Data", "a.csv") }],
+      ["mcp__filesystem__read_text_file", { path: `file://${path.join(root, "My Data", "a.csv")}` }],
+      ["mcp__filesystem__read_text_file", { path: path.join(root, "Secure Data", "notes.txt") }],
+      ["mcp__notebook__open", { notebook_path: path.join(root, "Secure Data", "notes.txt") }],
+    ])
+    expectAll(root, "allow", [
+      ["mcp__pubmed-mcp-server__pubmed_search_articles", { query: "sepsis cohort outcomes" }],
+      ["mcp__filesystem__read_text_file", { path: path.join(root, "My Code", "load.py") }],
+    ])
+    expectAll(project(APPROVED), "allow", [["mcp__filesystem__read_text_file", { path: "My Data/a.csv" }]])
   })
 })

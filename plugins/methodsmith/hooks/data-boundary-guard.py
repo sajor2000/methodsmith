@@ -69,6 +69,7 @@ import os
 import re
 import shlex
 import sys
+import time
 
 # One definition of a data file. schema-peek.py embeds an identical list (tested).
 DATA_EXTS = (
@@ -576,14 +577,15 @@ def _project_mode(ce_root, main):
     if not os.path.isfile(config) and main and os.path.isfile(os.path.join(main, CONFIG_REL)):
         config = os.path.join(main, CONFIG_REL)
     legacy = not any(os.path.isdir(os.path.join(base, STATE_DIR)) for base in bases)
-    if legacy:
-        # Only the pre-rename folder exists. Its mode is never trusted (schema-only until it is
-        # moved); it is read only for what tightens the boundary: data_root and the locale.
-        legacy_config = next((c for c in (os.path.join(b, LEGACY_STATE_DIR, "config.local.yaml") for b in bases)
-                              if os.path.isfile(c)), None)
-        phi, data_root, _ = read_config(legacy_config) if legacy_config else (None, None, None)
-        phi = {"locale": phi["locale"]} if isinstance(phi, dict) and "locale" in phi else None
-        mode, why, detail = "schema-only", "legacy", ""
+    # A pre-rename config is read only for what tightens the boundary, whether or not the project has
+    # been (half-)moved: its data_root always adds a data root, and its locale fills in a missing one.
+    # Its mode and aggregate_dirs are never taken.
+    legacy_config = next((c for c in (os.path.join(b, LEGACY_STATE_DIR, "config.local.yaml") for b in bases)
+                          if os.path.isfile(c)), None)
+    legacy_phi, legacy_root, _ = read_config(legacy_config) if legacy_config else (None, None, None)
+    legacy_locale = legacy_phi.get("locale") if isinstance(legacy_phi, dict) else None
+    if legacy:  # only the pre-rename folder exists: schema-only until it is moved
+        phi, data_root, mode, why, detail = None, None, "schema-only", "legacy", ""
     else:
         if os.path.isfile(config):
             phi, data_root, error = read_config(config)
@@ -595,8 +597,10 @@ def _project_mode(ce_root, main):
     for base in bases:  # logs left in an unmoved pre-rename folder are still data
         legacy_runs = os.path.join(base, LEGACY_STATE_DIR, "runs")
         data_roots.update({legacy_runs, os.path.realpath(legacy_runs)})
-    if data_root:
-        expanded = os.path.expanduser(data_root)
+    for root in (data_root, legacy_root):
+        if not root:
+            continue
+        expanded = os.path.expanduser(root)
         for base in bases:
             path = os.path.normpath(expanded if os.path.isabs(expanded) else os.path.join(base, expanded))
             data_roots.update({path, os.path.realpath(path)})
@@ -614,8 +618,11 @@ def _project_mode(ce_root, main):
     # keeps its identifier and output checks.
     index_paths = [os.path.join(base, rel) for rel in (INDEX_REL, LEGACY_INDEX_REL) for base in bases]
     output_lists = [os.path.join(runs, OUTPUTS)] + [os.path.join(b, LEGACY_STATE_DIR, "runs", OUTPUTS) for b in bases]
-    locale_value = (phi or {}).get("locale")
-    locale = _scalar(locale_value) if isinstance(locale_value, str) and locale_value.strip() else None
+    locale = None
+    for locale_value in ((phi or {}).get("locale"), legacy_locale):  # the current config's locale wins
+        if isinstance(locale_value, str) and _scalar(locale_value):
+            locale = _scalar(locale_value)
+            break
     return {"mode": mode, "why": why, "detail": detail, "roots": [ce_root], "data_roots": sorted(data_roots),
             "aggregate_dirs": aggregate, "index_paths": index_paths, "output_lists": output_lists,
             "locale": locale or None}
@@ -725,6 +732,7 @@ def _anchors(context):
 
 def resolve_mode(context):
     """Resolve the boundary for a tool call from cwd and the paths it targets. Strictest project wins."""
+    reset_glob_budget()  # each guard decision starts here; its wildcard work shares one budget
     cwd, anchors = _anchors(context)
     cache, projects = {}, {}
     best, data_roots, roots, aggregate, index_paths, output_lists = None, set(), [], set(), [], []
@@ -785,23 +793,41 @@ def notebook_has_outputs(path):
 
 
 GLOB_CAP = 256          # matches checked per wildcard, like a shell expansion cut short
-GLOB_SCAN_BUDGET = 300000  # directory entries examined per wildcard before it counts as over the cap
+GLOB_SCAN_BUDGET = 300000  # directory entries examined per guard call, across every wildcard and variant
+GLOB_DEADLINE = 3.0        # seconds of wildcard expansion per guard call
 _GLOB_CACHE: dict = {}
+_GLOB_STATE = {"budget": GLOB_SCAN_BUDGET, "deadline": None}
+
+
+def reset_glob_budget():
+    """Start a guard call's wildcard work: a fresh shared scan budget, deadline, and match cache."""
+    _GLOB_CACHE.clear()
+    _GLOB_STATE["budget"] = GLOB_SCAN_BUDGET
+    _GLOB_STATE["deadline"] = time.monotonic() + GLOB_DEADLINE
 
 
 def glob_matches(pattern, cwd):
     """(up to GLOB_CAP absolute matches, over_cap) for an unquoted shell wildcard, resolved against cwd.
 
-    Hidden names match only a component that starts with `.`, as in the shell. Examining more than
-    GLOB_SCAN_BUDGET directory entries also counts as over the cap, so a huge tree cannot stall the hook.
+    Hidden names match only a component that starts with `.`, as in the shell. Every wildcard in one
+    guard call draws on one GLOB_SCAN_BUDGET of directory entries and one GLOB_DEADLINE; once either is
+    spent, this and every later wildcard counts as over the cap, so a huge tree cannot stall the hook.
     """
     key = (pattern, cwd)
     if key in _GLOB_CACHE:
         return _GLOB_CACHE[key]
+    if _GLOB_STATE["deadline"] is None:
+        _GLOB_STATE["deadline"] = time.monotonic() + GLOB_DEADLINE
+    deadline = _GLOB_STATE["deadline"]
+    budget = _GLOB_STATE["budget"]
+    if budget <= 0 or time.monotonic() > deadline:
+        _GLOB_STATE["budget"] = 0
+        _GLOB_CACHE[key] = ([], True)
+        return _GLOB_CACHE[key]
     path = os.path.expanduser(pattern)
     current = [os.sep if os.path.isabs(path) else cwd]
     parts = [p for p in path.split("/") if p]
-    budget, over = GLOB_SCAN_BUDGET, False
+    over = False
     for index, part in enumerate(parts):
         last = index == len(parts) - 1
         found = []
@@ -817,8 +843,8 @@ def glob_matches(pattern, cwd):
                     with os.scandir(base) as entries:
                         for entry in entries:
                             budget -= 1
-                            if budget < 0:
-                                over = True
+                            if budget < 0 or (not budget & 4095 and time.monotonic() > deadline):
+                                budget, over = 0, True
                                 break
                             if entry.name.startswith(".") and not part.startswith("."):
                                 continue
@@ -841,6 +867,7 @@ def glob_matches(pattern, cwd):
         current = found
         if over or not current:
             break
+    _GLOB_STATE["budget"] = max(budget, 0)
     result = ([os.path.normpath(m) for m in current[:GLOB_CAP]], over)
     _GLOB_CACHE[key] = result
     return result
@@ -1418,7 +1445,7 @@ COUNT_CELL = re.compile(r"^(\d+)(?:\s*\([^()]*\)|\s*/\s*\d+)?\s*%?$")
 
 def aggregate_file(raw, cwd, mode):
     """An existing .csv/.tsv/.md under an aggregate directory (and outside data_root)."""
-    ext = raw.rsplit(".", 1)[-1].lower() if "." in os.path.basename(raw) else ""
+    ext = _ext(raw)
     return ext in AGGREGATE_EXTS and in_aggregate_dir(raw, cwd, mode) and os.path.isfile(_resolve(raw, cwd))
 
 
@@ -1590,10 +1617,21 @@ def module_files(module, cwd, env):
     return found
 
 
+def _r_file(args):
+    """The script `R -f FILE`, `R --file=FILE`, or `R --file FILE` runs, else None."""
+    for index, token in enumerate(args):
+        if token.startswith("--file="):
+            return token[len("--file="):] or None
+        if token in ("-f", "--file"):
+            return args[index + 1] if index + 1 < len(args) else None
+    return None
+
+
 def launched_scripts(cmd, cwd, fed=(), env=()):
     """(shown name, path, scan kind) for every script file a command runs.
 
-    Covers a path-shaped program run directly, source/., interpreters given a script operand, a script
+    Covers a path-shaped program run directly, source/., interpreters given a script operand (with a
+    script extension, or any existing file, scanned in the interpreter's language), R -f/--file, a script
     fed on standard input (`< file`, or `cat file |` passed in as fed), python -m on a project module,
     quarto render FILE, and jupyter nbconvert --execute.
     """
@@ -1620,13 +1658,21 @@ def launched_scripts(cmd, cwd, fed=(), env=()):
         module = _module_flag(args)
         if module is not None:
             return [(module, path, "py") for path in module_files(module, cwd, env)]
+    if verb == "r":
+        script = _r_file(args)
+        if script:
+            return [(script, _resolve(script, cwd), "r")]
     ops = _script_ops(verb, args)
     if verb in ("bun", "deno") and ops[:1] == ["run"]:
         ops = ops[1:]
     if ops and "-" not in args and not (verb in SHELLS and "-s" in args):
         script = ops[0]
-        if SCRIPT_RUNNERS.match(verb) and _ext(script) in SCRIPT_EXTS:
-            return [(script, _resolve(script, cwd), None)]
+        if SCRIPT_RUNNERS.match(verb) or re.match(r"^ipython\d?$", verb):  # ipython runs a script operand too
+            path = _resolve(script, cwd)
+            if _ext(script) in SCRIPT_EXTS:
+                return [(script, path, None)]
+            if os.path.isfile(path):  # `bash bin/analyze`: the interpreter decides the language, not the name
+                return [(script, path, script_kind(path, verb))]
         return []
     # The code comes from standard input: a `<` redirect, or the files a `cat` earlier in the pipe printed.
     sources = [args[i + 1] for i, t in enumerate(args[:-1]) if t == "<"] or list(fed)
@@ -1663,6 +1709,7 @@ def workflow_reason(name):
 
 
 FIND_PATTERN_OPTS = ("-name", "-iname", "-path", "-ipath", "-wholename", "-iwholename")
+FIND_NAME_ONLY_OPTS = ("-name", "-iname")
 
 
 def find_pattern_data(args, cwd, mode):
@@ -1679,7 +1726,7 @@ def find_pattern_data(args, cwd, mode):
         candidates = [os.path.basename(r).lower() for r in mode["data_roots"]] + names
         if any(fnmatch.fnmatchcase(name, pattern.rsplit("/", 1)[-1]) for name in candidates):
             return True
-        if "name" not in token or "wholename" in token:
+        if token not in FIND_NAME_ONLY_OPTS:  # -path/-ipath/-wholename match the full path
             for root in mode["data_roots"]:
                 rel = os.path.relpath(root, cwd)
                 if any(fnmatch.fnmatchcase(c.lower(), pattern) for c in (root + "/x", rel + "/x", "./" + rel + "/x")):
@@ -1783,7 +1830,7 @@ def judge(cmd, cwd, mode, tainted, written, fed=(), env=()):
     if SCRIPT_RUNNERS.match(verb):
         ops = [t for t in args if not t.startswith("-")]
         script = ops[0] if ops else ""
-        ext = script.rsplit(".", 1)[-1].lower() if "." in os.path.basename(script) else ""
+        ext = _ext(script)
         if script and ext in SCRIPT_EXTS and not token_ref(script, cwd, mode, tainted):
             if _resolve(script, cwd) in written:
                 return "writing a script that opens data and running it in one command returns its values", False
@@ -1961,13 +2008,25 @@ def mcp_violation(tool, tool_input, cwd, mode):
 
 
 MCP_CODE_KEYS = {"code", "source", "script", "command", "cmd", "sql", "query_code", "cell", "program", "expression"}
+# Keys whose value is a path even when it contains spaces (`My Data/a.csv`); so is any key ending in "path".
+MCP_PATH_KEYS = {"path", "paths", "file_path", "filepath", "filename", "notebook_path", "uri", "file", "files",
+                 "source_path", "target"}
 
 
 def mcp_access_violation(tool_input, cwd, mode):
-    """Schema-only: an MCP tool (filesystem, IDE, notebook, database) returns what it reads into the context."""
+    """Schema-only: an MCP tool (filesystem, IDE, notebook, database) returns what it reads into the context.
+
+    A path-keyed value is checked whole, spaces and all (a file:// URI is decoded first); any other
+    value is checked only when it is a single word, so free-text queries are not read as paths.
+    """
+    from urllib.parse import unquote
+
     for key, value in _strings(tool_input):
         text = value.strip()
-        if text and not re.search(r"\s", text) and not text.startswith(("http://", "https://")) \
+        pathish = key in MCP_PATH_KEYS or key.endswith("path")
+        if pathish and text.lower().startswith("file://"):
+            text = unquote(text[len("file://"):])
+        if text and (pathish or not re.search(r"\s", text)) and not text.startswith(("http://", "https://")) \
                 and is_data_path(text, cwd, mode):
             return "an MCP tool would read a data file into the model context"
         if key in MCP_CODE_KEYS and (text_ref(value, cwd, mode) or lists_dataish_dir(value, cwd, mode)):

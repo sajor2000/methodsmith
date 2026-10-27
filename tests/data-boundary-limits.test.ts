@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, utimesSync, writeFileSync } from "fs"
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, utimesSync, writeFileSync } from "fs"
 import path from "path"
 import { APPROVED, SCHEMA_ONLY, bash, expectAll, guard, helper, pluginRoot, project, py, runGuard, tempDir, verdicts } from "./data-boundary-harness"
 
@@ -181,6 +181,29 @@ describe("limit 1a: agent-written scripts that read data (schema-only)", () => {
       "cat analysis/run.py | python3", `bash -c "python3 analysis/run.py"`, "python3 -m pytest", "find . -type f -exec cat {} +",
     ].map((c) => ["Bash", bash(c)] as [string, Record<string, unknown>]))
   })
+
+  test("an interpreter given an extensionless script file scans it in the interpreter's language", () => {
+    const root = launchProject()
+    withFile(root, "bin/run", "import pandas as pd\nprint(pd.read_csv('data/cohort.csv'))\n")
+    withFile(root, "bin/hello", "echo hello\n")
+    withFile(root, "bin/greet", "print('hello')\n")
+    expectAll(root, "deny", [["Bash", bash("bash bin/analyze")], ["Bash", bash("python3 bin/run")], ["Bash", bash("sh bin/analyze")]])
+    expectAll(root, "allow", [["Bash", bash("bash bin/hello")], ["Bash", bash("python3 bin/greet")]])
+    expectAll(launchProject(APPROVED), "allow", [["Bash", bash("bash bin/analyze")]])
+  })
+
+  test("ipython script operands and R -f / --file scripts are scanned", () => {
+    const root = launchProject()
+    withFile(root, "analysis/clean.R", "x <- c(1, 2, 3)\nprint(mean(x))\n")
+    expectAll(root, "deny", [
+      ["Bash", bash("ipython analysis/run.py")],
+      ["Bash", bash("R -f analysis/run.R")],
+      ["Bash", bash("R --file=analysis/run.R")],
+      ["Bash", bash("R --vanilla --file analysis/run.R")],
+    ])
+    expectAll(root, "allow", [["Bash", bash("R --version")], ["Bash", bash("R -f analysis/clean.R")]])
+    expectAll(launchProject(APPROVED), "allow", [["Bash", bash("ipython analysis/run.py")], ["Bash", bash("R -f analysis/run.R")]])
+  })
 })
 
 describe("wildcards and find patterns (schema-only)", () => {
@@ -253,6 +276,22 @@ describe("wildcards and find patterns (schema-only)", () => {
       const ms = performance.now() - start
       expect({ command, decision: result.decision, fast: ms < 3000 }).toEqual({ command, decision, fast: true })
     }
+  }, 120000)
+
+  test("many brace wildcards over a large tree share one scan budget and still decide fast", () => {
+    const root = wildcardProject()
+    const make = "import os, sys\nfor d in range(60):\n    p = os.path.join(sys.argv[1], f'd{d:02d}')\n    os.makedirs(p)\n" +
+      "    for i in range(1000):\n        open(os.path.join(p, f'f{i:04d}.txt'), 'w').close()"
+    expect(Bun.spawnSync(["python3", "-c", make, path.join(root, "tree")]).exitCode).toBe(0)
+    // Ten wildcards of 64 brace variants each: with a per-pattern budget this scans tens of millions of entries.
+    const options = Array.from({ length: 64 }, (_, i) => `q${String(i).padStart(2, "0")}`).join(",")
+    const globs = "xyzwvutsrp".split("").map((p) => `tree/*/${p}{${options}}*`).join(" ")
+    const start = performance.now()
+    const result = runGuard(root, "Bash", bash(`ls ${globs}; cat data/cohort.csv`))
+    const ms = performance.now() - start
+    rmSync(path.join(root, "tree"), { recursive: true, force: true }) // here, not in the shared afterAll hook's time limit
+    expect({ decision: result.decision, fast: ms < 5000 }).toEqual({ decision: "deny", fast: true })
+    expectAll(project(APPROVED), "allow", cmds(["cat src/*.py"]))
   }, 120000)
 })
 
