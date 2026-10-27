@@ -44,6 +44,7 @@ type Item = {
   reasons: string[]
   recomputed_p?: number
   envelope?: [number, number]
+  reported_interval?: [number, number]
 }
 type Report = {
   alpha: number
@@ -63,6 +64,44 @@ function check(cwd: string, claims: string, out = "qc/stat_check.json"): { code:
 const claims = (items: unknown[]) => JSON.stringify({ alpha: 0.05, items })
 
 describe("statistic recomputation gate", () => {
+  test("integral JSON statistic floats match printed strings without widening signed envelopes", () => {
+    // Interpolate raw JSON tokens: JSON.stringify would turn 2.0 into 2.
+    const items = ["2.0", "-2.0", "2", "-2"].flatMap((value) => [
+      `{"statistic":"z","value":${value},"reported_p":"0.100"}`,
+      `{"statistic":"z","value":"${value}","reported_p":"0.100"}`,
+    ])
+    const root = workspace({ "claims.json": `{"items":[${items.join(",")}]}` })
+    const { code, report } = check(root, "claims.json")
+    expect(code).toBe(0)
+    expect(report.items.map((item) => item.verdict)).toEqual([
+      "WARN", "WARN", "WARN", "WARN", "PASS", "PASS", "PASS", "PASS",
+    ])
+    for (let i = 0; i < report.items.length; i += 2) {
+      expect(report.items[i]!.envelope).toEqual(report.items[i + 1]!.envelope)
+    }
+    expect(report.items[0]!.envelope).toEqual(report.items[2]!.envelope)
+  })
+
+  test("integral JSON reported P floats match printed strings without false PASS", () => {
+    const cases = [
+      ["0.50", "1.0", "WARN"], ["-0.50", "1.0", "WARN"],
+      ["1.00", "0.0", "WARN"], ["-1.00", "0.0", "WARN"],
+      ["0.00", "1.0", "PASS"], ["10.00", "0.0", "PASS"],
+      ["0.50", "1", "PASS"], ["1.00", "0", "PASS"],
+    ] as const
+    const items = cases.flatMap(([value, reported]) => [
+      `{"statistic":"z","value":"${value}","reported_p":${reported}}`,
+      `{"statistic":"z","value":"${value}","reported_p":"${reported}"}`,
+    ])
+    const root = workspace({ "claims.json": `{"items":[${items.join(",")}]}` })
+    const { code, report } = check(root, "claims.json")
+    expect(code).toBe(0)
+    expect(report.items.map((item) => item.verdict)).toEqual(cases.flatMap(([, , verdict]) => [verdict, verdict]))
+    for (let i = 0; i < report.items.length; i += 2) {
+      expect(report.items[i]!.reported_interval).toEqual(report.items[i + 1]!.reported_interval)
+    }
+  })
+
   test("scientific notation preserves the place value of the last printed digit", () => {
     const root = workspace({ "claims.json": claims(["2.00", "2.00e0", "20", "2.0e1", "20.0", "2.00e1"]
       .map((value) => ({ statistic: "z", value }))) })

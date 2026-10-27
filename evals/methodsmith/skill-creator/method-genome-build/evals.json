@@ -14,7 +14,8 @@
         "mismatch_status is \"incompatible\" in the requested structured advice, consistent with the explanation",
         "no_evidence_status is \"unknown\" in the requested structured advice, consistent with the explanation",
         "unavailable_tool_status is \"uninspected\" in the requested structured advice, consistent with the explanation",
-        "ready is false in the requested structured advice, consistent with the explanation"
+        "ready is false in the requested structured advice, consistent with the explanation",
+        "Naming alone never identifies a build; every unresolved audit issue, including P1 naming differences, blocks a clean completion."
       ]
     },
     {

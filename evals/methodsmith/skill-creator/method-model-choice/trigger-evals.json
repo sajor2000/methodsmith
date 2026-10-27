@@ -1,5 +1,5 @@
 [
-  {"query": "Review a repeated-measures model with a patient random intercept plus fully unstructured within-patient residual covariance. For future deployment, may year folds train on future years, and how do 90-day outcomes and repeated patients affect splitting?", "should_trigger": true},
+  {"query": "Review a repeated-measures model with a patient random intercept plus fully unstructured within-patient residual covariance. For future deployment, may year folds train on future years, and how do 90-day outcomes and repeated patients affect splitting? May a frozen model use a single independent later validation cohort?", "should_trigger": true},
   {"query": "choose between Cox and Fine-Gray for time to dialysis with death as a competing event, and justify it with literature - python lifelines stack", "should_trigger": true},
   {"query": "Our outcome is ICU length of stay with lots of zeros and a long tail. Which regression family and link should we use, and what diagnostics and fallbacks should be prespecified?", "should_trigger": true},
   {"query": "Help me justify the random-effects structure for a crossed design (patients x raters) on pain scores; glmmTMB is in renv.lock.", "should_trigger": true},

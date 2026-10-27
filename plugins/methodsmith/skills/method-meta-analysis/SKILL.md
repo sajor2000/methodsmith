@@ -52,7 +52,7 @@ Validate each row's uncertainty before selection: use a source-reported SE on th
 
 ### Step 2: Filter to comparable studies
 
-Filter to the selected scientific target first; read the complete parsed contract in `references/effect-parser.md`. Resolve adjusted/marginal differences, units and overlapping cohorts before any fit. Save the selection code and excluded-study reasons. Write only the selected compatible rows to `analysis/effect-size/<query>-selected.csv`; retain the full parsed CSV and exclusions for audit. Then filter:
+Filter to the selected scientific target first; read the complete parsed contract in `references/effect-parser.md`. Resolve adjusted/marginal differences, units and overlapping cohorts before any fit. Exclude rows whose uncertainty remains unsupported, retaining their reasons. Save the selection code and excluded-study reasons. Write only the selected compatible rows with supported uncertainty to `analysis/effect-size/<query>-selected.csv`; retain the full parsed CSV and exclusions for audit. Then filter:
 - `metric` matches `--metric` (or modal-metric if not specified); `scripts/pool_effects.R` matches the uppercase label exactly, so pass `HR`, not `hr`
 - No sample-size cutoff by default: inverse-variance weights already down-weight small studies. Pass `--min-n <n>` to `scripts/pool_effects.R` only as a sensitivity analysis, and then report the unfiltered estimate alongside it
 - Year within last `--years` window if passed
@@ -62,7 +62,7 @@ Report N studies in the meta-analysis vs N in the input.
 
 ### Step 3: Pool
 
-Run the bundled script on the selected CSV from Step 2 (the numerical columns plus the reviewed compatibility declarations in `references/effect-parser.md`; it fails on missing or incompatible declarations, so the raw methods table will not work). It applies the metric and CI filters (plus `--min-n` when passed), prints each dropped count, and writes the Markdown summary, a sibling `-forest.png`, the selected `-contract.csv`, and the Step 6 signal:
+Run the bundled script on the selected CSV from Step 2 (the numerical columns plus the reviewed compatibility declarations in `references/effect-parser.md`; it fails on missing or incompatible declarations, so the raw methods table will not work). It applies metric and finite-point filters (plus `--min-n` when passed), prints each dropped count, and stops on any row without supported uncertainty. It writes the Markdown summary, a sibling `-forest.png`, the selected `-contract.csv`, and the Step 6 signal:
 
 ```bash
 SKILL_DIR="<absolute path of the directory containing this SKILL.md>";
@@ -96,7 +96,7 @@ After pooling, compare the result with any published meta-analysis found under E
 # Pooled effect-size: <metric> for <outcome> in <population>
 
 Source: 14 studies extracted via `method-pubmed` and `method-extract` on <date>
-Filtered to: <metric>, complete CI, last 10 years -> 9 studies pooled
+Filtered to: <metric>, validated uncertainty (reported SE or declared Wald CI), last 10 years -> 9 studies pooled
 
 ## Pooled estimate
 

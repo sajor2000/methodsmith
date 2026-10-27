@@ -52,6 +52,7 @@ required_behaviors:
   - evidence-ledger-preserved
   - emits-handoff
 prohibited_behaviors:
+  - no-primary-auprc-declaration
   - no-fabricated-metrics
   - no-imbalance-correction
   - no-cuda-install-plan
@@ -218,10 +219,21 @@ criteria:
     hard_gate: true
   - id: auprc-supplementary-only
     description: The memo does not make AUPRC or average precision the primary measure.
-    type: regex_not
+    type: claim_absent
     path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
-    pattern: 'primary (?:performance )?(?:metric|measure)\W{0,4}(?:is |will be )?(?:the )?(?:AUPRC|PR.?AUC|average precision)|(?:AUPRC|PR.?AUC|average precision)[^.\n]{0,20}\b(?:as|is) (?:the )?primary'
+    subjects: [AUPRC, PR-AUC, PR AUC, average precision]
+    claims: [primary]
+    negation_pattern: '\b(?:not|never|cannot|can''t|isn''t|aren''t|don''t|doesn''t)\b'
     weight: 2
+    hard_gate: false
+  - id: no-primary-auprc-declaration
+    description: An affirmative primary-measure declaration does not name AUPRC.
+    type: claim_absent
+    path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
+    subjects: [primary metric, primary performance metric, primary measure, primary performance measure, primary objective]
+    claims: [AUPRC, PR-AUC, PR AUC, average precision]
+    negation_pattern: '\b(?:not|never|cannot|can''t|isn''t|aren''t|don''t|doesn''t)\b'
+    weight: 1
     hard_gate: false
   - id: proper-tuning-objective
     description: Hyperparameters are tuned on a proper scoring rule (log loss or Brier).
@@ -234,7 +246,7 @@ criteria:
     description: The memo grounds a real Riley sample-size check in its machinery (shrinkage, Nagelkerke R-squared, or pmsampsize near the Riley reference), not a bare keyword.
     type: regex
     path: workspace/analysis/model-strategy/sepsis-48h-model-strategy.md
-    pattern: '(?:Riley|pmsampsize)[\s\S]{0,400}(?:shrinkage|Nagelkerke|R.?squared|Cox.?Snell|R\^\{?2\}?|R\u00B2)|(?:shrinkage|Nagelkerke|R.?squared|Cox.?Snell|R\^\{?2\}?|R\u00B2)[\s\S]{0,400}(?:Riley|pmsampsize)'
+    pattern: '(?=[\s\S]*(?:Riley|pmsampsize))(?=[\s\S]*(?:shrinkage|Nagelkerke|R.?squared|Cox.?Snell|R\^\{?2\}?|R\u00B2))'
     weight: 2
     hard_gate: true
   - id: validation-design-declared
@@ -391,4 +403,5 @@ limitations:
   - The sidecar cannot establish scaffold correctness. The structural tuning gate parses supported Python shapes and follows bounded data flow; it is not execution, full control-flow analysis, or a statistical code audit.
   - The fixture is synthetic and aggregate; the case evaluates protocol routing and scaffold structure, not fitted results or clinical validity.
   - Regex criteria verify that the right concepts are named, not that the reasoning is complete; a human reviewer still reads the memo.
-  - The auprc-supplementary-only check is a heuristic phrase match and is not a hard gate.
+  - The AUPRC claim checks use bounded clause/negation grammar and are not hard gates.
+  - This fixture requests explicit loops over splitter outputs or simple cached split pairs. Enriched fold-record buffers, dynamic dispatch and other unsupported containers remain outside the static check.

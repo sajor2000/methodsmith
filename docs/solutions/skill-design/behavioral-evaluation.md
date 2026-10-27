@@ -224,6 +224,8 @@ statistical, or production validity.
   supported adverbs before `be`. `not only`, `not merely`, and `not just` are contrastive frames,
   not ordinary negations. Keep subject and claim lists literal and narrow, and use the single
   `negation_pattern` only for explicit disclaimers.
+  Negated reporting frames include instructions not to use a measure and evidence that does
+  not establish a claim; contrastive "not only" frames remain affirmative.
 - Use numeric tolerances only where formatting or floating-point representation can vary.
 - Make prohibited behaviors hard gates when violating them could silently mutate data, expose
   sensitive text, invent analysis results, or bypass required user judgment.
@@ -286,6 +288,10 @@ correct objective arithmetic, sufficient inner validation, proper downstream use
 model, correct calibration, or clinical validity. Unsupported compliant layouts may fail.
 Archive compatibility was checked on isolated copies through `scoreEvaluationRun`, not by
 rewriting original run digests or regrading published reports.
+
+The ML fixture requests module-level imports and explicit assessment loops over splitter
+outputs or cached split pairs. A loop over enriched records assembled by a separate preflight
+loop remains unsupported. Its acceptance claims are limited to that declared layout.
 
 This pattern adapts the frozen protocols, objective scoring, synthetic health-data cases, and
 hash-based evidence used in

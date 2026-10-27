@@ -49,6 +49,7 @@ def have(cmd: str) -> bool:
 
 
 def inspect_bam(path: Path) -> dict:
+    """Read BAM/CRAM contig identity and build declarations through samtools."""
     if not have("samtools"):
         return {"path": str(path), "error": "samtools not installed; cannot inspect"}
     try:
@@ -62,16 +63,22 @@ def inspect_bam(path: Path) -> dict:
         if line.startswith("@SQ"):
             sn = m5 = ln = assembly = reference = None
             for tag in line.split("\t")[1:]:
-                if   tag.startswith("SN:"): sn = tag[3:]
-                elif tag.startswith("M5:"): m5 = tag[3:]
-                elif tag.startswith("LN:"): ln = tag[3:]
-                elif tag.startswith("AS:"): assembly = tag[3:]
-                elif tag.startswith("UR:"): reference = tag[3:]
+                if tag.startswith("SN:"):
+                    sn = tag[3:]
+                elif tag.startswith("M5:"):
+                    m5 = tag[3:]
+                elif tag.startswith("LN:"):
+                    ln = tag[3:]
+                elif tag.startswith("AS:"):
+                    assembly = tag[3:]
+                elif tag.startswith("UR:"):
+                    reference = tag[3:]
             contigs.append({"sn": sn, "m5": m5, "ln": ln, "assembly": assembly, "reference": reference})
     return {"path": str(path), "kind": "bam", "contigs": contigs}
 
 
 def inspect_vcf(path: Path) -> dict:
+    """Read VCF header reference, assembly, contig length and MD5 evidence."""
     opener = gzip.open if path.suffix == ".gz" else open
     contigs, ref = [], None
     try:
@@ -96,6 +103,7 @@ def inspect_vcf(path: Path) -> dict:
 
 
 def inspect_gtf(path: Path) -> dict:
+    """Read GTF/GFF3 build metadata and the first feature's chromosome name."""
     opener = gzip.open if path.suffix == ".gz" else open
     first_chrom = source = None
     try:
@@ -120,6 +128,7 @@ def chr_style(name: str | None) -> str:
 
 
 def audit(root: Path, declared: str) -> tuple[list[dict], list[str]]:
+    """Classify files against a declared build using header evidence only."""
     findings: list[dict] = []
     issues: list[str] = []
     if not root.is_dir():
@@ -200,6 +209,8 @@ def audit(root: Path, declared: str) -> tuple[list[dict], list[str]]:
                     mismatches.append(f"chromosome 1 MD5 differs from declared build {declared}")
                 else:
                     evidence.append("matching chromosome 1 MD5")
+        mismatches = list(dict.fromkeys(mismatches))
+        evidence = list(dict.fromkeys(evidence))
         if mismatches:
             f["status"] = "incompatible"
             issues.extend(f"{f['path']}: {message}" for message in mismatches)
@@ -240,7 +251,7 @@ def main() -> None:
     args.manifest.write_text(serialized)
 
     # Markdown report
-    md = [f"# Genome-build audit", "",
+    md = ["# Genome-build audit", "",
           f"Declared build: **{args.declared}**",
           f"Files inspected: {len(findings)}",
           "Scope: header declarations, diagnostic contig lengths and available MD5s; not complete sequence identity.",

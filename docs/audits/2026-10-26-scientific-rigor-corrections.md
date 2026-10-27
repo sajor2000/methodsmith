@@ -1,5 +1,7 @@
 # Scientific rigor corrections
 
+This records the pre-feedback candidate. See [PR173 feedback correction evidence](2026-10-27-pr173-feedback.md) for the later source changes and new frozen runs; the results below and their 36-run manifest remain historical evidence for the earlier candidate.
+
 This change addresses F01-F08 from the 2026-10-26 scientific accuracy and rigor audit. The audit screened 69 shipped skills with risk-based deeper inspection; neither that screen nor these corrections establishes comprehensive scientific or clinical validity.
 
 The fixes were reproduced and implemented from base `099d156e94e578213aa741e1d77a313b898097a8` on an isolated feature branch. The original checkout's unrelated edits were left untouched. No release-owned versions were changed.

@@ -11,10 +11,16 @@
   "fixtures": [],
   "required_behaviors": [
     "eligible-at-index",
-    "review-informative-censoring"
+    "review-informative-censoring",
+    "written-response",
+    "response-agrees-eligible-at-index",
+    "response-agrees-requires-full-future-enrollment",
+    "response-agrees-review-informative-censoring",
+    "explains-followup"
   ],
   "prohibited_behaviors": [
-    "requires-full-future-enrollment"
+    "requires-full-future-enrollment",
+    "no-post-index-exclusion"
   ],
   "criteria": [
     {
@@ -46,10 +52,71 @@
       "expected": true,
       "weight": 2,
       "hard_gate": true
+    },
+    {
+      "id": "written-response",
+      "description": "The requested explanation exists.",
+      "type": "file_exists",
+      "path": "response.md",
+      "weight": 2,
+      "hard_gate": true,
+      "expected": true
+    },
+    {
+      "id": "response-agrees-eligible-at-index",
+      "description": "The unique written decision agrees with the sidecar: eligible_at_index",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "eligible_at_index",
+      "text_path": "response.md",
+      "pattern": "^eligible_at_index:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-requires-full-future-enrollment",
+      "description": "The unique written decision agrees with the sidecar: requires_full_future_enrollment",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "requires_full_future_enrollment",
+      "text_path": "response.md",
+      "pattern": "^requires_full_future_enrollment:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-review-informative-censoring",
+      "description": "The unique written decision agrees with the sidecar: review_informative_censoring",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "review_informative_censoring",
+      "text_path": "response.md",
+      "pattern": "^review_informative_censoring:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "explains-followup",
+      "description": "Explains censoring and follow-up after index.",
+      "type": "regex",
+      "path": "response.md",
+      "weight": 2,
+      "hard_gate": true,
+      "pattern": "\\b(?:censor\\w*|follow[- ]?up|ascertain\\w*)\\b"
+    },
+    {
+      "id": "no-post-index-exclusion",
+      "description": "Reject affirmative exclusion of this patient on future enrollment.",
+      "type": "regex_not",
+      "path": "response.md",
+      "weight": 2,
+      "hard_gate": true,
+      "pattern": "(?:^|[.!?;\\n])\\s*(?:we\\s+)?(?:recommend\\s+(?:that\\s+)?(?:we\\s+)?)?exclude\\s+(?:the\\s+)?(?:day[- ]?90\\s+(?:patient|person)|(?:patient|person)\\s+who\\s+disenrolls)"
     }
   ],
   "threshold": 1,
   "limitations": [
-    "Synthetic advisory behavior checks bounded scientific decisions, not clinical validity or comprehensive statistical reliability. Numeric helper behavior is checked separately by executable regression tests."
+    "Synthetic advisory behavior checks bounded scientific decisions, not clinical validity or comprehensive statistical reliability. Numeric helper behavior is checked separately by executable regression tests.",
+    "Written decisions are bound to the JSON sidecar; prose gates cover bounded terms and explicit prohibited recommendations, not arbitrary semantic contradictions."
   ]
 }

@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Idea: does starting a GLP-1 receptor agonist reduce hip fracture risk in older adults with type 2 diabetes? We have Medicare claims 2016-2023 (Parts A/B/D). Harden this into something we can search and plan from. Also address this bounded scientific check as part of the assessment: Use method-question to correct the exposure and outcome definitions for an adult sepsis cohort. The supplied official SCCM bundle defines fluids for hypotension or lactate >=4 mmol/L, vasopressors for hypotension during/after fluid resuscitation, and immediate initiation; every action need not finish in the first hour. We have confirmed 30-day vital status after discharge through a linked mortality source. Our draft calls anyone without all five actions completed in one hour nonadherent. Review a normotensive patient with low lactate who appropriately receives no vasopressors. Work offline using this supplied source excerpt; do not invent novelty evidence or query counts. Write workspace/advice.json with booleans unindicated_pressors_fail_adherence, requires_all_five_completed_one_hour, and string mortality_endpoint. Give the revised PICO/exposure rules and ascertainment in response.md.",
+      "prompt": "Idea: does starting a GLP-1 receptor agonist reduce hip fracture risk in older adults with type 2 diabetes? We have Medicare claims 2016-2023 (Parts A/B/D). Harden this into something we can search and plan from. Also address this bounded scientific check as part of the assessment: Use method-question to correct the exposure and outcome definitions for an adult sepsis cohort. The supplied official SCCM bundle defines fluids for hypotension or lactate >=4 mmol/L, vasopressors for hypotension during/after fluid resuscitation, and immediate initiation. We have confirmed 30-day vital status after discharge through a linked mortality source. Our draft calls anyone without all five actions completed in one hour nonadherent. Review a normotensive patient with low lactate who appropriately receives no vasopressors. Work offline using this supplied source excerpt; do not invent novelty evidence or query counts. Write workspace/advice.json with booleans unindicated_pressors_fail_adherence, requires_all_five_completed_one_hour, and string mortality_endpoint. Give the revised PICO/exposure rules and ascertainment in response.md.",
       "expected_output": "Fills PICO (with target-trial-emulation slots), scores FINER with rationales, suggests a design (target trial emulation/cohort), builds a recall-oriented PubMed query, suggests TARGET as the primary checklist with STROBE as companion and RECORD (RECORD-PE for claims pharmacoepidemiology) as extensions, writes analysis/research-question.yaml, and emits the __CE_RESEARCH_QUESTION__ signal. Also resolves the supplied scientific-contract scenario without inventing missing evidence.",
       "files": [],
       "expectations": [
@@ -16,7 +16,8 @@
         "Does not run the PubMed search or write a SAP",
         "unindicated_pressors_fail_adherence is false in the requested structured advice, consistent with the explanation",
         "requires_all_five_completed_one_hour is false in the requested structured advice, consistent with the explanation",
-        "mortality_endpoint is \"30-day all-cause mortality\" in the requested structured advice, consistent with the explanation"
+        "mortality_endpoint is \"30-day all-cause mortality\" in the requested structured advice, consistent with the explanation",
+        "The written explanation agrees with structured decisions and explains the applicable scientific rule."
       ]
     },
     {

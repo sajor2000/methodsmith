@@ -16,7 +16,8 @@
         "design_identifiable is false in the requested structured advice, consistent with the explanation",
         "qc_pass is false in the requested structured advice, consistent with the explanation",
         "batch_deletion_establishes_validity is false in the requested structured advice, consistent with the explanation",
-        "rank_check_required_without_pc_separation is true in the requested structured advice, consistent with the explanation"
+        "rank_check_required_without_pc_separation is true in the requested structured advice, consistent with the explanation",
+        "The written explanation agrees with structured decisions and explains the applicable scientific rule."
       ]
     },
     {

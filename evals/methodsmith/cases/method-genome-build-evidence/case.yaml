@@ -12,7 +12,17 @@
   "required_behaviors": [
     "mismatch-status",
     "no-evidence-status",
-    "unavailable-tool-status"
+    "unavailable-tool-status",
+    "naming-identifies-build",
+    "p1-blocks-clean-audit",
+    "written-response",
+    "response-agrees-mismatch-status",
+    "response-agrees-no-evidence-status",
+    "response-agrees-unavailable-tool-status",
+    "response-agrees-ready",
+    "response-agrees-naming-identifies-build",
+    "response-agrees-p1-blocks-clean-audit",
+    "explains-evidence"
   ],
   "prohibited_behaviors": [
     "ready"
@@ -57,10 +67,115 @@
       "expected": false,
       "weight": 2,
       "hard_gate": true
+    },
+    {
+      "id": "naming-identifies-build",
+      "description": " Also assess whether contig naming alone identifies a build and whether a P1 naming issue blocks clean audit completion",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "naming_identifies_build",
+      "expected": false,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "p1-blocks-clean-audit",
+      "description": " Also assess whether contig naming alone identifies a build and whether a P1 naming issue blocks clean audit completion",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "p1_blocks_clean_audit",
+      "expected": true,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "written-response",
+      "description": "The requested explanation exists.",
+      "type": "file_exists",
+      "path": "response.md",
+      "expected": true,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-mismatch-status",
+      "description": "The unique written decision agrees with the sidecar: mismatch_status",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "mismatch_status",
+      "text_path": "response.md",
+      "pattern": "^mismatch_status:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-no-evidence-status",
+      "description": "The unique written decision agrees with the sidecar: no_evidence_status",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "no_evidence_status",
+      "text_path": "response.md",
+      "pattern": "^no_evidence_status:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-unavailable-tool-status",
+      "description": "The unique written decision agrees with the sidecar: unavailable_tool_status",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "unavailable_tool_status",
+      "text_path": "response.md",
+      "pattern": "^unavailable_tool_status:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-ready",
+      "description": "The unique written decision agrees with the sidecar: ready",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "ready",
+      "text_path": "response.md",
+      "pattern": "^ready:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-naming-identifies-build",
+      "description": "The unique written decision agrees with the sidecar: naming_identifies_build",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "naming_identifies_build",
+      "text_path": "response.md",
+      "pattern": "^naming_identifies_build:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-p1-blocks-clean-audit",
+      "description": "The unique written decision agrees with the sidecar: p1_blocks_clean_audit",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "p1_blocks_clean_audit",
+      "text_path": "response.md",
+      "pattern": "^p1_blocks_clean_audit:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "explains-evidence",
+      "description": "Includes the requested scientific explanation, beyond decision rows.",
+      "type": "regex",
+      "path": "response.md",
+      "pattern": "\\b(?:header|reference|assembly|checksum|sequence)\\b",
+      "weight": 2,
+      "hard_gate": true
     }
   ],
   "threshold": 1,
   "limitations": [
-    "Synthetic advisory behavior checks bounded scientific decisions, not clinical validity or comprehensive statistical reliability. Numeric helper behavior is checked separately by executable regression tests."
+    "Synthetic advisory behavior checks bounded scientific decisions, not clinical validity or comprehensive statistical reliability. Numeric helper behavior is checked separately by executable regression tests.",
+    "Canonical written decisions are bound to the sidecar; bounded explanation terms are not a general semantic contradiction detector."
   ]
 }

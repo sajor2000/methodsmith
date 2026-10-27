@@ -17,7 +17,7 @@
     },
     {
       "id": 2,
-      "prompt": "which model should I use to predict 30-day readmission? haven't looked at the data yet, not sure if it's one row per admission or per patient. The planned use is deployment in future calendar years; distinguish that target from leaving each historical year out while training on all other years.",
+      "prompt": "which model should I use to predict 30-day readmission? haven't looked at the data yet, not sure if it's one row per admission or per patient. The planned use is deployment in future calendar years; distinguish that target from leaving each historical year out while training on all other years. Also assess whether a frozen model may be validated in one independent later cohort without retraining.",
       "expected_output": "Does not choose a final model; marks the strategy blocked or provisional because the data grain and estimand are unresolved, asks one decision-changing question, and writes no code scaffold.",
       "files": [],
       "expectations": [
@@ -27,7 +27,8 @@
         "Lists the exact future QA facts (e.g. grain, repeat admissions per patient) required to promote the recommendation",
         "Does not open patient-level files merely to avoid asking about the missing design decision",
         "If writing a prediction strategy memo, writes its version-1.0 decisions.json sidecar with matching blocked/provisional status, null unknowns, and explicit unresolved questions",
-        "Keeps unresolved grain blocked/provisional and, for future deployment, requires earlier-to-later validation rather than future-to-past training, with patient grouping and outcome-maturation review."
+        "Keeps unresolved grain blocked/provisional and, for future deployment, requires earlier-to-later validation rather than future-to-past training, with patient grouping and outcome-maturation review.",
+        "Permits a frozen model on one independent later cohort without retraining while preserving chronology, patient grouping and label availability; written advice agrees with structured decisions when provided."
       ]
     },
     {

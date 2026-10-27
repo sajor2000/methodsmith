@@ -42,6 +42,42 @@ test("matching declarations and lengths provide header evidence with an explicit
   expect(result.report).toContain("header")
 })
 
+test("repeated VCF and BAM build declarations yield unique evidence in first-seen order", () => {
+  const results = [
+    audit({ "input.vcf": "##reference=GRCh38\n##contig=<ID=1,length=248956422,assembly=GRCh38>\n##contig=<ID=8,length=145138636,assembly=GRCh38>\n" }),
+    audit({ "input.bam": "synthetic BAM placeholder" }, "GRCh38", false,
+      "@SQ\tSN:1\tLN:248956422\tAS:GRCh38\tUR:GRCh38.fa\n@SQ\tSN:8\tLN:145138636\tAS:GRCh38\tUR:GRCh38.fa\n"),
+  ]
+  for (const result of results) {
+    expect(result.code).toBe(0)
+    expect(result.manifest.files[0].status).toBe("verified")
+    expect(result.manifest.files[0].evidence).toEqual([
+      "matching build declaration", "matching chromosome 1 length", "matching chromosome 8 length",
+    ])
+    expect(result.report).toContain("Issues found: **0**")
+  }
+})
+
+test("repeated build mismatches count once while distinct chromosome length issues remain", () => {
+  const results = [
+    audit({ "input.vcf": "##reference=GRCh37\n##contig=<ID=1,length=249250621,assembly=GRCh37>\n##contig=<ID=8,length=146364022,assembly=GRCh37>\n" }),
+    audit({ "input.bam": "synthetic BAM placeholder" }, "GRCh38", false,
+      "@SQ\tSN:1\tLN:249250621\tAS:GRCh37\tUR:GRCh37.fa\n@SQ\tSN:8\tLN:146364022\tAS:GRCh37\tUR:GRCh37.fa\n"),
+  ]
+  for (const result of results) {
+    expect(result.code).toBe(2)
+    expect(result.manifest.files[0].status).toBe("incompatible")
+    expect(result.report).toContain("Issues found: **3**")
+    const issues = result.report.split("\n").filter((line: string) => line.startsWith("- "))
+      .map((line: string) => line.slice(line.indexOf(": ") + 2))
+    expect(issues).toEqual([
+      "header declares GRCh37, expected GRCh38",
+      "chromosome 1 length 249250621 differs from GRCh38 length 248956422",
+      "chromosome 8 length 146364022 differs from GRCh38 length 145138636",
+    ])
+  }
+})
+
 test("absent build evidence and failed inspection never produce a clean audit", () => {
   const inputs: Record<string, string>[] = [{ "input.vcf": "##contig=<ID=1>\n" }, { "input.bam": "synthetic placeholder" }]
   for (const files of inputs) {

@@ -12,7 +12,13 @@
   "required_behaviors": [
     "incorrect-negative",
     "noninferiority",
-    "sequential"
+    "sequential",
+    "written-response",
+    "response-agrees-incorrect-negative",
+    "response-agrees-noninferiority",
+    "response-agrees-sequential",
+    "response-agrees-unknown-sidedness",
+    "explains-evidence"
   ],
   "prohibited_behaviors": [
     "unknown-sidedness"
@@ -57,10 +63,73 @@
       "expected": "WARN",
       "weight": 2,
       "hard_gate": true
+    },
+    {
+      "id": "written-response",
+      "description": "The requested explanation exists.",
+      "type": "file_exists",
+      "path": "response.md",
+      "expected": true,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-incorrect-negative",
+      "description": "The unique written decision agrees with the sidecar: incorrect_negative",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "incorrect_negative",
+      "text_path": "response.md",
+      "pattern": "^incorrect_negative:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-noninferiority",
+      "description": "The unique written decision agrees with the sidecar: noninferiority",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "noninferiority",
+      "text_path": "response.md",
+      "pattern": "^noninferiority:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-sequential",
+      "description": "The unique written decision agrees with the sidecar: sequential",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "sequential",
+      "text_path": "response.md",
+      "pattern": "^sequential:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-unknown-sidedness",
+      "description": "The unique written decision agrees with the sidecar: unknown_sidedness",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "unknown_sidedness",
+      "text_path": "response.md",
+      "pattern": "^unknown_sidedness:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "explains-evidence",
+      "description": "Includes the requested scientific explanation, beyond decision rows.",
+      "type": "regex",
+      "path": "response.md",
+      "pattern": "\\b(?:tail|one[- ]sided|two[- ]sided|adjust(?:ed|ment)|rounding|precision|alpha)\\b",
+      "weight": 2,
+      "hard_gate": true
     }
   ],
   "threshold": 1,
   "limitations": [
-    "Synthetic advisory behavior checks bounded scientific decisions, not clinical validity or comprehensive statistical reliability. Numeric helper behavior is checked separately by executable regression tests."
+    "Synthetic advisory behavior checks bounded scientific decisions, not clinical validity or comprehensive statistical reliability. Numeric helper behavior is checked separately by executable regression tests.",
+    "Canonical written decisions are bound to the sidecar; bounded explanation terms are not a general semantic contradiction detector."
   ]
 }

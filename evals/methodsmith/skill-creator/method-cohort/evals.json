@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Build the cohort for our new-user statin study: adults with T2DM initiating a statin 2018-2023, OMOP CDM v5.4 with vocabulary release 2024-Q1, index = first statin drug_exposure on/after T2DM diagnosis, exclude T1DM ever and any statin in the prior 365 days, require 365 days of prior observation, 365-day follow-up. stack_profile.data_root is set. Also address this bounded scientific check as part of the assessment: Use method-cohort to review this synthetic eligibility rule, without SQL execution or patient data: require 365 days of insurance observation before a qualifying drug initiation, then require continuous enrollment for the full following year. One person satisfies all baseline criteria but disenrolls on day90. We want the inception cohort eligible at initiation, with one-year outcome followup when observable. Write workspace/advice.json with booleans eligible_at_index, requires_full_future_enrollment, review_informative_censoring. Explain followup handling and why the outcome's observability differs from baseline eligibility in response.md. No network or package installation.",
+      "prompt": "Build the cohort for our new-user statin study: adults with T2DM initiating a statin 2018-2023, OMOP CDM v5.4 with vocabulary release 2024-Q1, index = first statin drug_exposure on/after T2DM diagnosis, exclude T1DM ever and any statin in the prior 365 days, require 365 days of prior observation, 365-day follow-up. stack_profile.data_root is set. Also address this bounded scientific check as part of the assessment: Use method-cohort to review this synthetic eligibility rule, without SQL execution or patient data: require 365 days of insurance observation before a qualifying drug initiation, then require continuous enrollment for the full following year. One person satisfies all baseline criteria but disenrolls on day 90. Does this person belong in the inception cohort for one-year outcomes? Write workspace/advice.json with booleans eligible_at_index, requires_full_future_enrollment, review_informative_censoring. Explain baseline eligibility and follow-up handling in response.md. No network or package installation.",
       "expected_output": "Concept-set YAMLs, a parameterized OMOP CTE SQL file, a CONSORT-style waterfall (md + csv) with small-cell suppression, a cohort spec YAML pinning the vocabulary version, and the __CE_COHORT__ handoff line. Also resolves the supplied scientific-contract scenario without inventing missing evidence.",
       "files": [],
       "expectations": [
@@ -15,7 +15,8 @@
         "Records each concept set's source as a published algorithm cited by PMID (looked up through the PubMed/Paperclip MCP tools and read before citing) or as project-defined, never a code set asserted from memory",
         "eligible_at_index is true in the requested structured advice, consistent with the explanation",
         "requires_full_future_enrollment is false in the requested structured advice, consistent with the explanation",
-        "review_informative_censoring is true in the requested structured advice, consistent with the explanation"
+        "review_informative_censoring is true in the requested structured advice, consistent with the explanation",
+        "The written explanation agrees with structured decisions and explains the applicable scientific rule."
       ]
     },
     {

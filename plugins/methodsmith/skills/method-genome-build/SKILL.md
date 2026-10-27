@@ -63,7 +63,7 @@ Write to `analysis/genome-build/manifest.yaml`. Commit this; it is the build-tru
 
 ### Step 2: Audit mode (--check)
 
-Walk the project for build artifacts. When a build or naming is not declared in a header, infer it with `references/build-detection-rules.md` (contig lengths, naming, annotation file names).
+Walk the project for build artifacts. Compare available provenance, diagnostic contig lengths and checksums with the manifest using `references/build-detection-rules.md`; naming supports consistency checks but cannot identify a build alone.
 
 | Artifact | Inspect | Expect |
 |----------|---------|--------|
@@ -75,7 +75,7 @@ Walk the project for build artifacts. When a build or naming is not declared in 
 | Counts matrix (RNA-seq) | rownames or `gene_id` column format | Match annotation gene_ids (e.g., ENSG00000... if Ensembl) |
 | Variant call output | `INFO/CSQ` annotation source if VEP | VEP cache version matches manifest |
 
-For each file, determine its build (often inferable from contig naming + checksums). Flag mismatches:
+For each file, record whether its build evidence is compatible, incompatible, unknown or uninspected. Flag mismatches:
 
 - **P0:** Different build between BAM and VCF (alignment in GRCh38, called against GRCh37 reference)
 - **P0:** Annotation version drift (Counts matrix uses GENCODE 36 but manifest says GENCODE 44)
@@ -96,7 +96,7 @@ This table goes into the manuscript as a supplementary file -- it answers "what 
 
 ### Step 4: Surface mismatches
 
-If `--check` found any P0 → exit non-zero, print a clear report. The user resolves before proceeding.
+If `--check` found any issue, exit non-zero and print a clear report. Resolve every issue before declaring the audit complete.
 
 ## What this skill does NOT do
 

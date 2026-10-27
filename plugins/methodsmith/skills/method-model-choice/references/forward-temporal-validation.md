@@ -2,7 +2,7 @@
 
 Fix the intended validation target before selecting a splitter.
 
-- Future deployment requires rolling or expanding calendar windows: train only on earlier observations and assess later periods. Fit preprocessing, tuning, and calibration within the same temporal boundaries.
+- Assess future deployment on observations later than all model-development data, using either a frozen model with an independent later cohort or rolling/expanding calendar windows. Fit preprocessing, tuning, and calibration only within the applicable earlier development data.
 - Keep patients grouped across training and assessment. Apply a gap or purge when needed for overlapping prediction windows, delayed labels, or outcome maturation; for a 90-day outcome, confirm training labels would be available at the assessment origin.
 - `LeaveOneGroupOut` on calendar period uses every other period for training, including future periods. It can assess a justified historical period-transport target, but cannot establish forward performance. Label that target explicitly.
 - `TimeSeriesSplit` assumes ordered samples and equally spaced samples for comparable fold durations. Irregular clinical cohorts may require explicit calendar windows. Check its gap units and patient boundaries; a row-count gap does not automatically represent a clinical time interval.

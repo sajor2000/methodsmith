@@ -415,7 +415,8 @@ restricted; only reviewed, disclosure-safe aggregate summaries enter Git.
 
 Printed-statistic checks preserve rounding and declared t/z sidedness; unsupported
 P-value constructions stay unchecked. Power anchors require source-reported SEs
-or declared Wald interval methods, confidence levels and degrees of freedom.
+or declared Wald interval methods and confidence levels, with degrees of freedom
+required for t intervals only.
 Genome audits distinguish compatible header evidence from unknown or uninspected
 files. Prediction validation separates forward time from period transport, and
 omics identifiability is checked independently of PCA displays. Cohort eligibility

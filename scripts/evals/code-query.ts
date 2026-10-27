@@ -259,17 +259,24 @@ function partition(node: Node | undefined, loop: Node, bound: Bindings, depth = 
       const { node: assignment, left, right } = write
       if (owner(assignment).id !== owner(node).id || assignment.endIndex >= node.startIndex ||
           (assigned && assignment.startIndex <= assigned.startIndex)) continue
-      if (left.type === "identifier" && left.text !== node.text) {
-        if (right.type === "identifier" && aliases.has(right.text)) aliases.add(left.text)
-        else if (binding(left.text, node, false)?.id === right.id) {
-          let parent = assignment.parent
-          let conditional = false
-          while (parent && parent.id !== owner(node).id) {
-            if (["for_statement", "while_statement", "try_statement"].includes(parent.type) &&
-                !(parent.startIndex <= node.startIndex && parent.endIndex >= node.endIndex)) conditional = true
-            parent = parent.parent
+      const pairs = ["pattern_list", "tuple_pattern", "tuple"].includes(left.type) &&
+          ["expression_list", "tuple"].includes(right.type)
+        ? left.namedChildren.map((target, index) => ({ target, value: right.namedChildren[index] ?? right }))
+        : [{ target: left, value: right }]
+      const previousAliases = new Set(aliases)
+      for (const { target, value } of pairs) {
+        if (target.type === "identifier" && target.text !== node.text) {
+          if (value.type === "identifier" && previousAliases.has(value.text)) aliases.add(target.text)
+          else if (binding(target.text, node, false)?.id === value.id) {
+            let parent = assignment.parent
+            let conditional = false
+            while (parent && parent.id !== owner(node).id) {
+              if (["for_statement", "while_statement", "try_statement"].includes(parent.type) &&
+                  !(parent.startIndex <= node.startIndex && parent.endIndex >= node.endIndex)) conditional = true
+              parent = parent.parent
+            }
+            if (!conditional) aliases.delete(target.text)
           }
-          if (!conditional) aliases.delete(left.text)
         }
       }
       if (left.type === "subscript" && aliases.has(writtenRoot(left) ?? "")) writes.push(write)

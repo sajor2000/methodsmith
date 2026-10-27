@@ -1,5 +1,5 @@
 [
-  {"query": "Declare the reference genome for our WGS project: refs/Homo_sapiens.GRCh38.dna.primary_assembly.fa and gencode.v44 GTF. Write a manifest with md5s that we commit. How should GRCh37 headers, absent assembly evidence, and unavailable samtools affect a GRCh38 audit?", "should_trigger": true},
+  {"query": "Declare the reference genome for our WGS project: refs/Homo_sapiens.GRCh38.dna.primary_assembly.fa and gencode.v44 GTF. Write a manifest with md5s that we commit. How should GRCh37 headers, absent assembly evidence, and unavailable samtools affect a GRCh38 audit? Can naming alone establish an assembly, and do unresolved P1 issues block completion?", "should_trigger": true},
   {"query": "reviewer asks 'what genome build did you use' - audit all our bams/vcfs and make a supplementary traceability table proving it", "should_trigger": true},
   {"query": "Some of our BED files use 'chr1' and others use '1' and bedtools intersect returns nothing. Check contig naming consistency against the declared build.", "should_trigger": true},
   {"query": "Our counts matrix was built with GENCODE 36 but the manifest says 44. How bad is that and what else drifted? Audit the whole project.", "should_trigger": true},

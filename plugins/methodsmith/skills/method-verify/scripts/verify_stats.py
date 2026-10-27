@@ -157,12 +157,10 @@ def p_from_z(z):
 
 def printed_decimals(value):
     """Decimal places a value was printed with, from its string form."""
-    if not isinstance(value, str) and float(value).is_integer():
-        return 0
     try:
         printed = Decimal(str(value).strip())
-    except InvalidOperation:
-        raise InputError("value %r is not a number" % (value,))
+    except InvalidOperation as error:
+        raise InputError("value %r is not a number" % (value,)) from error
     if not printed.is_finite():
         raise InputError("value must be finite")
     return -printed.as_tuple().exponent
@@ -177,8 +175,8 @@ def as_number(value):
     """Parse a printed value into a float, or raise InputError."""
     try:
         number = float(str(value).strip())
-    except (TypeError, ValueError):
-        raise InputError("value %r is not a number" % (value,))
+    except (TypeError, ValueError) as error:
+        raise InputError("value %r is not a number" % (value,)) from error
     if not math.isfinite(number):
         raise InputError("value must be finite")
     return number

@@ -1,0 +1,1320 @@
+{
+  "schema_version": "1.0",
+  "pr": 173,
+  "start_head": "49185f52e5d85f2606fa4f8c90c156f35e650ff8",
+  "scope": "First remote feedback remediation; public code and synthetic scenarios only.",
+  "prior_evidence": "docs/audits/2026-10-26-scientific-rigor-evidence.json",
+  "acceptance": {
+    "runs": 18,
+    "cases": 9,
+    "passed": 18,
+    "hard_gates_passed": true,
+    "current_frozen_inputs_match": true
+  },
+  "history": {
+    "runs": 36,
+    "passed": 32,
+    "failed": 4,
+    "note": "All prior runs are preserved. Two question runs failed bounded wording checks despite correct endpoint/ascertainment advice. Two ML runs failed: one used an unsupported buffered-scaffold layout; the other hit an arbitrary Riley-to-assumption proximity limit. Both also had false AUPRC negation warnings. The prose graders were corrected, and the ML fixture now explicitly requests the documented module-import/direct-split layout. The final question pair is retained; new ML and omics pairs cover the final source/grammar changes. The same artifact/agreement condition was extended to the three unflagged equivalent advice cases, with new pairs for each. Original hashes/reports were not rewritten or rescored."
+  },
+  "soft_review_notes": [
+    {
+      "case_id": "method-model-choice-ml-prediction",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v4-20261027-method-model-choice-ml-prediction-2",
+      "criterion_id": "auprc-supplementary-only",
+      "verdict": "manually confirmed false-positive soft heuristic",
+      "quoted_output": "Do not label AUPRC the primary metric",
+      "reason": "The label refusal is outside the bounded predicate vocabulary. The original 93/95 score is preserved; all hard gates and the frozen weighted threshold pass. No rescore or new vocabulary patch was used to force a perfect score."
+    }
+  ],
+  "validation": {
+    "full_suite": {
+      "command": "PATH=/tmp/methodsmith/scientific-fixes/20261026/bin:$PATH R_LIBS_USER=/tmp/methodsmith/scientific-fixes/20261026/R-library PYTHONDONTWRITEBYTECODE=1 bun test",
+      "passed": 1853,
+      "skipped": 5,
+      "failed": 0,
+      "assertions": 14142,
+      "files": 123
+    },
+    "typecheck": "passed",
+    "release_validate": "passed",
+    "plugin_validate": "passed",
+    "eval_validate": {
+      "cases": 39,
+      "status": "passed"
+    },
+    "advice_controls": {
+      "tests": 7,
+      "assertions": 100,
+      "status": "passed"
+    },
+    "skill_creator_sets": {
+      "tests": 9,
+      "status": "passed"
+    }
+  },
+  "jev": {
+    "action": "escalate",
+    "truncated": true,
+    "safe_to_apply": 0.4,
+    "composite": 0.5165,
+    "claim_verdicts": {
+      "verified": 2,
+      "unsupported": 2,
+      "contradicted": 0
+    },
+    "concrete_defect_identified": false,
+    "passing_gate": false,
+    "note": "One complete unabridged initial code/test/eval patch input was supplied; service reported truncation and low confidence. Not retried. Later bounded grader corrections have separate source/evidence verification; this remains an unresolved advisory snapshot."
+  },
+  "late_grader_verification": {
+    "earlier": {
+      "tool": "jev_verify",
+      "verified": 3,
+      "contradicted": 0,
+      "support_probabilities": [
+        0.97,
+        1,
+        1
+      ]
+    },
+    "final": {
+      "tool": "jev_verify",
+      "verified": 1,
+      "contradicted": 2,
+      "unsupported": 0,
+      "needs_review": 3,
+      "confidence": [
+        0.69,
+        0.79,
+        0.4
+      ],
+      "status": "unresolved advisory"
+    },
+    "direct_check": "The two contradicted source claims were rechecked against the exact current criteria and targeted executable controls: 2 tests and 20 assertions passed. No advisory was retried or represented as a passing full-patch gate."
+  },
+  "limits": [
+    "Two observations per case do not establish reliability or clinical validity.",
+    "The final shared-scorer delta changes claim_absent only. The retained question pair uses regex/JSON criteria and is unaffected; its recorded whole-scorer hash differs and is disclosed. ML and omics have fresh pairs under the final claim grammar.",
+    "Prose checks detect bounded phrases and canonical decision agreement, not arbitrary semantic contradictions.",
+    "Python provenance checking is bounded static analysis, not execution or a full language analysis.",
+    "BAM tests use synthetic samtools stubs; header evidence does not prove sequence identity.",
+    "Five optional tests require unrelated website, trial-engine, Parquet, workbook-rendering or Python numerical dependencies.",
+    "The ML fixture acceptance is restricted to module imports and explicit/cached split-pair loops; unsupported buffered layouts remain outside the static checker.",
+    "The bot docstring percentage was not independently reproduced. Four nontrivial missing helper contracts were documented; seven pre-existing lint findings remain outside scoped blocks."
+  ],
+  "runs": [
+    {
+      "case_id": "method-cohort-baseline-observability",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1-20261027-method-cohort-baseline-observability-1",
+      "acceptance": true,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:28:46.086Z",
+      "completed_at": "2026-10-27T11:29:58.396Z",
+      "case_sha256": "7376ffc363e60d2a6e8742e7c2accf90b0ac3579025315c88a49c074bc09b2b9",
+      "prompt_sha256": "ef2e0aa817d0d30a5f4e6ed3c4c04d0be6b326b634a75a95b0221d55b45d19c9",
+      "target_sha256": "2af4cc178f11574cb1e9337321c64867abdcadd1a2e81bff873fa714a072dd74",
+      "current_inputs_match": true,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 18,
+      "max_score": 18,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "a49608d8cb15011914c6c2ffcc1b8af5649bee7385113933004e410a8c804605",
+        "response": "a3e11f5b166cd580d9282867943025097e4207c0bca1f7f0ae26cfc5a1ec9888",
+        "evaluation": "4bda67b31e6b63b33930c95c1c43a89c33f3c19108dccf73f43a651623533fff",
+        "manifest": "f4ecdf25dc7c404316ad21e059c700ada31dd559a9a9fb52e99385ba8b96d90f"
+      }
+    },
+    {
+      "case_id": "method-cohort-baseline-observability",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1-20261027-method-cohort-baseline-observability-2",
+      "acceptance": true,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:28:46.129Z",
+      "completed_at": "2026-10-27T11:30:00.039Z",
+      "case_sha256": "7376ffc363e60d2a6e8742e7c2accf90b0ac3579025315c88a49c074bc09b2b9",
+      "prompt_sha256": "ef2e0aa817d0d30a5f4e6ed3c4c04d0be6b326b634a75a95b0221d55b45d19c9",
+      "target_sha256": "2af4cc178f11574cb1e9337321c64867abdcadd1a2e81bff873fa714a072dd74",
+      "current_inputs_match": true,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 18,
+      "max_score": 18,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "8aafaa8f6cef3e5ba22264dce7da5974b35a3f51e9e67b673c6dcef02b64648d",
+        "response": "2927856b59813e03f592246b1f8b53d378411a5719bc077f2043f9dd5f6d48c5",
+        "evaluation": "3ceb8c67718decf7a3453089726cb8a7a235c4d86e62f4e8da8969b5c831470d",
+        "manifest": "92b0c84e0f0a617833fa17c842d6d7149e40f214e7ebae6c79c880d6b57b3a3c"
+      }
+    },
+    {
+      "case_id": "method-model-choice-forward-time",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1-20261027-method-model-choice-forward-time-1",
+      "acceptance": true,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:28:46.174Z",
+      "completed_at": "2026-10-27T11:32:56.481Z",
+      "case_sha256": "ecf0d19f3db3758dbf073c2872a1dec5050713ca922f26d50c3bc9c555284644",
+      "prompt_sha256": "db3e730bc401b72db96ad97cb9ed78d38557b1bedc2c4bee664d4335319457ca",
+      "target_sha256": "fee5be595a398992c828aa34fe0d33b2eb8814f02cddf56452ed969171c8830f",
+      "current_inputs_match": true,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 26,
+      "max_score": 26,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "c7898367067a04c137ca5b3a56671388a74d3132f6518e4cc49ebd6f49f88789",
+        "response": "1c8072212af7764c601370f7cefe2161e25392a175bc1d3a5c21765272cee2e1",
+        "evaluation": "82501c363e0cc863fd35c924195cc58504700ed6b8aa42a3ea5045b3e1ee3591",
+        "manifest": "6e9169ebc7c1ee4beba0b33ee7bfc8cbc81baff746f79e446a04f23da6907391"
+      }
+    },
+    {
+      "case_id": "method-model-choice-forward-time",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1-20261027-method-model-choice-forward-time-2",
+      "acceptance": true,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:28:46.218Z",
+      "completed_at": "2026-10-27T11:32:01.034Z",
+      "case_sha256": "ecf0d19f3db3758dbf073c2872a1dec5050713ca922f26d50c3bc9c555284644",
+      "prompt_sha256": "db3e730bc401b72db96ad97cb9ed78d38557b1bedc2c4bee664d4335319457ca",
+      "target_sha256": "fee5be595a398992c828aa34fe0d33b2eb8814f02cddf56452ed969171c8830f",
+      "current_inputs_match": true,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 26,
+      "max_score": 26,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "be7d3664e37cf23e5eed4af4ae88df258687593aaca5b76e7c367e6510ddb764",
+        "response": "50b396217d314f4b2b47601199f7b61792b336599eed7931b1d793b86773a14b",
+        "evaluation": "dc3a9e3a7295e78ee281e46390ebe89ede3e3e9188319673e0012777abd73058",
+        "manifest": "dbf1a2cb313e0c3e874363f477f8f5ff7141ec87db7f7c27a7963008f29fc225"
+      }
+    },
+    {
+      "case_id": "method-omics-qc-hidden-aliasing",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1-20261027-method-omics-qc-hidden-aliasing-1",
+      "acceptance": false,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:28:46.262Z",
+      "completed_at": "2026-10-27T11:35:11.969Z",
+      "case_sha256": "81fcbdbcf8241347459756af0d65dad095c6c833649ecfb02fc19718c29863cb",
+      "prompt_sha256": "c4ed6231ecc865e797c3164cef480414508903cef97f242371730c2e3f69195a",
+      "target_sha256": "cdc37be090d90275eda5fac9d7ef85e104f2f54679d14124ce46e8f96abcad08",
+      "current_inputs_match": true,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": true,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 22,
+      "max_score": 22,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "cb5f003bbe87aced3403877e7678f785d12ad4721909db10ec581ece0e5c797f",
+        "response": "57a1caf68b2f268d30ebe4422c5211996b44012dcd1b10185f268a9919239894",
+        "evaluation": "1ac8d4c00835c0fd414ad921e6abf16d65dd074e7b2c031f170ebdcd80fc3c45",
+        "manifest": "ade1dcd5a791b00af33b579916ca0eb4cccb965218a6dd9da4872a34dd4ce38d"
+      }
+    },
+    {
+      "case_id": "method-omics-qc-hidden-aliasing",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1-20261027-method-omics-qc-hidden-aliasing-2",
+      "acceptance": false,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:28:46.309Z",
+      "completed_at": "2026-10-27T11:35:07.384Z",
+      "case_sha256": "81fcbdbcf8241347459756af0d65dad095c6c833649ecfb02fc19718c29863cb",
+      "prompt_sha256": "c4ed6231ecc865e797c3164cef480414508903cef97f242371730c2e3f69195a",
+      "target_sha256": "cdc37be090d90275eda5fac9d7ef85e104f2f54679d14124ce46e8f96abcad08",
+      "current_inputs_match": true,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": true,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 22,
+      "max_score": 22,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "641886052a764f8cc65c4c2b6dbe43772af537a3e68b43bafb4231ac04fe4889",
+        "response": "b3fc945021ac9e5f61dc2b940352c2a990e4a981ad5f0e866e1f02b7bfadf32c",
+        "evaluation": "9e03469e3ff8a3bb616e40de90da60f1e572286719073a791123798e97f13132",
+        "manifest": "a35ff632edd856da9f8f718f52ad3b7e274aba5e53dea8bcc98feef996008d8a"
+      }
+    },
+    {
+      "case_id": "method-question-indicated-bundle",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1-20261027-method-question-indicated-bundle-1",
+      "acceptance": false,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:28:46.350Z",
+      "completed_at": "2026-10-27T11:36:50.796Z",
+      "case_sha256": "a34e3a68d50137ccdcdd86e45bfb0358eefc1af2999ba5625443c92ce83c1679",
+      "prompt_sha256": "0eced5dc405647778fabba876935f99ab35bc2c6341e49f315620bd5f67e7a6b",
+      "target_sha256": "ff834d89dab9ed9cbcb195e273b106633724721b0fe0a73058126e222f70b57a",
+      "current_inputs_match": false,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": false,
+      "pass": false,
+      "hard_gates_passed": false,
+      "credential_scan_passed": true,
+      "score": 26,
+      "max_score": 28,
+      "failed_criteria": [
+        "written-mortality-endpoint"
+      ],
+      "hashes": {
+        "run": "6ba7cfb5c1180c40d73e5ed41ea7b613e97c1acdb772a22a0731269dcaddcbb4",
+        "response": "a45324fa600706323207ef715c0ba87b8773666a06d29147fbce6d3fff313767",
+        "evaluation": "8ab303cdc5a402d71ff366de7c259822661a04976037716a90e9c191f10ceb9c",
+        "manifest": "5230bb7de2c8c237635a1b59418bea4a6e300b0a023a30e0070999eab4d49ab2"
+      }
+    },
+    {
+      "case_id": "method-question-indicated-bundle",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1-20261027-method-question-indicated-bundle-2",
+      "acceptance": false,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:28:46.393Z",
+      "completed_at": "2026-10-27T11:37:30.493Z",
+      "case_sha256": "a34e3a68d50137ccdcdd86e45bfb0358eefc1af2999ba5625443c92ce83c1679",
+      "prompt_sha256": "0eced5dc405647778fabba876935f99ab35bc2c6341e49f315620bd5f67e7a6b",
+      "target_sha256": "ff834d89dab9ed9cbcb195e273b106633724721b0fe0a73058126e222f70b57a",
+      "current_inputs_match": false,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 28,
+      "max_score": 28,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "2aefed8515c4125d24af3e9d885d567e90b345932735dee2357322702f42b371",
+        "response": "ac4817d2f2921d2dde6b47828b5b8f8e59f36a1e777b07d4f00682e859b02989",
+        "evaluation": "25c3699a65fb1437886db556d11eca96cb1ab6fc26eb67f28809190c3e85db80",
+        "manifest": "c1553074ff87dfb10022ecde2ed707ced850661033ae4bdfbda1ff6779f56cf0"
+      }
+    },
+    {
+      "case_id": "method-meta-uncertainty-contract",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1-20261027-method-meta-uncertainty-contract-1",
+      "acceptance": false,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:28:46.442Z",
+      "completed_at": "2026-10-27T11:38:06.530Z",
+      "case_sha256": "6915abd86f55d041228b7cfdb55ff8f1ac02fc71f26e89af14409ca900938754",
+      "prompt_sha256": "adb3976a9c82e48428ecd2b6a43e9ccd1bff69a50ae5c52896becac8e7947307",
+      "target_sha256": "af0e68560d7195e6e4c2555e5afdb0bbaa7f765a685a7cb7bb75d61205893eb6",
+      "current_inputs_match": false,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 16,
+      "max_score": 16,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "d1a92ca7432971963576e57b89ad138fca1242d53ff20590c9c3761d69bee2fc",
+        "response": "037f9a9120e6bc8922ed1a33987095aeeca870062e126d59be1a30457c08b73e",
+        "evaluation": "c0beef29f9e60e539255fe6320410758788b4569799ae8369e87b0321a8967a7",
+        "manifest": "a455fd08243d377a579626e8fe037404ff51157adf4a2d7c4bd1ba1ed69f457c"
+      }
+    },
+    {
+      "case_id": "method-meta-uncertainty-contract",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1-20261027-method-meta-uncertainty-contract-2",
+      "acceptance": false,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:28:46.484Z",
+      "completed_at": "2026-10-27T11:39:12.824Z",
+      "case_sha256": "6915abd86f55d041228b7cfdb55ff8f1ac02fc71f26e89af14409ca900938754",
+      "prompt_sha256": "adb3976a9c82e48428ecd2b6a43e9ccd1bff69a50ae5c52896becac8e7947307",
+      "target_sha256": "af0e68560d7195e6e4c2555e5afdb0bbaa7f765a685a7cb7bb75d61205893eb6",
+      "current_inputs_match": false,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 16,
+      "max_score": 16,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "2607282a02f70da6bca256b0408f68c6e48e87773834c15691bc40b8afb3d8dd",
+        "response": "e300e563007fced09a3338d7c6dd7038afd82001dd0d7fb69cd19a95bf7710e0",
+        "evaluation": "c7a910733a9fd4751c155cd54582d36acbc25767b3440af546ed3ec2834d1b47",
+        "manifest": "d902670e16043c8ab7b1c43a484223cf2e59c330c7db72353f1d6984f9c7bf60"
+      }
+    },
+    {
+      "case_id": "method-genome-build-evidence",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1-20261027-method-genome-build-evidence-1",
+      "acceptance": false,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:28:46.526Z",
+      "completed_at": "2026-10-27T11:39:23.190Z",
+      "case_sha256": "bba235e2694b1f70e34cc5cd010c2e3404648f8a15022101eec1986a7cfc6cc1",
+      "prompt_sha256": "5a5584c4cf5f35cb390211fed379db4a4b014c9339a26ca1ad4ce3f5063109bf",
+      "target_sha256": "f5dee699de2c0c9a3c1706b13e85265db2b48e6512e55462ae8488b17fdd8523",
+      "current_inputs_match": false,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 12,
+      "max_score": 12,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "6dd84db891009ae034d19ac2c2ba3a41d2c44af936a05d77b6b8356e4f928e12",
+        "response": "9f8de08817327f6c626f41e49e9aeedeaec60d86e165979794bf0ae18fd82938",
+        "evaluation": "4f4ba1a00f95c8379ea9d00e65b0c7f2050e07d832369392fb4f7ab8180ddea2",
+        "manifest": "7af88d36b0a83738e8ed90f1d32ad796cb461afe26dd28d4a0ab7439b7356968"
+      }
+    },
+    {
+      "case_id": "method-genome-build-evidence",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1-20261027-method-genome-build-evidence-2",
+      "acceptance": false,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:28:46.572Z",
+      "completed_at": "2026-10-27T11:40:26.773Z",
+      "case_sha256": "bba235e2694b1f70e34cc5cd010c2e3404648f8a15022101eec1986a7cfc6cc1",
+      "prompt_sha256": "5a5584c4cf5f35cb390211fed379db4a4b014c9339a26ca1ad4ce3f5063109bf",
+      "target_sha256": "f5dee699de2c0c9a3c1706b13e85265db2b48e6512e55462ae8488b17fdd8523",
+      "current_inputs_match": false,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 12,
+      "max_score": 12,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "72123706c2e8ca039b4d34a807d3b1bb12648d73f7ef9f721de513cb51e0bb19",
+        "response": "9c2aa3b5068d6482274463c0ca901395a24e9068d518cc036bbec8e88fd17790",
+        "evaluation": "947b767b48a8e229f42c1a2c119fb5231a5fb0b1e558f45a850bb7428397fb98",
+        "manifest": "16810c13475a506be71f1d37503e6590742561474c2538e90dc25655da088585"
+      }
+    },
+    {
+      "case_id": "method-verify-test-contract",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1-20261027-method-verify-test-contract-1",
+      "acceptance": false,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:28:46.614Z",
+      "completed_at": "2026-10-27T11:41:58.958Z",
+      "case_sha256": "dfe57baa3c5032e551f52772ddd002c39b48a1942a42a91756b0de9a8c4c326e",
+      "prompt_sha256": "1a5da35854ef421f2431d9199ced3800bcea8b87f04c2ccd16d40cc1507c8fb4",
+      "target_sha256": "366bd18b6e7b9b1961449fd30ca18f492bacfa2df85622872cc7352444491432",
+      "current_inputs_match": false,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 8,
+      "max_score": 8,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "587cc70f2898ffd903312e386bddfe4bdfcc25c953d6359393f78e6ca83a4c99",
+        "response": "d12c265185c468963f12fe1df322d7ea2aa4d67ddbfa2267cdfc0084c0cfb333",
+        "evaluation": "9b8cccfd847d0e9a312030ee01aafbf6820aa7dcbad6ccb3bdbc508cfcb60ea0",
+        "manifest": "a1bc14662462303a57e51788d091ab449cafcfeec5fd22672a2e3a9016108580"
+      }
+    },
+    {
+      "case_id": "method-verify-test-contract",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1-20261027-method-verify-test-contract-2",
+      "acceptance": false,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:28:46.656Z",
+      "completed_at": "2026-10-27T11:42:10.228Z",
+      "case_sha256": "dfe57baa3c5032e551f52772ddd002c39b48a1942a42a91756b0de9a8c4c326e",
+      "prompt_sha256": "1a5da35854ef421f2431d9199ced3800bcea8b87f04c2ccd16d40cc1507c8fb4",
+      "target_sha256": "366bd18b6e7b9b1961449fd30ca18f492bacfa2df85622872cc7352444491432",
+      "current_inputs_match": false,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 8,
+      "max_score": 8,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "0b1322f2add5f82a54927b7248847d92586f195641408dfefec20cde9dc9bf11",
+        "response": "f720bb645041f887bda378c24db4ab21271cec55513a2021be4a1529be139347",
+        "evaluation": "65cdb8a1fee2f31a4c135982856c90333549d8ed02b0d04e573aa13a83ae7797",
+        "manifest": "b8588264c57ddac05624bafd84df403269396b18a38b83b2f0efceb69219b2c8"
+      }
+    },
+    {
+      "case_id": "method-meta-compatible-anchor",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1-20261027-method-meta-compatible-anchor-1",
+      "acceptance": true,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:28:46.701Z",
+      "completed_at": "2026-10-27T11:43:25.224Z",
+      "case_sha256": "e5554a38a15fc71b3c8f415b86630db30963cf114f542f886aac6709b03cce06",
+      "prompt_sha256": "2ac8864c79e9bf6ea2fbd4332ac38795d07deb309e5c9e7b40f02d947a4d9a0c",
+      "target_sha256": "af0e68560d7195e6e4c2555e5afdb0bbaa7f765a685a7cb7bb75d61205893eb6",
+      "current_inputs_match": true,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 12,
+      "max_score": 12,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "31f237bee9acf8b5ee85892ca1cbd47083123673b6d6d99497e9903528b11e70",
+        "response": "d3d370ea4341c1b7ce42e35462f97c0876c124c57e952c1e018994d58ca93281",
+        "evaluation": "3509248ed340844241287d22d1d67e1801ae316da8528fe1af915a3ea65aa5eb",
+        "manifest": "181151016949a73680499337849fbcf32ede170f5a2e818b4749ccadca07353f"
+      }
+    },
+    {
+      "case_id": "method-meta-compatible-anchor",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1-20261027-method-meta-compatible-anchor-2",
+      "acceptance": true,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:28:46.743Z",
+      "completed_at": "2026-10-27T11:43:38.098Z",
+      "case_sha256": "e5554a38a15fc71b3c8f415b86630db30963cf114f542f886aac6709b03cce06",
+      "prompt_sha256": "2ac8864c79e9bf6ea2fbd4332ac38795d07deb309e5c9e7b40f02d947a4d9a0c",
+      "target_sha256": "af0e68560d7195e6e4c2555e5afdb0bbaa7f765a685a7cb7bb75d61205893eb6",
+      "current_inputs_match": true,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 12,
+      "max_score": 12,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "ff5acb88246c438f6f2565fa271f417dfa0f2d6643aac97b1c7c9a608dce9bd3",
+        "response": "c4d1db1eb2e4e511d156a2282950c5d4e997177c4837b4638a5d3efc81cc260f",
+        "evaluation": "a6eeda3a6ed6f1586e7d0132e0e1b1fb5c891005efecaba201ec1369c82165a5",
+        "manifest": "bce17357ae51418545ccf4bf8f49c0f8df20301f2023475bca3909cb802c9d99"
+      }
+    },
+    {
+      "case_id": "method-model-choice-ml-prediction",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1-20261027-method-model-choice-ml-prediction-1",
+      "acceptance": false,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:28:46.799Z",
+      "completed_at": "2026-10-27T11:51:54.189Z",
+      "case_sha256": "cdf8a3636c9ddbc114c20f4cf5616dec0cb49244b124e6b4f8b7e6890df4ed37",
+      "prompt_sha256": "a5a9c0812d0541f479cf7990ec003deb615720deef95ab2582c854f1005e68bb",
+      "target_sha256": "fee5be595a398992c828aa34fe0d33b2eb8814f02cddf56452ed969171c8830f",
+      "current_inputs_match": false,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": true,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 94,
+      "max_score": 94,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "272e454f1dd48722fb63d57bf3dabcf408ff8ab06aa45eb8bcf28621e3ecbc40",
+        "response": "24f937c98260e1de5093c8b6a2da7866f54d7b764a4ac4d869f0e0f9bcfd5420",
+        "evaluation": "0451f922c29fea096f156699ac5ab1c6d4241b4fe5d3d4be681dd97280d98da9",
+        "manifest": "c3f6bd02368070e83ba79701a6a3b26b3199663c99e99d6337a043ba50592fa8"
+      }
+    },
+    {
+      "case_id": "method-model-choice-ml-prediction",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1-20261027-method-model-choice-ml-prediction-2",
+      "acceptance": false,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:28:46.855Z",
+      "completed_at": "2026-10-27T11:55:25.135Z",
+      "case_sha256": "cdf8a3636c9ddbc114c20f4cf5616dec0cb49244b124e6b4f8b7e6890df4ed37",
+      "prompt_sha256": "a5a9c0812d0541f479cf7990ec003deb615720deef95ab2582c854f1005e68bb",
+      "target_sha256": "fee5be595a398992c828aa34fe0d33b2eb8814f02cddf56452ed969171c8830f",
+      "current_inputs_match": false,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": true,
+      "pass": false,
+      "hard_gates_passed": false,
+      "credential_scan_passed": true,
+      "score": 89,
+      "max_score": 94,
+      "failed_criteria": [
+        "auprc-supplementary-only",
+        "scaffold-tuning-inside-resampling"
+      ],
+      "hashes": {
+        "run": "3b263d439fe6e08b83ca32d15df037f0502e4d1fd87910fbac0688f64e57c265",
+        "response": "87c3aa0cfb861105dd71d4fb76bd75cc12ad7ea8bbbd3f92fa8b60affc7d5e9c",
+        "evaluation": "b070f5fdbbc180e918d77c2073e0fc2bc15ef0053c91be1370117eeffb429325",
+        "manifest": "ad24e032e6fd1dd6187b1099f9b620f5a3f1857bf1a9e569a5ca8eb449487014"
+      }
+    },
+    {
+      "case_id": "method-question-indicated-bundle",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v2-20261027-method-question-indicated-bundle-1",
+      "acceptance": false,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:38:40.263Z",
+      "completed_at": "2026-10-27T11:53:56.980Z",
+      "case_sha256": "5082980bc941ed5dc7effa0ee704d0c3f92eeb5881a6e1c6122f1b92f9a659b0",
+      "prompt_sha256": "0eced5dc405647778fabba876935f99ab35bc2c6341e49f315620bd5f67e7a6b",
+      "target_sha256": "ff834d89dab9ed9cbcb195e273b106633724721b0fe0a73058126e222f70b57a",
+      "current_inputs_match": false,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 28,
+      "max_score": 28,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "dbdb56556d49ee01af7c68dd806c3131c74a761f6767eeda2a88b5846aa7a2b4",
+        "response": "d51af252e15cf4a7e3d04e8f6a87c64934b81076f770fb6bdbd9b4716630b671",
+        "evaluation": "e46784f32e70a0ab7f8faeb5efb00b431c48096e2ea344897e89cdb0093316d3",
+        "manifest": "d90379bfeb73aef45d7dd733eed3b103aa97a4664f94c38439331f602c63007b"
+      }
+    },
+    {
+      "case_id": "method-question-indicated-bundle",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v2-20261027-method-question-indicated-bundle-2",
+      "acceptance": false,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T11:38:40.303Z",
+      "completed_at": "2026-10-27T11:56:36.543Z",
+      "case_sha256": "5082980bc941ed5dc7effa0ee704d0c3f92eeb5881a6e1c6122f1b92f9a659b0",
+      "prompt_sha256": "0eced5dc405647778fabba876935f99ab35bc2c6341e49f315620bd5f67e7a6b",
+      "target_sha256": "ff834d89dab9ed9cbcb195e273b106633724721b0fe0a73058126e222f70b57a",
+      "current_inputs_match": false,
+      "grader_sha256": null,
+      "grader_current_match": null,
+      "changed_claim_grammar_relevant": false,
+      "pass": false,
+      "hard_gates_passed": false,
+      "credential_scan_passed": true,
+      "score": 26,
+      "max_score": 28,
+      "failed_criteria": [
+        "written-ascertainment"
+      ],
+      "hashes": {
+        "run": "d072ddfa059d1329bafe1309a721e52b519733115e85a4c873f1de1c9942e2b7",
+        "response": "99221fee8d954032bef54349a5b848f5b25e521b80628f13b86fa3a1d90c1c1a",
+        "evaluation": "76ad1578104ca228a275873fe6a74ccf0089db1ad28851b2ae4aa10c5db2593a",
+        "manifest": "5a1ff645d8e61a99c9b121fed583662c0e5b5ddab8ac4e9fa1268c6a81842dc2"
+      }
+    },
+    {
+      "case_id": "method-model-choice-ml-prediction",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v3-20261027-method-model-choice-ml-prediction-1",
+      "acceptance": false,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T12:07:46.272Z",
+      "completed_at": "2026-10-27T12:20:56.207Z",
+      "case_sha256": "013af925e5395d14973cbd330120c17f7ab812b509576f3a858274ae298f1a07",
+      "prompt_sha256": "af3a7712dbf64f0ae357334b632a77718653337a03748e6b7ff8b9fb9f3513bd",
+      "target_sha256": "fee5be595a398992c828aa34fe0d33b2eb8814f02cddf56452ed969171c8830f",
+      "current_inputs_match": false,
+      "grader_sha256": {
+        "scripts/evals/lib.ts": "bf8077f34b8dbf58f8973c9099d7628a5710f2bd58ea2ccefaa05d8feb046336",
+        "scripts/evals/code-query.ts": "efd999a0c8088265e4bc051e7ed9d717d235d7d504995a0bfe7de26e91b4730e"
+      },
+      "grader_current_match": false,
+      "changed_claim_grammar_relevant": true,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 95,
+      "max_score": 95,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "926aa2371a042bef8f3b922c9cd2a3fdcb2fc5234b4fee2e071529fbfc21c935",
+        "response": "7cf8c95560f187d72f069ab101c405e060ca12860c25f347631b2121d45c7685",
+        "evaluation": "03bfc11402f4b11661095eaa0d9a4d19cea01e9da875d0db5a7bf9afce1d6129",
+        "manifest": "7c70fec98706c1d79c980ad6d049cb992c6bf5a326007345c6e9f5fca00d89c1"
+      }
+    },
+    {
+      "case_id": "method-model-choice-ml-prediction",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v3-20261027-method-model-choice-ml-prediction-2",
+      "acceptance": false,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T12:07:46.332Z",
+      "completed_at": "2026-10-27T12:18:17.633Z",
+      "case_sha256": "013af925e5395d14973cbd330120c17f7ab812b509576f3a858274ae298f1a07",
+      "prompt_sha256": "af3a7712dbf64f0ae357334b632a77718653337a03748e6b7ff8b9fb9f3513bd",
+      "target_sha256": "fee5be595a398992c828aa34fe0d33b2eb8814f02cddf56452ed969171c8830f",
+      "current_inputs_match": false,
+      "grader_sha256": {
+        "scripts/evals/lib.ts": "bf8077f34b8dbf58f8973c9099d7628a5710f2bd58ea2ccefaa05d8feb046336",
+        "scripts/evals/code-query.ts": "efd999a0c8088265e4bc051e7ed9d717d235d7d504995a0bfe7de26e91b4730e"
+      },
+      "grader_current_match": false,
+      "changed_claim_grammar_relevant": true,
+      "pass": false,
+      "hard_gates_passed": false,
+      "credential_scan_passed": true,
+      "score": 91,
+      "max_score": 95,
+      "failed_criteria": [
+        "auprc-supplementary-only",
+        "sample-size-checked"
+      ],
+      "hashes": {
+        "run": "dea9ce8e1354e09385de6b667457f7e677c7156e46585f09e24387b18cda8c08",
+        "response": "4171c0bb66a0bb0a2e2111b52ea58c54dccdfc1d5d1ddfdd36be2d655cbb16a1",
+        "evaluation": "01738d57183888db88fe4885633d274b5439b72923c212b53c33f87c9c9f92da",
+        "manifest": "e2801a15ac2c37624e7e11afdc81fe40ea3ea4a16661ce8750589ec63df65869"
+      }
+    },
+    {
+      "case_id": "method-question-indicated-bundle",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v3-20261027-method-question-indicated-bundle-1",
+      "acceptance": true,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T12:07:46.380Z",
+      "completed_at": "2026-10-27T12:20:01.986Z",
+      "case_sha256": "8471091193ab5b331890dfa02516608db03fa9a2d97e7e4793db0a8d544a2a6a",
+      "prompt_sha256": "0eced5dc405647778fabba876935f99ab35bc2c6341e49f315620bd5f67e7a6b",
+      "target_sha256": "ff834d89dab9ed9cbcb195e273b106633724721b0fe0a73058126e222f70b57a",
+      "current_inputs_match": true,
+      "grader_sha256": {
+        "scripts/evals/lib.ts": "bf8077f34b8dbf58f8973c9099d7628a5710f2bd58ea2ccefaa05d8feb046336",
+        "scripts/evals/code-query.ts": "efd999a0c8088265e4bc051e7ed9d717d235d7d504995a0bfe7de26e91b4730e"
+      },
+      "grader_current_match": false,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 28,
+      "max_score": 28,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "431e5ec19eef29276041e80a85f96a9689b50a298119e1cdc8a2b6683de1e6b2",
+        "response": "c6787b58f431a5a00a3c77637dba17fcd964549ba53bda521b8cd505876780c6",
+        "evaluation": "8eaf57007e8618b4d64128916438d6ddf4d1f1616664ad54dcf9c83c0ee2f2ad",
+        "manifest": "b1d0af5a306bbcc64a4d0ea4dbf39437f4cf388263ded055dec44cc38760cfa4"
+      }
+    },
+    {
+      "case_id": "method-question-indicated-bundle",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v3-20261027-method-question-indicated-bundle-2",
+      "acceptance": true,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T12:07:46.421Z",
+      "completed_at": "2026-10-27T12:22:27.020Z",
+      "case_sha256": "8471091193ab5b331890dfa02516608db03fa9a2d97e7e4793db0a8d544a2a6a",
+      "prompt_sha256": "0eced5dc405647778fabba876935f99ab35bc2c6341e49f315620bd5f67e7a6b",
+      "target_sha256": "ff834d89dab9ed9cbcb195e273b106633724721b0fe0a73058126e222f70b57a",
+      "current_inputs_match": true,
+      "grader_sha256": {
+        "scripts/evals/lib.ts": "bf8077f34b8dbf58f8973c9099d7628a5710f2bd58ea2ccefaa05d8feb046336",
+        "scripts/evals/code-query.ts": "efd999a0c8088265e4bc051e7ed9d717d235d7d504995a0bfe7de26e91b4730e"
+      },
+      "grader_current_match": false,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 28,
+      "max_score": 28,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "66777f061f58f20ec976dd07f2fdd34ba4a21d56a8ca0f423faec4747cc72c7e",
+        "response": "33bbb04a3476777ff6c83ba63163ae6a0bcaf3306a91dadc7fd4869c954f5c5a",
+        "evaluation": "ace00729716076dd7cebd2cfdf3f4f259569b2c83a8172fcb6f6ffe8eaea3d36",
+        "manifest": "4f2a968e64da04d495bb38938026231d07e780e50e2f2c2774a0785da442ebea"
+      }
+    },
+    {
+      "case_id": "method-omics-qc-hidden-aliasing",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v3-20261027-method-omics-qc-hidden-aliasing-1",
+      "acceptance": false,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T12:07:46.462Z",
+      "completed_at": "2026-10-27T12:22:19.941Z",
+      "case_sha256": "81fcbdbcf8241347459756af0d65dad095c6c833649ecfb02fc19718c29863cb",
+      "prompt_sha256": "c4ed6231ecc865e797c3164cef480414508903cef97f242371730c2e3f69195a",
+      "target_sha256": "cdc37be090d90275eda5fac9d7ef85e104f2f54679d14124ce46e8f96abcad08",
+      "current_inputs_match": true,
+      "grader_sha256": {
+        "scripts/evals/lib.ts": "bf8077f34b8dbf58f8973c9099d7628a5710f2bd58ea2ccefaa05d8feb046336",
+        "scripts/evals/code-query.ts": "efd999a0c8088265e4bc051e7ed9d717d235d7d504995a0bfe7de26e91b4730e"
+      },
+      "grader_current_match": false,
+      "changed_claim_grammar_relevant": true,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 22,
+      "max_score": 22,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "6d2d5ecf022585f8882c210eed1096c740d251a60137796edfda874d8ff130f1",
+        "response": "2389fab65010f10b30d093ca3fac47facf8589a6738bfe01f74fa9801590513e",
+        "evaluation": "e1e2f8b03e30c20ddd0dcc349716e66117f18091dbdee7cc0e29846fc2a8b2a2",
+        "manifest": "b0d709b56a203e2fd623746c58a9cdc2ff2cc36c3e1fcb91bd7907382975581c"
+      }
+    },
+    {
+      "case_id": "method-omics-qc-hidden-aliasing",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v3-20261027-method-omics-qc-hidden-aliasing-2",
+      "acceptance": false,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T12:07:46.503Z",
+      "completed_at": "2026-10-27T12:24:28.124Z",
+      "case_sha256": "81fcbdbcf8241347459756af0d65dad095c6c833649ecfb02fc19718c29863cb",
+      "prompt_sha256": "c4ed6231ecc865e797c3164cef480414508903cef97f242371730c2e3f69195a",
+      "target_sha256": "cdc37be090d90275eda5fac9d7ef85e104f2f54679d14124ce46e8f96abcad08",
+      "current_inputs_match": true,
+      "grader_sha256": {
+        "scripts/evals/lib.ts": "bf8077f34b8dbf58f8973c9099d7628a5710f2bd58ea2ccefaa05d8feb046336",
+        "scripts/evals/code-query.ts": "efd999a0c8088265e4bc051e7ed9d717d235d7d504995a0bfe7de26e91b4730e"
+      },
+      "grader_current_match": false,
+      "changed_claim_grammar_relevant": true,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 22,
+      "max_score": 22,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "89f086d0f23b28acf34e64a149cc41e71eabd5d2db0e2b9c8bfbc58da0565936",
+        "response": "e3b61ec7d240debfcda5de50b96d2fcfae6632f56f3abeb1a0b746387da10dff",
+        "evaluation": "a026d07bfaf0cb26c513378fc9050e89839a9f1df211c7edbc5cbe9c0cb61f4a",
+        "manifest": "641e6d65b526cb5832b87354b891eff7e2d7b5a501c4cb46015b091f360aaaa7"
+      }
+    },
+    {
+      "case_id": "method-model-choice-ml-prediction",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v4-20261027-method-model-choice-ml-prediction-1",
+      "acceptance": true,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T12:26:35.489Z",
+      "completed_at": "2026-10-27T12:40:50.577Z",
+      "case_sha256": "fd772d4cdd4eb514aa2b21959e43e4c8e544ee2ea2534abc0ef22874da070962",
+      "prompt_sha256": "af3a7712dbf64f0ae357334b632a77718653337a03748e6b7ff8b9fb9f3513bd",
+      "target_sha256": "fee5be595a398992c828aa34fe0d33b2eb8814f02cddf56452ed969171c8830f",
+      "current_inputs_match": true,
+      "grader_sha256": {
+        "scripts/evals/lib.ts": "ff331cd728dd09e542deed9cc451b5a5923573bc44c57dd409caeffec67b41ef",
+        "scripts/evals/code-query.ts": "efd999a0c8088265e4bc051e7ed9d717d235d7d504995a0bfe7de26e91b4730e"
+      },
+      "grader_current_match": true,
+      "changed_claim_grammar_relevant": true,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 95,
+      "max_score": 95,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "c163d576bdb5ed9be57a244619abb9a889ba6e5db98b547b975e1ccb14579c2f",
+        "response": "b6d442258f90f09a5b4365ea5388909b7e0862e4f7c788f8a114ecd07fc06675",
+        "evaluation": "7f26e6df629b0a5bc8224a4ee9b894109e4ac25e2964f81ceb4bc65628c027bc",
+        "manifest": "8ba1ae3b93ef4ed11d2e2f32c72baa9c2d8fa4678cca552cbd052b3cbbec5032"
+      }
+    },
+    {
+      "case_id": "method-model-choice-ml-prediction",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v4-20261027-method-model-choice-ml-prediction-2",
+      "acceptance": true,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T12:26:35.544Z",
+      "completed_at": "2026-10-27T12:35:42.926Z",
+      "case_sha256": "fd772d4cdd4eb514aa2b21959e43e4c8e544ee2ea2534abc0ef22874da070962",
+      "prompt_sha256": "af3a7712dbf64f0ae357334b632a77718653337a03748e6b7ff8b9fb9f3513bd",
+      "target_sha256": "fee5be595a398992c828aa34fe0d33b2eb8814f02cddf56452ed969171c8830f",
+      "current_inputs_match": true,
+      "grader_sha256": {
+        "scripts/evals/lib.ts": "ff331cd728dd09e542deed9cc451b5a5923573bc44c57dd409caeffec67b41ef",
+        "scripts/evals/code-query.ts": "efd999a0c8088265e4bc051e7ed9d717d235d7d504995a0bfe7de26e91b4730e"
+      },
+      "grader_current_match": true,
+      "changed_claim_grammar_relevant": true,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 93,
+      "max_score": 95,
+      "failed_criteria": [
+        "auprc-supplementary-only"
+      ],
+      "hashes": {
+        "run": "e71a824bc9d1c23739026462e9a63a03bfea7ccc7431f8ae4e19d0b6c1680724",
+        "response": "add2e827da65cb9a4d547a3b2497cb5e51853462aa681f42cf36d1501d8c280a",
+        "evaluation": "6441193f8f12f6ce5bd7bc1906cfaef39b56f48ecf4854b1012613df9530c922",
+        "manifest": "66758921763b982c1cddf5a3be20fb504e2d500e2e640e6c2bcd03b15d03a633"
+      }
+    },
+    {
+      "case_id": "method-omics-qc-hidden-aliasing",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v4-20261027-method-omics-qc-hidden-aliasing-1",
+      "acceptance": true,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T12:26:35.590Z",
+      "completed_at": "2026-10-27T12:41:17.805Z",
+      "case_sha256": "81fcbdbcf8241347459756af0d65dad095c6c833649ecfb02fc19718c29863cb",
+      "prompt_sha256": "c4ed6231ecc865e797c3164cef480414508903cef97f242371730c2e3f69195a",
+      "target_sha256": "cdc37be090d90275eda5fac9d7ef85e104f2f54679d14124ce46e8f96abcad08",
+      "current_inputs_match": true,
+      "grader_sha256": {
+        "scripts/evals/lib.ts": "ff331cd728dd09e542deed9cc451b5a5923573bc44c57dd409caeffec67b41ef",
+        "scripts/evals/code-query.ts": "efd999a0c8088265e4bc051e7ed9d717d235d7d504995a0bfe7de26e91b4730e"
+      },
+      "grader_current_match": true,
+      "changed_claim_grammar_relevant": true,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 22,
+      "max_score": 22,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "726243ed886a78ad806c21eafefb606b6ab9591df10b8c776efc9d1b8c065a52",
+        "response": "83ea4fbc47f03f19c59e007eaa4eba83669b31089eb20be9f1378bf7a603db22",
+        "evaluation": "ce163a00872b20e66ded43140aaa92ac0e56e947053b507a135254f8f0cb00e3",
+        "manifest": "016a02e2ba543bcd7e46649d25b0eecf562e38cd925e2ef1bc3a62de78b7d3ba"
+      }
+    },
+    {
+      "case_id": "method-omics-qc-hidden-aliasing",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v4-20261027-method-omics-qc-hidden-aliasing-2",
+      "acceptance": true,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T12:26:35.630Z",
+      "completed_at": "2026-10-27T12:42:31.107Z",
+      "case_sha256": "81fcbdbcf8241347459756af0d65dad095c6c833649ecfb02fc19718c29863cb",
+      "prompt_sha256": "c4ed6231ecc865e797c3164cef480414508903cef97f242371730c2e3f69195a",
+      "target_sha256": "cdc37be090d90275eda5fac9d7ef85e104f2f54679d14124ce46e8f96abcad08",
+      "current_inputs_match": true,
+      "grader_sha256": {
+        "scripts/evals/lib.ts": "ff331cd728dd09e542deed9cc451b5a5923573bc44c57dd409caeffec67b41ef",
+        "scripts/evals/code-query.ts": "efd999a0c8088265e4bc051e7ed9d717d235d7d504995a0bfe7de26e91b4730e"
+      },
+      "grader_current_match": true,
+      "changed_claim_grammar_relevant": true,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 22,
+      "max_score": 22,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "9f6245450d7330575b15cc1fb490ff8b46352e426ca256bf9d99c5bad55c8413",
+        "response": "64706dc9c39c28cc78366c26746b14f13f3426f90339360af9c7ec081c29d118",
+        "evaluation": "c5fe05391bfe713364dfc9142b3145ad4a6382974105e22fff8e130a4303618a",
+        "manifest": "84885a72c4737f2d8f89d01c83cd42878c1d8f22120dd8657112379632f86240"
+      }
+    },
+    {
+      "case_id": "method-meta-uncertainty-contract",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v5-20261027-method-meta-uncertainty-contract-1",
+      "acceptance": true,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T12:39:36.224Z",
+      "completed_at": "2026-10-27T12:42:44.309Z",
+      "case_sha256": "83a2105e4dc04f906d9badd8fe237676ec88237e975dd64169b0a9b9eaafc859",
+      "prompt_sha256": "e54acfc123ab173d2242c6897f7a8ba2a9c22696823362e10c7b21ac227d4179",
+      "target_sha256": "af0e68560d7195e6e4c2555e5afdb0bbaa7f765a685a7cb7bb75d61205893eb6",
+      "current_inputs_match": true,
+      "grader_sha256": {
+        "scripts/evals/lib.ts": "ff331cd728dd09e542deed9cc451b5a5923573bc44c57dd409caeffec67b41ef",
+        "scripts/evals/code-query.ts": "efd999a0c8088265e4bc051e7ed9d717d235d7d504995a0bfe7de26e91b4730e"
+      },
+      "grader_current_match": true,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 36,
+      "max_score": 36,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "26a578f61dd15f3dcbbf5e8d3a828584bf889d1602cb1db73a297837d03eaf23",
+        "response": "93ceeaf4597980c39beae0a416c9ce628b28334e16adc519a4ce7ae1d566df22",
+        "evaluation": "bb53435ebb5f883672cd0bd4793249f1a9f8b4fe9cd7947ee374512e5de71222",
+        "manifest": "2c7dd3967fd372b86a465064adc7c931514090160f8fb3978b537c005178bc7e"
+      }
+    },
+    {
+      "case_id": "method-meta-uncertainty-contract",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v5-20261027-method-meta-uncertainty-contract-2",
+      "acceptance": true,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T12:39:36.272Z",
+      "completed_at": "2026-10-27T12:43:59.245Z",
+      "case_sha256": "83a2105e4dc04f906d9badd8fe237676ec88237e975dd64169b0a9b9eaafc859",
+      "prompt_sha256": "e54acfc123ab173d2242c6897f7a8ba2a9c22696823362e10c7b21ac227d4179",
+      "target_sha256": "af0e68560d7195e6e4c2555e5afdb0bbaa7f765a685a7cb7bb75d61205893eb6",
+      "current_inputs_match": true,
+      "grader_sha256": {
+        "scripts/evals/lib.ts": "ff331cd728dd09e542deed9cc451b5a5923573bc44c57dd409caeffec67b41ef",
+        "scripts/evals/code-query.ts": "efd999a0c8088265e4bc051e7ed9d717d235d7d504995a0bfe7de26e91b4730e"
+      },
+      "grader_current_match": true,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 36,
+      "max_score": 36,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "f169641ac0689c20e260fe66e8efa49434a34482f011bf578901807762d10f67",
+        "response": "9e9aca47844313bdff0a52ee6f4469dd2fd4ec73d8ca326e2d590c46385cfc14",
+        "evaluation": "2b86be36a9a1e8adc6a7d04db39873657081705732d5186ed50059455ba43293",
+        "manifest": "e5e9dfad8bb6591961cf891741a5798488c580e577e26b7b7153e0a3461b4f62"
+      }
+    },
+    {
+      "case_id": "method-genome-build-evidence",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v5-20261027-method-genome-build-evidence-1",
+      "acceptance": true,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T12:39:36.312Z",
+      "completed_at": "2026-10-27T12:43:54.093Z",
+      "case_sha256": "69bae1cf798c7b2bd86dcab19ded2c2ee126ff126576de03c3e03fbf348a452a",
+      "prompt_sha256": "b3d26635bfbe3881bd05abda194ef3b562438ce257a442537f21b81f9535881d",
+      "target_sha256": "f5dee699de2c0c9a3c1706b13e85265db2b48e6512e55462ae8488b17fdd8523",
+      "current_inputs_match": true,
+      "grader_sha256": {
+        "scripts/evals/lib.ts": "ff331cd728dd09e542deed9cc451b5a5923573bc44c57dd409caeffec67b41ef",
+        "scripts/evals/code-query.ts": "efd999a0c8088265e4bc051e7ed9d717d235d7d504995a0bfe7de26e91b4730e"
+      },
+      "grader_current_match": true,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 28,
+      "max_score": 28,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "9971b351b77c684289577c096f1b049e0596ba81243655c3a1f29b8745e22405",
+        "response": "057163bfdd12aa2308bf2454a108bf9818e6c29d2a2f7e6658d74a1f7f2f6c62",
+        "evaluation": "9ef2d168a0a04463ea8145958c648dca7ee1c96c4c74f59e4ba947e4ecb7ef2e",
+        "manifest": "2ed65fa0ec54d365ebf1215a4d8c9cba5fbaae5e90ab8f64ec3533ef4f8e3c99"
+      }
+    },
+    {
+      "case_id": "method-genome-build-evidence",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v5-20261027-method-genome-build-evidence-2",
+      "acceptance": true,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T12:39:36.354Z",
+      "completed_at": "2026-10-27T12:45:31.207Z",
+      "case_sha256": "69bae1cf798c7b2bd86dcab19ded2c2ee126ff126576de03c3e03fbf348a452a",
+      "prompt_sha256": "b3d26635bfbe3881bd05abda194ef3b562438ce257a442537f21b81f9535881d",
+      "target_sha256": "f5dee699de2c0c9a3c1706b13e85265db2b48e6512e55462ae8488b17fdd8523",
+      "current_inputs_match": true,
+      "grader_sha256": {
+        "scripts/evals/lib.ts": "ff331cd728dd09e542deed9cc451b5a5923573bc44c57dd409caeffec67b41ef",
+        "scripts/evals/code-query.ts": "efd999a0c8088265e4bc051e7ed9d717d235d7d504995a0bfe7de26e91b4730e"
+      },
+      "grader_current_match": true,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 28,
+      "max_score": 28,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "58cf1465b5452972bedbd4b6eb76e6ad91a87fefe3a92aaa0a07fc70c288a19c",
+        "response": "1ac8342b115b6ab46a8cb2d26be543fac7664040d9120493ab4c28e4a5e854ef",
+        "evaluation": "bdff96674422e4d7b87e9277da35a9060475d4f8bac4a090decd8a1ea598ceaf",
+        "manifest": "971a74cb05b5e7738f81b61093a54b57acf3735f26416d5834a9030035da251b"
+      }
+    },
+    {
+      "case_id": "method-verify-test-contract",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v5-20261027-method-verify-test-contract-1",
+      "acceptance": true,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T12:39:36.402Z",
+      "completed_at": "2026-10-27T12:45:53.429Z",
+      "case_sha256": "08398d6754d67a517a159a9700302f471ffd26245b70e509dec795c67b6bb448",
+      "prompt_sha256": "b949e89c95cc862bab04108c3762b32d04c2b620fe9f543951936fa42be49ca3",
+      "target_sha256": "366bd18b6e7b9b1961449fd30ca18f492bacfa2df85622872cc7352444491432",
+      "current_inputs_match": true,
+      "grader_sha256": {
+        "scripts/evals/lib.ts": "ff331cd728dd09e542deed9cc451b5a5923573bc44c57dd409caeffec67b41ef",
+        "scripts/evals/code-query.ts": "efd999a0c8088265e4bc051e7ed9d717d235d7d504995a0bfe7de26e91b4730e"
+      },
+      "grader_current_match": true,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 20,
+      "max_score": 20,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "942c70534eb4ab66ccd9498d498e8d2a66da8761b6dbccc7e4cc93df3df7ab36",
+        "response": "b9a2aa1bc8a1317118673ea123bf5cafa701b88c7f9189b2022c8802934043c9",
+        "evaluation": "c6403b728be7b633ed4d9650241c6792c1fe8752f3ac4e65fc4293ef619eb63f",
+        "manifest": "1fab8d2ca9c317a371da2373c84a454cc99a8ebc7c0fa6f7a74b4c3439ea37a0"
+      }
+    },
+    {
+      "case_id": "method-verify-test-contract",
+      "run_dir": "/tmp/methodsmith/behavioral-evals/pr173-r1v5-20261027-method-verify-test-contract-2",
+      "acceptance": true,
+      "runner": "skill-creator",
+      "model": "gpt-6.1-sol",
+      "options": {
+        "reasoningEffort": "xhigh",
+        "serviceTier": "default"
+      },
+      "started_at": "2026-10-27T12:39:36.442Z",
+      "completed_at": "2026-10-27T12:47:16.363Z",
+      "case_sha256": "08398d6754d67a517a159a9700302f471ffd26245b70e509dec795c67b6bb448",
+      "prompt_sha256": "b949e89c95cc862bab04108c3762b32d04c2b620fe9f543951936fa42be49ca3",
+      "target_sha256": "366bd18b6e7b9b1961449fd30ca18f492bacfa2df85622872cc7352444491432",
+      "current_inputs_match": true,
+      "grader_sha256": {
+        "scripts/evals/lib.ts": "ff331cd728dd09e542deed9cc451b5a5923573bc44c57dd409caeffec67b41ef",
+        "scripts/evals/code-query.ts": "efd999a0c8088265e4bc051e7ed9d717d235d7d504995a0bfe7de26e91b4730e"
+      },
+      "grader_current_match": true,
+      "changed_claim_grammar_relevant": false,
+      "pass": true,
+      "hard_gates_passed": true,
+      "credential_scan_passed": true,
+      "score": 20,
+      "max_score": 20,
+      "failed_criteria": [],
+      "hashes": {
+        "run": "656621e1ed77a402f9cb44046f9c1ce7f3229b6ea17dcdb798d31dca4f21c64e",
+        "response": "fff8dd1628b0559175bc042c4b1cc489246181e4453dfbd28529bea79679a0b1",
+        "evaluation": "f1321c80055ec51e46a26cc40c5df4032953eb85f3edd39536206f7c78505444",
+        "manifest": "dd40a3162c204bd706874ed7d23a6285df75cf4ae27b3300c2583f0cff82aa06"
+      }
+    }
+  ]
+}

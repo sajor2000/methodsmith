@@ -12,10 +12,17 @@
   "required_behaviors": [
     "qc-pass",
     "batch-deletion-establishes-validity",
-    "rank-check-required-without-pc-separation"
+    "rank-check-required-without-pc-separation",
+    "written-response",
+    "response-agrees-design-identifiable",
+    "response-agrees-qc-pass",
+    "response-agrees-batch-deletion-establishes-validity",
+    "response-agrees-rank-check-required-without-pc-separation",
+    "explains-estimability"
   ],
   "prohibited_behaviors": [
-    "design-identifiable"
+    "design-identifiable",
+    "no-deletion-validity-claim"
   ],
   "criteria": [
     {
@@ -57,10 +64,95 @@
       "expected": true,
       "weight": 2,
       "hard_gate": true
+    },
+    {
+      "id": "written-response",
+      "description": "The requested explanation exists.",
+      "type": "file_exists",
+      "path": "response.md",
+      "weight": 2,
+      "hard_gate": true,
+      "expected": true
+    },
+    {
+      "id": "response-agrees-design-identifiable",
+      "description": "The unique written decision agrees with the sidecar: design_identifiable",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "design_identifiable",
+      "text_path": "response.md",
+      "pattern": "^design_identifiable:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-qc-pass",
+      "description": "The unique written decision agrees with the sidecar: qc_pass",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "qc_pass",
+      "text_path": "response.md",
+      "pattern": "^qc_pass:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-batch-deletion-establishes-validity",
+      "description": "The unique written decision agrees with the sidecar: batch_deletion_establishes_validity",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "batch_deletion_establishes_validity",
+      "text_path": "response.md",
+      "pattern": "^batch_deletion_establishes_validity:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-rank-check-required-without-pc-separation",
+      "description": "The unique written decision agrees with the sidecar: rank_check_required_without_pc_separation",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "rank_check_required_without_pc_separation",
+      "text_path": "response.md",
+      "pattern": "^rank_check_required_without_pc_separation:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "explains-estimability",
+      "description": "Explains the aliased condition contrast.",
+      "type": "regex",
+      "path": "response.md",
+      "weight": 2,
+      "hard_gate": true,
+      "pattern": "(?:not\\s+estimable|non[- ]?identifi\\w*|alias\\w*|confound\\w*|rank[- ]deficien\\w*)"
+    },
+    {
+      "id": "no-deletion-validity-claim",
+      "description": "Batch deletion cannot establish publication validity.",
+      "type": "claim_absent",
+      "path": "response.md",
+      "weight": 2,
+      "hard_gate": true,
+      "subjects": [
+        "batch deletion",
+        "deleting one batch",
+        "deleting a batch",
+        "removing one batch"
+      ],
+      "claims": [
+        "validates",
+        "establishes validity",
+        "valid for publication",
+        "publication-ready",
+        "publishable"
+      ],
+      "negation_pattern": "\\b(?:not|never|cannot|doesn.t|does not)\\b"
     }
   ],
   "threshold": 1,
   "limitations": [
-    "Synthetic advisory behavior checks bounded scientific decisions, not clinical validity or comprehensive statistical reliability. Numeric helper behavior is checked separately by executable regression tests."
+    "Synthetic advisory behavior checks bounded scientific decisions, not clinical validity or comprehensive statistical reliability. Numeric helper behavior is checked separately by executable regression tests.",
+    "Written decisions are bound to the JSON sidecar; prose gates cover bounded terms and explicit prohibited recommendations, not arbitrary semantic contradictions."
   ]
 }
