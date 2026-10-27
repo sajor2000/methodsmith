@@ -1,0 +1,22 @@
+[
+  {"query": "Write clifpy code to load vitals and labs for my cohort hospitalization_ids with ClifOrchestrator and validate them.", "should_trigger": true},
+  {"query": "How do I call calculate_sofa2_daily in clifpy for ICU stays? What columns does the cohort need?", "should_trigger": true},
+  {"query": "My clifpy create_wide_dataset call returns None and I lost some hospitalizations, what am I doing wrong?", "should_trigger": true},
+  {"query": "Convert norepinephrine and vasopressin doses to mcg/kg/min with clifpy before computing SOFA.", "should_trigger": true},
+  {"query": "We hand-wrote encounter stitching with shift(); replace it with the clifpy stitching API using a 6 hour window.", "should_trigger": true},
+  {"query": "Review this Python script that uses clifpy's respiratory support waterfall and apply_outlier_handling for misuse.", "should_trigger": true},
+  {"query": "Use clifpy compute_ase to flag adult sepsis events in our CLIF cohort; config is YAML.", "should_trigger": true},
+  {"query": "Upgrade our project from clifpy 0.3.8 to the current version; which calls break?", "should_trigger": true},
+  {"query": "Run clifpy's run_full_dqa on the labs table and write a text report.", "should_trigger": true},
+  {"query": "Our clifpy-loaded timestamps look shifted by 5 hours after loading. How should the timezone config work?", "should_trigger": true},
+  {"query": "Audit our whole CLIF project repo before we send it to the buddy site.", "should_trigger": false},
+  {"query": "Which CLIF and mCIDE version family should this project use?", "should_trigger": false},
+  {"query": "Write the R arrow code to open the CLIF vitals parquet and filter to our cohort.", "should_trigger": false},
+  {"query": "Initialize a new CLIF project from the official template in an empty directory.", "should_trigger": false},
+  {"query": "Pool the site-level hazard ratios returned by the CLIF sites with a random-effects meta-analysis.", "should_trigger": false},
+  {"query": "Compute SOFA scores from our Epic Clarity extract with pandas; this is not CLIF data.", "should_trigger": false},
+  {"query": "Install polars and duckdb in this uv project.", "should_trigger": false},
+  {"query": "Make a Table 1 of baseline characteristics by treatment group for the cohort.", "should_trigger": false},
+  {"query": "Scan output/final_no_phi for small cells and identifiers before we share it.", "should_trigger": false},
+  {"query": "Write the methods paragraph describing how SOFA was calculated for the manuscript.", "should_trigger": false}
+]

@@ -7,7 +7,7 @@
   {"query": "New consortium project — set up the standard CLIF project skeleton (code/, config/, guides/, utils/, outputs) with the README placeholders filled from our SAP.", "should_trigger": true},
   {"query": "clif project template audit on ./ please, we're about to request a buddy test from another site", "should_trigger": true},
   {"query": "Create a CLIF project repo for the CRRT timing study using the official GitHub template; keep the clif_demo data for first-run validation.", "should_trigger": true},
-  {"query": "Check that our CLIF project's final outputs folder only accepts aggregates with min cell size 10 and that the PHI intermediate folder is local-only, per the template.", "should_trigger": true},
+  {"query": "Check that our CLIF project's final outputs folder only accepts aggregates with more than 10 patients per cell and that the PHI intermediate folder is local-only, per the template.", "should_trigger": true},
   {"query": "Is our CLIF sepsis repo structured like the official template? Report pass/warning/block per item.", "should_trigger": true},
   {"query": "Which CLIF and mCIDE version family should we use, and what are the vocabulary rules for respiratory_support device_category?", "should_trigger": false},
   {"query": "Edit mCIDE/vitals/vital_categories.csv to add a new category for our site; POC approval pending.", "should_trigger": false},

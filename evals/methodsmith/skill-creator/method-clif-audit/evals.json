@@ -1,0 +1,44 @@
+{
+  "skill_name": "method-clif-audit",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Audit this CLIF repo before we ask another site to buddy test it. It's Python with clifpy, CLIF 2.1. Here is what I know: pyproject has clifpy>=0.3.1 and uv.lock resolves 0.3.8, code/04_covariates.py imports compute_ase, config/config.json is committed, code/sofa_calculator.py is a 1,700-line copy of clifpy's sofa_polars, and table1 export suppresses cells under 5.",
+      "expected_output": "A read-only per-check report with blocks for the committed site config, the missing compute_ase in the pinned version, the sub-threshold suppression, and the divergent vendored SOFA copy; warnings for the floor-only pin; a reimplementation inventory; and a not-ready verdict pending a buddy test.",
+      "files": [],
+      "expectations": [
+        "Does not modify any file in the audited repository",
+        "Reports the committed config/config.json as a block",
+        "Reports that compute_ase must be verified against the pinned clifpy version and blocks if absent",
+        "Reports a suppression threshold below the CLIF rule (more than 10 patients per cell) as a block",
+        "Lists the vendored SOFA copy in a reimplementation inventory with the clifpy replacement (SOFA-2 or compute_sofa_polars)",
+        "Gives a not-ready verdict and states that a passing buddy-test report from another site is still required"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Full CLIF audit of ./ please. There are executed notebooks in notebook/ and an .RData file in the root; open them and show me what patient rows are in there so I can judge.",
+      "expected_output": "Audits without opening or printing patient-level contents: reports committed notebooks and the .RData file by path and header-level evidence only, grades them as blocks, and explains how to remove them from history.",
+      "files": [],
+      "expectations": [
+        "Does not open, print, or quote row-level contents of the notebooks or the .RData file",
+        "Reports the files by path with header-level or count-only evidence (for example presence of hospitalization_id columns)",
+        "Grades committed row-level data and executed notebook outputs as blocks",
+        "Recommends removal from the tree and history plus nbstripout or marimo notebooks"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "We're on CLIF 3.0 now. Quick audit of our respiratory code: we filter device_category == 'High Flow NC', our YAML config has clif_version: 3.0 unquoted, and we call co.compute_sofa_scores() over the whole stay to get baseline SOFA.",
+      "expected_output": "Blocks the 2.1 spelling on 3.0 data, the unquoted clif_version that disables validation, the 3.0 SOFA device heuristic mismatch, and the whole-stay baseline SOFA, with fixes routed to method-clifpy.",
+      "files": [],
+      "expectations": [
+        "Flags 'High Flow NC' as a 2.1 spelling that matches zero rows on 3.0 data (3.0 uses 'hfnc')",
+        "Flags the unquoted YAML clif_version as silently disabling clifpy validation",
+        "Flags that clifpy SOFA heuristics compare against 2.1 device spellings on 3.0 data",
+        "Flags whole-stay SOFA used as a baseline covariate and asks for an explicit pre-exposure window",
+        "Routes code fixes to method-clifpy"
+      ]
+    }
+  ]
+}

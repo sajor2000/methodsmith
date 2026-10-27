@@ -8,7 +8,7 @@ numbers to their analysis code. Built for clinical statistics, machine learning,
 and meta-analysis. Your team keeps scientific judgment and responsibility for
 the results.
 
-**68 skills · 55 specialist agents · 49 reporting standards.** Works with Claude
+**70 skills · 55 specialist agents · 49 reporting standards.** Works with Claude
 Code, Codex, Pi, Gemini CLI, OpenCode, Kiro, and Qwen Code.
 
 > **Research use only; not a medical device for clinical care.** Methodsmith
@@ -97,8 +97,10 @@ run `bash install.sh claude --aliases`.
 | `/ce-checklist-match` | `/method-checklist` |
 | `/ce-clean-gone-branches` | `/method-clean-branches` |
 | `/ce-clif` | `/method-clif` |
+| `/ce-clif-audit` | `/method-clif-audit` |
 | `/ce-clif-meta-analysis` | `/method-clif-meta-analysis` |
 | `/ce-clif-project-template` | `/method-clif-template` |
+| `/ce-clifpy` | `/method-clifpy` |
 | `/ce-clinical-research-voice` | `/method-voice` |
 | `/ce-code-review` | `/method-review` |
 | `/ce-cohort-build` | `/method-cohort` |
@@ -642,7 +644,7 @@ one-line warning, so a hook bug never blocks unrelated work.
 | Component | Count |
 |-----------|-------|
 | Agents | 55 |
-| Skills | 68 |
+| Skills | 70 |
 
 Publication workflows use shared artifact registries and publication profiles so tables, figures, manuscript packages, registry exports, review packs, and signoff ledgers stay consistent. The initial publication profiles are JAMA and generic biomedical.
 
@@ -787,6 +789,8 @@ templates, data-quality tools, and provisional candidates.
 |-------|-------------|
 | `/method-clif` | Activate CLIF-safe profile for ICU consortium repos -- `/method-clif --version 2.1.0` selects CLIF/mCIDE 2.1 and `--version 3.0.0` selects the matching 3.0 family; honors the saved sensitive-data boundary (asks once only if none is saved), keeps patient-level intermediates in the approved restricted data root, and enforces Parquet-only, version-correct mCIDE vocab, and POC sign-off; IPTW examples use stabilized weights with balance checks |
 | `/method-clif-template` | Initialize or audit a CLIF project against the official Project Template, with explicit version selection, site-local configuration, and aggregate-only final-output safeguards |
+| `/method-clif-audit` | Full read-only audit of a CLIF project repository: template structure, dependency pins, config, `clifpy` usage and reimplementations, timezone handling, export suppression, committed data, and reproducibility, graded block/warning with file:line evidence |
+| `/method-clifpy` | Write, fix, or review Python that calls `clifpy`, using signatures verified against the `clifpy` source, the selected CLIF version, explicit timezone rules, post-call assertions, and no reimplemented helpers |
 | `/method-clif-meta-analysis` | Plan, code and audit CLIF site-to-lead or literature meta-analysis, with validated aggregate contracts and explicit R/Python methods |
 | `/method-cohort` | Define a study cohort using OMOP concept sets / ICD / CPT / LOINC code lists with vocabulary version pinning; outputs SQL, JSON spec, and CONSORT-flow waterfall |
 | `/method-phenotype` | Validate an EHR-derived phenotype algorithm against a chart-review gold standard; PPV / NPV / sensitivity / specificity overall and by subgroup, reweighting sensitivity and specificity for verification bias under algorithm-stratified sampling |

@@ -1,0 +1,44 @@
+{
+  "skill_name": "method-clifpy",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "CLIF 2.1 project, uv, clifpy pinned to 2.1.0 in uv.lock. Write the code to compute daily SOFA for our cohort (hospitalization_id, icu_in_dttm, icu_out_dttm in cohort.parquet) using clifpy. Config is config/config.json.",
+      "expected_output": "SOFA-2 code using calculate_sofa2_daily with a cohort frame renamed to hospitalization_id/start_dttm/end_dttm, explicit SOFA2Config with the GCS sedation window stated, bounded DuckDB resources, aggregate-only checks, and provenance recorded.",
+      "files": [],
+      "expectations": [
+        "Uses calculate_sofa2_daily (or calculate_sofa2) rather than hand-written SOFA logic",
+        "Builds the cohort frame with hospitalization_id, start_dttm, end_dttm (not start_time/end_time) and keeps datetimes timezone-aware",
+        "Sets SOFA2Config explicitly, including post_sedation_gcs_invalidate_hours, rather than relying on the documented default",
+        "Records the clifpy version, CLIF version, timezone, and SOFA configuration in a run manifest or log",
+        "Keeps outputs in the restricted or gitignored area and shares only aggregates under the CLIF small-cell rule"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Fix this: co.convert_dose_units_for_continuous_meds(preferred_units={'norepinephrine':'mcg/kg/min','epinephrine':'mcg/kg/min','dopamine':'mcg/kg/min'}); sofa = co.compute_sofa_scores() -- it crashes with a DuckDB BinderException about dobutamine_mcg_kg_min. Also generate_text_report(results, output_path='output/final_no_phi/dqa.txt') throws TypeError.",
+      "expected_output": "Explains both failures from the verified API: legacy SOFA needs all four pressors in mcg/kg/min including dobutamine, and generate_text_report requires table_name as a positional argument with the directory created first; moves DQA output out of final_no_phi; suggests SOFA-2 for new work.",
+      "files": [],
+      "expectations": [
+        "Adds dobutamine in mcg/kg/min to preferred_units and explains that a missing SOFA input column raises the BinderException",
+        "Notes compute_sofa_scores defaults to id_name='encounter_block' (stitching) and overwrites co.wide_df, and sets id_name explicitly",
+        "Corrects the call to generate_text_report(results, table_name, output_path) and creates the directory first",
+        "Moves the DQA report out of output/final_no_phi/ because DQA output can contain sample IDs or raw invalid values",
+        "Recommends checking _convert_status after conversion and mentions SOFA-2 as the preferred score for new work"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Our sites are moving to CLIF 3.0. Update our clifpy loading code (ClifOrchestrator(config_path='config/config.yaml')) and the respiratory filter df[df.device_category == 'IMV'] so it works on 3.0 data. config.yaml has clif_version: 3.0.",
+      "expected_output": "Quotes clif_version in YAML, passes clif_version='3.0', asserts schemas loaded, changes the filter to the 3.0 spelling, and warns that clifpy SOFA and waterfall heuristics still use 2.1 spellings.",
+      "files": [],
+      "expectations": [
+        "Flags that unquoted YAML clif_version: 3.0 becomes a float that silently disables validation, and quotes it",
+        "Asserts each loaded table's schema is not None after initialization",
+        "Changes the device_category literal to the 3.0 lowercase spelling 'imv' (or a case-normalized comparison tied to the declared family)",
+        "Warns that legacy SOFA, SOFA-2 respiratory rules, and the waterfall still compare against 2.1 spellings on 3.0 data",
+        "Points to crosswalk_table_2_1_to_3_0 or CrosswalkMigrationRunner for value migration rather than bulk lowercasing"
+      ]
+    }
+  ]
+}

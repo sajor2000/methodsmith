@@ -74,7 +74,7 @@ When `__CE_CLIF__ active=true` is present:
 - Default the implementation-unit sequence to the Project Template workflow (cohort → quality checks → outlier handling → analysis under `code/`).
 - Default `reporting_checklist: STROBE` + `reporting_checklist_extensions: [RECORD]` for observational studies if not already set by `__CE_CHECKLIST__`.
 - Add a SAP-12 dissemination note: "patient-level data does not leave each site; only aggregate results in `output/final_no_phi/` are shared, while `output/intermediate_phi/` remains gitignored and local-only".
-- Place protected-path edits (`mCIDE/`, `ddl/`, `outlier-handling/`, `reference_ranges/`, `WORKFLOW.md`) out of scope for any implementation unit unless the user has stated POC sign-off.
+- Place protected-path edits (`mCIDE/`, `ddl/`, `WORKFLOW.md`) out of scope for any implementation unit unless the user has stated POC sign-off.
 
 ## 4. SAP Phase 4: Write the SAP
 

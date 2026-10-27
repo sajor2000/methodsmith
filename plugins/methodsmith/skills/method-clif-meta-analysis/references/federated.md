@@ -46,7 +46,7 @@ bootstrap or exact intervals as Wald intervals by default.
   does not remove site bias or solve transportability.
 
 Release thresholds follow site/consortium policy, including complementary
-suppression and differencing risks. A directory named `final_no_phi`, n >= 10,
+suppression and differencing risks. A directory named `final_no_phi`, a cell-count floor,
 or a coefficient-only file does not certify safe release. Preserve suppression
 statuses without enough auxiliary detail to reconstruct protected values.
 

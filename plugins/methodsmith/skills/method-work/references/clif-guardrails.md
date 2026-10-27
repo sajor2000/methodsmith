@@ -9,7 +9,7 @@ Load this when the CLIF profile is active (see the CLIF discovery stub in `SKILL
 
 ## Protected paths
 
-Refuse edits to `mCIDE/**`, `ddl/**`, `outlier-handling/**`, `reference_ranges/**`, and `WORKFLOW.md` unless the prompt or PR description contains `POC: @<handle> approved`. If the POC cannot be resolved from local project docs, block and ask for the approving CLIF contact instead of guessing.
+Refuse edits to `mCIDE/**`, `ddl/**`, and `WORKFLOW.md` unless the prompt or PR description contains `POC: @<handle> approved`. If the POC cannot be resolved from local project docs, block and ask for the approving CLIF contact instead of guessing.
 
 ## Data format rules
 

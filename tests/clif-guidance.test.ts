@@ -69,7 +69,7 @@ describe("CLIF guidance", () => {
     ])
     expect(recipes).not.toContain("0.4.9")
     expect(recipes).not.toContain("clifpy==")
-    expect(recipes).toContain("Python >=3.9")
+    expect(recipes).toContain("Python >=3.10")
   })
 
   test("asks once for PHI authorization and preserves the official output boundary", async () => {
@@ -198,6 +198,45 @@ describe("CLIF guidance", () => {
     ])
     expect(versions).toContain("Several v3 tables remain Alpha")
     expect(versions).toContain("does not certify v3 category validation")
+  })
+
+  test("keeps clifpy recipes runnable against the verified clifpy API", async () => {
+    const [recipes, clifpySkill, pitfalls] = await Promise.all([
+      readClif("references/clifpy-recipes.md"),
+      readSkill("method-clifpy/SKILL.md"),
+      readSkill("method-clifpy/references/pitfalls.md"),
+    ])
+
+    // generate_text_report(validation_data, table_name, output_path): table_name is positional.
+    expect(recipes).not.toContain("generate_text_report(results, output_path=")
+    expect(recipes).toContain('generate_text_report(results, "labs",')
+    // Legacy SOFA needs all four pressors in mcg/kg/min, including dobutamine.
+    expect(recipes).toContain("dobutamine")
+    expect(recipes).not.toContain("Python >=3.9")
+    expectContainsAll(clifpySkill, ["calculate_sofa2", "Python 3.10", "schema is not None", "method-clif-audit"])
+    expectContainsAll(pitfalls, ["clif_version: 3.0", "BinderException", "sample IDs"])
+  })
+
+  test("routes full CLIF repository audits and uses one small-cell rule", async () => {
+    const [clifSkill, rules, template, audit, checklist] = await Promise.all([
+      readClif("SKILL.md"),
+      readClif("references/clif-rules.md"),
+      readSkill("method-clif-template/SKILL.md"),
+      readSkill("method-clif-audit/SKILL.md"),
+      readSkill("method-clif-audit/references/audit-checklist.md"),
+    ])
+
+    expect(clifSkill).toContain("`method-clif-audit`")
+    expect(template).toContain("`method-clif-audit`")
+    expect(audit).toContain("more than 10 patients per cell")
+    expect(checklist).toContain("CA-61 Threshold")
+    for (const text of [clifSkill, rules, template]) {
+      expect(text).not.toContain("`n >= 10` floor")
+      expect(text).not.toContain("(the CLIF project floor)")
+    }
+    // The CLIF repository removed these directories; they are no longer protected paths.
+    expect(rules).not.toContain("- `outlier-handling/**`")
+    expect(rules).not.toContain("outlier-thresholds/    #")
   })
 
   test("setup workflow exposes CLIF-aware package and uv defaults", async () => {
