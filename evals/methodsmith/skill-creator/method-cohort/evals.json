@@ -3,8 +3,8 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Build the cohort for our new-user statin study: adults with T2DM initiating a statin 2018-2023, OMOP CDM v5.4 with vocabulary release 2024-Q1, index = first statin drug_exposure on/after T2DM diagnosis, exclude T1DM ever and any statin in the prior 365 days, require 365 days of prior observation, 365-day follow-up. stack_profile.data_root is set.",
-      "expected_output": "Concept-set YAMLs, a parameterized OMOP CTE SQL file, a CONSORT-style waterfall (md + csv) with small-cell suppression, a cohort spec YAML pinning the vocabulary version, and the __CE_COHORT__ handoff line.",
+      "prompt": "Build the cohort for our new-user statin study: adults with T2DM initiating a statin 2018-2023, OMOP CDM v5.4 with vocabulary release 2024-Q1, index = first statin drug_exposure on/after T2DM diagnosis, exclude T1DM ever and any statin in the prior 365 days, require 365 days of prior observation, 365-day follow-up. stack_profile.data_root is set. Also address this bounded scientific check as part of the assessment: Use method-cohort to review this synthetic eligibility rule, without SQL execution or patient data: require 365 days of insurance observation before a qualifying drug initiation, then require continuous enrollment for the full following year. One person satisfies all baseline criteria but disenrolls on day90. We want the inception cohort eligible at initiation, with one-year outcome followup when observable. Write workspace/advice.json with booleans eligible_at_index, requires_full_future_enrollment, review_informative_censoring. Explain followup handling and why the outcome's observability differs from baseline eligibility in response.md. No network or package installation.",
+      "expected_output": "Concept-set YAMLs, a parameterized OMOP CTE SQL file, a CONSORT-style waterfall (md + csv) with small-cell suppression, a cohort spec YAML pinning the vocabulary version, and the __CE_COHORT__ handoff line. Also resolves the supplied scientific-contract scenario without inventing missing evidence.",
       "files": [],
       "expectations": [
         "Writes concept sets to analysis/cohort/concept-sets/<set-name>.yaml with vocabulary_version pinned (2024-Q1) and include_descendants/excluded_concepts fields",
@@ -12,7 +12,10 @@
         "Writes analysis/cohort/<cohort-name>-waterfall.md and -waterfall.csv and suppresses or merges any step whose lost-N is below the disclosure floor (default n<11)",
         "Writes analysis/cohort/<cohort-name>.yaml with index_event, inclusion, exclusion windows (T1DM any; statin prior_365_days), follow_up, and vocabulary_version",
         "Prints __CE_COHORT__ name=<cohort-name> n=<final-n> yaml=<path> waterfall=<path> with both yaml= and waterfall= keys",
-        "Records each concept set's source as a published algorithm cited by PMID (looked up through the PubMed/Paperclip MCP tools and read before citing) or as project-defined, never a code set asserted from memory"
+        "Records each concept set's source as a published algorithm cited by PMID (looked up through the PubMed/Paperclip MCP tools and read before citing) or as project-defined, never a code set asserted from memory",
+        "eligible_at_index is true in the requested structured advice, consistent with the explanation",
+        "requires_full_future_enrollment is false in the requested structured advice, consistent with the explanation",
+        "review_informative_censoring is true in the requested structured advice, consistent with the explanation"
       ]
     },
     {
@@ -30,13 +33,14 @@
     },
     {
       "id": 3,
-      "prompt": "Use method-cohort to review this synthetic eligibility rule, without SQL execution or patient data: require 365 days of insurance observation before a qualifying drug initiation, then require continuous enrollment for the full following year. One person satisfies all baseline criteria but disenrolls on day90. We want the inception cohort eligible at initiation, with one-year outcome followup when observable. Write workspace/advice.json with booleans eligible_at_index, requires_full_future_enrollment, review_informative_censoring. Explain followup handling and why the outcome's observability differs from baseline eligibility in response.md. No network or package installation.",
-      "expected_output": "A source-bound assessment preserving the requested estimand and identifying unsupported validation rather than inventing evidence.",
+      "prompt": "Make me a cohort of 'heart failure patients' from our claims data and then run the Cox model for SGLT2 vs DPP4 on readmission. I don't have a code list yet, just use whatever ICD codes make sense.",
+      "expected_output": "Elicits the missing cohort facts (vocabulary and pinned version, index event, windows, code list) one question at a time instead of inventing codes or locking a vague population, and declines to run the Cox model.",
       "files": [],
       "expectations": [
-        "eligible_at_index is true in the requested structured advice, consistent with the explanation",
-        "requires_full_future_enrollment is false in the requested structured advice, consistent with the explanation",
-        "review_informative_censoring is true in the requested structured advice, consistent with the explanation"
+        "Does not invent an unpinned ICD code list or present the vague 'heart failure patients' population as a locked cohort",
+        "Asks for a pinned vocabulary version (e.g. ICD-10-CM year) and the index event before generating SQL",
+        "Asks one decision-changing question at a time",
+        "Does not run the Cox model or any statistical analysis, routing that to later workflow (method-work after method-data-qa)"
       ]
     }
   ]

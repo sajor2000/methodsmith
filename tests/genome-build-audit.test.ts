@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test"
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 
@@ -7,12 +7,20 @@ const roots: string[] = []
 const script = path.join(process.cwd(), "plugins/methodsmith/skills/method-genome-build/scripts/audit_build.py")
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })
 
-function audit(files: Record<string, string>, declared = "GRCh38", noTools = false) {
+function audit(files: Record<string, string>, declared = "GRCh38", noTools = false, samHeader?: string) {
   const root = mkdtempSync(path.join(tmpdir(), "genome-audit-")); roots.push(root)
   for (const [name, contents] of Object.entries(files)) writeFileSync(path.join(root, name), contents)
+  const bin = path.join(root, "bin")
+  if (samHeader !== undefined) {
+    mkdirSync(bin)
+    const samtools = path.join(bin, "samtools")
+    writeFileSync(samtools, '#!/bin/sh\n/bin/cat "$0.header"\n')
+    writeFileSync(samtools + ".header", samHeader)
+    chmodSync(samtools, 0o700)
+  }
   const result = Bun.spawnSync([Bun.which("python3")!, script, root, "--declared", declared,
     "--manifest", path.join(root, "audit.json"), "--report", path.join(root, "audit.md")], {
-    env: noTools ? { ...process.env, PATH: "" } : process.env,
+    env: samHeader !== undefined ? { ...process.env, PATH: bin } : noTools ? { ...process.env, PATH: "" } : process.env,
   })
   return { code: result.exitCode, report: readFileSync(path.join(root, "audit.md"), "utf8"),
     manifest: JSON.parse(readFileSync(path.join(root, "audit.json"), "utf8")) }
@@ -76,4 +84,55 @@ test("same-build chromosome naming differences are reported as naming incompatib
   expect(result.code).toBe(2)
   expect(result.manifest.files.map((file: { status: string }) => file.status)).toEqual(["verified", "verified"])
   expect(result.report).toContain("naming differs, which alone does not identify a build")
+})
+
+test("unsupported CHM13 versions cannot evade version checks through separators or suffixes", () => {
+  for (const reference of ["T2T-CHM13 v1.1", "T2T-CHM13v2.0.1", "CHM13 version 1.1", "CHM13_version_1.1", "CHM13-v1.1", "T2T-CHM13"]) {
+    const result = audit({ "input.vcf": `##reference=${reference}\n##contig=<ID=1,length=248387328>\n` }, "T2T")
+    expect(result.code).toBe(2)
+    expect(result.manifest.files[0].status).toBe("unknown")
+  }
+  for (const reference of ["CHM13 v2.0", "CHM13_version_2.0", "CHM13-v2.0"]) {
+    expect(audit({ "input.vcf": `##reference=${reference}\n##contig=<ID=1,length=248387328>\n` }, "T2T").code).toBe(0)
+  }
+})
+
+test("CHM13 prereleases stay unresolved while supported release filenames and URLs remain valid", () => {
+  for (const reference of ["CHM13 v2.0-rc1", "CHM13 v2.0_rc1", "CHM13 v2.0-beta", "CHM13v2.0-rc1.fa.gz"]) {
+    const result = audit({ "input.vcf": `##reference=${reference}\n##contig=<ID=1,length=248387328>\n` }, "T2T")
+    expect(result.code).toBe(2)
+    expect(result.manifest.files[0].status).toBe("unknown")
+  }
+  for (const reference of ["chm13v2.0.fa.gz", "https://example.org/references/chm13v2.0.fasta?download=1"]) {
+    expect(audit({ "input.vcf": `##reference=${reference}\n##contig=<ID=1,length=248387328>\n` }, "T2T").code).toBe(0)
+  }
+})
+
+test("BAM assembly/reference tags and standard GFF3 build directives are inspected", () => {
+  const matching = audit({ "input.bam": "synthetic BAM placeholder" }, "GRCh38", false,
+    "@SQ\tSN:2\tLN:242193529\tAS:GRCh38\n")
+  expect(matching.code).toBe(0)
+  expect(matching.manifest.files[0].status).toBe("verified")
+  for (const tag of ["AS:GRCh37", "UR:file:///references/GRCh37.fa"]) {
+    const result = audit({ "input.bam": "synthetic BAM placeholder" }, "GRCh38", false,
+      `@SQ\tSN:1\tLN:248956422\t${tag}\n`)
+    expect(result.code).toBe(2)
+    expect(result.manifest.files[0].status).toBe("incompatible")
+  }
+  expect(audit({ "genes.gff3": "##genome-build NCBI GRCh38.p14\n1\tsource\tgene\t1\t2\t.\t+\t.\tID=x\n" }).code).toBe(0)
+  expect(audit({ "genes.gff3": "##genome-build NCBI GRCh37.p13\n1\tsource\tgene\t1\t2\t.\t+\t.\tID=x\n" }).code).toBe(2)
+})
+
+test("GENCODE description headers supply build evidence without fabricating absent declarations", () => {
+  for (const prefix of ["##description:", "#description:"]) {
+    const result = audit({ "gencode.gtf": `${prefix} evidence-based annotation of the human genome (GRCh38), version 44\n##provider: GENCODE\nchr1\tsource\tgene\t1\t2\t.\t+\t.\tgene_id x;\n` })
+    expect(result.code).toBe(0)
+    expect(result.manifest.files[0].status).toBe("verified")
+  }
+  const mismatch = audit({ "gencode.gtf": "##description: evidence-based annotation of the human genome (GRCh37), version 19\n" })
+  expect(mismatch.code).toBe(2)
+  expect(mismatch.manifest.files[0].status).toBe("incompatible")
+  const unknown = audit({ "gencode.gtf": "##description: annotation without a declared build\n##provider: GENCODE\n" })
+  expect(unknown.code).toBe(2)
+  expect(unknown.manifest.files[0].status).toBe("unknown")
 })

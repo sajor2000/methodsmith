@@ -50,7 +50,8 @@ effect_uncertainty <- function(dat, is_ratio) {
     if (!is.numeric(tolerance) || !is.finite(tolerance) || tolerance < 0) {
       fail("declare ci_rounding_tolerance on the analysis scale from source rounding")
     }
-    if (abs(mean(bounds) - dat$te[[i]]) > tolerance) {
+    roundoff <- 8 * .Machine$double.eps * max(abs(bounds), abs(dat$te[[i]]), if (is_ratio) 1 else 0)
+    if (abs(mean(bounds) - dat$te[[i]]) > tolerance + roundoff) {
       fail("asymmetric CI exceeds source-rounding tolerance; do not symmetrize it")
     }
     dat$se_te[[i]] <- diff(bounds) / (2 * critical)

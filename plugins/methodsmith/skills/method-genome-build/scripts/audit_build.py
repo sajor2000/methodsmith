@@ -60,12 +60,14 @@ def inspect_bam(path: Path) -> dict:
     contigs = []
     for line in out.splitlines():
         if line.startswith("@SQ"):
-            sn = m5 = ln = None
+            sn = m5 = ln = assembly = reference = None
             for tag in line.split("\t")[1:]:
                 if   tag.startswith("SN:"): sn = tag[3:]
                 elif tag.startswith("M5:"): m5 = tag[3:]
                 elif tag.startswith("LN:"): ln = tag[3:]
-            contigs.append({"sn": sn, "m5": m5, "ln": ln})
+                elif tag.startswith("AS:"): assembly = tag[3:]
+                elif tag.startswith("UR:"): reference = tag[3:]
+            contigs.append({"sn": sn, "m5": m5, "ln": ln, "assembly": assembly, "reference": reference})
     return {"path": str(path), "kind": "bam", "contigs": contigs}
 
 
@@ -99,11 +101,9 @@ def inspect_gtf(path: Path) -> dict:
     try:
         with opener(path, "rt") as fh:
             for line in fh:
-                if line.startswith("#!"):
-                    if "genome-build" in line or "genome-version" in line:
-                        source = (source or "") + line.strip() + "; "
-                    continue
                 if line.startswith("#"):
+                    if "genome-build" in line or "genome-version" in line or re.match(r"^#+!?\s*(?:description|provider)\s*:", line, re.I):
+                        source = (source or "") + line.strip() + "; "
                     continue
                 first_chrom = line.split("\t", 1)[0]
                 break
@@ -169,7 +169,9 @@ def audit(root: Path, declared: str) -> tuple[list[dict], list[str]]:
         evidence, mismatches = [], []
         declarations = [f.get("reference"), f.get("header_meta")]
         declarations += [c.get("assembly") for c in f.get("contigs", [])]
+        declarations += [c.get("reference") for c in f.get("contigs", [])]
         unsupported_t2t = False
+        supported_t2t = False
         for declaration in filter(None, declarations):
             for build, known in KNOWN_BUILDS.items():
                 if any(re.search(r"(?<![A-Za-z0-9])" + re.escape(alias) + r"(?![0-9])", declaration, re.I)
@@ -178,8 +180,13 @@ def audit(root: Path, declared: str) -> tuple[list[dict], list[str]]:
                         mismatches.append(f"header declares {build}, expected {declared}")
                     else:
                         evidence.append("matching build declaration")
-            if declared == "T2T" and re.search(r"(?:CHM13|T2T)[._-]?v(?!2\.0(?:\D|$))\d", declaration, re.I):
-                unsupported_t2t = True
+            if declared == "T2T":
+                tokens = re.findall(r"(?:CHM13|T2T)[\s._-]*(?:version[\s._-]*|v)?(\d[A-Za-z0-9._+-]*)",
+                                    declaration, re.I)
+                versions = [re.sub(r"\.(?:fa|fasta|fna|2bit)$", "", re.sub(r"\.gz$", "", token, flags=re.I), flags=re.I)
+                            for token in tokens]
+                supported_t2t |= "2.0" in versions
+                unsupported_t2t |= any(version != "2.0" for version in versions)
         for c in f.get("contigs", []):
             chrom = re.sub(r"^chr", "", c.get("sn") or "")
             expected_length = spec["lengths"].get(chrom)
@@ -196,9 +203,10 @@ def audit(root: Path, declared: str) -> tuple[list[dict], list[str]]:
         if mismatches:
             f["status"] = "incompatible"
             issues.extend(f"{f['path']}: {message}" for message in mismatches)
-        elif unsupported_t2t or not evidence:
+        elif (declared == "T2T" and (unsupported_t2t or not supported_t2t)) or not evidence:
             f["status"] = "unknown"
-            issues.append(f"{f['path']}: unknown build evidence (T2T length checks support CHM13 v2.0 only)")
+            reason = "CHM13 v2.0 declaration required for T2T checks" if declared == "T2T" else "no supported build-header evidence"
+            issues.append(f"{f['path']}: unknown build evidence ({reason})")
         else:
             f["status"] = "verified"
         f["evidence"] = evidence

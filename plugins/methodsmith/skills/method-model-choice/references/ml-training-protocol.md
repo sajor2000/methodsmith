@@ -64,7 +64,7 @@ State one design in the memo before any fitting:
 | Locked held-out test set | Large data where one split leaves enough events for a stable estimate | One test score after model lock |
 
 - A random split-sample test set wastes events and gives an unstable estimate in small or moderate data; prefer resampling there and develop on all data (Collins et al., BMJ 2024, PMID 38191193).
-- For site generalization, report internal-external CV performance and heterogeneity (Takada et al. 2021, PMID 33836256; de Jong et al. 2021, PMID 33948970). Calendar validation must distinguish forward deployment from historical period transport; follow [forward temporal validation](forward-temporal-validation.md) for ordering, grouping, gaps, and splitter assumptions.
+- For site generalization, report internal-external CV performance and heterogeneity (Takada et al. 2021, PMID 33836256; de Jong et al. 2021, PMID 33948970). Calendar validation must distinguish forward deployment from historical period transport; read `references/forward-temporal-validation.md` for ordering, grouping, gaps, and splitter assumptions.
 - When a held-out set exists: split once by independent unit and deployment time (stratify only when compatible), lock it, record when it was unlocked, and score it only after the final model is locked (REFORMS, PMID 38691601; TRIPOD+AI, PMID 38626948).
 - Tuning, thresholding, calibration, and model selection belong to development data.
 - Record the number of configurations evaluated. The best CV score is optimistic by selection; the reported estimate comes from nested CV, internal-external CV, the locked test set, or bootstrap correction, never from the tuning leaderboard.

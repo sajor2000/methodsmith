@@ -11,7 +11,8 @@
   "fixtures": [],
   "required_behaviors": [
     "requires-all-five-completed-one-hour",
-    "mortality-endpoint"
+    "mortality-endpoint",
+    "post-discharge-ascertainment"
   ],
   "prohibited_behaviors": [
     "unindicated-pressors-fail-adherence"
@@ -39,11 +40,20 @@
     },
     {
       "id": "mortality-endpoint",
-      "description": "mortality endpoint",
+      "description": "Names 30-day all-cause mortality, allowing source/ascertainment qualifiers.",
+      "type": "regex",
+      "path": "workspace/advice.json",
+      "weight": 2,
+      "hard_gate": true,
+      "pattern": "\"mortality_endpoint\"\\s*:\\s*\"30-day all-cause mortality(?:[^\"\\\\]|\\\\.)*\""
+    },
+    {
+      "id": "post-discharge-ascertainment",
+      "description": "Includes confirmed vital-status ascertainment after discharge.",
       "type": "json_equals",
       "path": "workspace/advice.json",
-      "json_path": "mortality_endpoint",
-      "expected": "30-day all-cause mortality",
+      "json_path": "mortality_ascertainment_includes_post_discharge",
+      "expected": true,
       "weight": 2,
       "hard_gate": true
     }

@@ -112,9 +112,10 @@ function assignments(root: Node): Array<{ node: Node; left: Node; right: Node }>
   return result.sort((a, b) => a.node.startIndex - b.node.startIndex)
 }
 
-function binding(name: string, at: Node): Node | undefined {
+function binding(name: string, at: Node, indexedWrites = true): Node | undefined {
   const assigned = assignments(owner(at)).filter(({ node, left }) =>
     node.endIndex < at.startIndex && owner(node).id === owner(at).id &&
+    (indexedWrites || left.type !== "subscript") &&
     (left.text === name || left.namedChildren.some((child) => child.text === name)),
   ).at(-1)
   if (!assigned) return undefined
@@ -126,6 +127,11 @@ function binding(name: string, at: Node): Node | undefined {
       if (arm && !(arm.startIndex <= at.startIndex && arm.endIndex >= at.endIndex)) return assigned.node
     }
     parent = parent.parent
+  }
+  if (!indexedWrites && ["pattern_list", "tuple_pattern", "tuple"].includes(assigned.left.type) &&
+      ["expression_list", "tuple"].includes(assigned.right.type)) {
+    const index = assigned.left.namedChildren.findIndex((child) => child.text === name)
+    return assigned.right.namedChildren[index] ?? assigned.right
   }
   return assigned.right
 }
@@ -213,16 +219,66 @@ function indexPartition(index: Node | undefined, loop: Node, bound: Bindings, de
   return assigned ? indexPartition(assigned, loop, bound, depth + 1) : bound.get(`index:${index.text}`) ?? "full"
 }
 
+function writtenRoot(node: Node | undefined): string | undefined {
+  while (node && ["attribute", "subscript"].includes(node.type)) {
+    node = field(node, node.type === "attribute" ? "object" : "value")
+  }
+  return node?.type === "identifier" ? node.text : undefined
+}
+
+function freshAllocation(node: Node | undefined): boolean {
+  if (!node) return false
+  if (["list", "dictionary", "set"].includes(node.type) && node.namedChildCount === 0) return true
+  if (node.type !== "call") return false
+  const name = field(node, "function")?.text
+  if (["np.empty", "np.zeros"].includes(name ?? "")) return true
+  if (name !== "np.full") return false
+  const fill = argumentFor(args(node), "fill_value", 1)
+  return !!fill && (["integer", "float", "true", "false", "none"].includes(fill.type) ||
+    ["np.nan", "np.inf"].includes(fill.text))
+}
+
 function partition(node: Node | undefined, loop: Node, bound: Bindings, depth = 0): Partition {
   if (!node || depth > 32) return "full"
+  if (["expression_list", "tuple"].includes(node.type)) {
+    const values = node.namedChildren.map((child) => partition(child, loop, bound, depth + 1))
+    if (values.length && values.every((value) => value === "train")) return "train"
+    if (values.length && values.every((value) => value === "test")) return "test"
+    return "full"
+  }
   if (node.type === "identifier") {
-    const assigned = binding(node.text, node)
-    const writes = assignments(owner(node)).filter(({ node: assignment, left }) =>
-      owner(assignment).id === owner(node).id && assignment.endIndex < node.startIndex &&
-      (!assigned || assignment.startIndex > assigned.startIndex) &&
-      left.type === "subscript" && field(left, "value")?.text === node.text)
+    const assigned = binding(node.text, node, false)
+    const aliases = new Set([node.text])
+    let source = assigned
+    while (source?.type === "identifier" && !aliases.has(source.text)) {
+      aliases.add(source.text)
+      source = binding(source.text, source, false)
+    }
+    const writes: ReturnType<typeof assignments> = []
+    for (const write of assignments(owner(node))) {
+      const { node: assignment, left, right } = write
+      if (owner(assignment).id !== owner(node).id || assignment.endIndex >= node.startIndex ||
+          (assigned && assignment.startIndex <= assigned.startIndex)) continue
+      if (left.type === "identifier" && left.text !== node.text) {
+        if (right.type === "identifier" && aliases.has(right.text)) aliases.add(left.text)
+        else if (binding(left.text, node, false)?.id === right.id) {
+          let parent = assignment.parent
+          let conditional = false
+          while (parent && parent.id !== owner(node).id) {
+            if (["for_statement", "while_statement", "try_statement"].includes(parent.type) &&
+                !(parent.startIndex <= node.startIndex && parent.endIndex >= node.endIndex)) conditional = true
+            parent = parent.parent
+          }
+          if (!conditional) aliases.delete(left.text)
+        }
+      }
+      if (left.type === "subscript" && aliases.has(writtenRoot(left) ?? "")) writes.push(write)
+    }
     if (writes.length) {
       const values = writes.map(({ right }) => partition(right, loop, bound, depth + 1))
+      if (!freshAllocation(assigned)) {
+        values.push(assigned ? partition(assigned, loop, bound, depth + 1) : bound.get(node.text) ?? "full")
+      }
       if (values.every((value) => value === "train")) return "train"
       if (values.every((value) => value === "test")) return "test"
       return "full"
@@ -257,7 +313,7 @@ function partition(node: Node | undefined, loop: Node, bound: Bindings, depth = 
       if (base !== "full") return base
       return indexPartition(args(node)[0], loop, bound)
     }
-    if (callee?.type === "attribute" && ["astype", "to_numpy"].includes(field(callee, "attribute")?.text ?? "")) {
+    if (callee?.type === "attribute" && ["astype", "to_numpy", "reset_index"].includes(field(callee, "attribute")?.text ?? "")) {
       return partition(field(callee, "object"), loop, bound, depth + 1)
     }
     const record = nodes(node.tree.rootNode, "class_definition").find((definition) =>

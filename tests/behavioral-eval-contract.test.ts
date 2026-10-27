@@ -186,6 +186,133 @@ async function scoreCode(source: string, language: "python" | "r" = "python") {
 }
 
 describe("behavioral evaluation contract", () => {
+  test.each([["source", false], ["target", false], ["rebound-source", true]] as const)(
+    "tracks tuple label sharing through a %s mutation",
+    async (mutation, expected) => {
+      const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    labels = frame.iloc[train]["outcome"]
+    X, y = frame.iloc[train][["feature"]], labels
+    ${mutation === "rebound-source" ? 'labels = frame.iloc[test]["outcome"]' : "pass"}
+    ${mutation === "target" ? "y" : "labels"}.iloc[0] = frame.iloc[test]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+      expect(report.pass).toBe(expected)
+    },
+  )
+
+  test("bare partial writes do not launder the remaining held-out labels", async () => {
+    const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    local = frame.iloc[train].reset_index(drop=True)
+    X = local[["feature"]]
+    y = frame.iloc[test]["outcome"].reset_index(drop=True)
+    y[0] = frame.iloc[train]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+    expect(report.pass).toBe(false)
+  })
+
+  test.each([["alias.iloc[0]", false], ["alias[0]", false], ["alias.loc[0]", true]] as const)(
+    "tracks mutation through %s while respecting an unconditional alias rebind=%s",
+    async (accessor, rebind) => {
+      const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    X, y = frame.iloc[train][["feature"]], frame.iloc[train]["outcome"]
+    alias = y
+    ${rebind ? 'alias = frame.iloc[test]["outcome"]' : "pass"}
+    ${accessor} = frame.iloc[test]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+      expect(report.pass).toBe(rebind)
+    },
+  )
+
+  test("does not discard alias taint after a conditional rebind", async () => {
+    const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    X, y = frame.iloc[train][["feature"]], frame.iloc[train]["outcome"]
+    alias = y
+    if condition:
+        alias = frame.iloc[test]["outcome"]
+    alias.iloc[0] = frame.iloc[test]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+    expect(report.pass).toBe(false)
+  })
+
+  test.each(["iloc[:]", "loc[:]", "iloc[0]", "loc[0]", "iloc[0:1]"])(
+    "rejects held-out labels written through %s after a training-only tuple assignment",
+    async (accessor) => {
+      const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    X, y = frame.iloc[train][["feature"]], frame.iloc[train]["outcome"]
+    y.${accessor} = frame.iloc[test]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+      expect(report.pass).toBe(false)
+    },
+  )
+
+  test.each([["full", "train", false], ["train", "train", true], ["train", "test", false]] as const)(
+    "preserves original %s provenance when a %s value partially replaces it",
+    async (original, replacement, expected) => {
+      const originalRows = original === "full" ? "frame" : "frame.iloc[train]"
+      const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    X = frame.iloc[train][["feature"]]
+    y = ${originalRows}["outcome"]
+    y.iloc[0] = frame.iloc[${replacement}]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+      expect(report.pass).toBe(expected)
+    },
+  )
+
+  test.each([["train", true], ["test", false], ["full", false]] as const)(
+    "keeps destructured feature/label assignments confined to %s labels",
+    async (labels, expected) => {
+      const labelInput = labels === "full" ? 'frame["outcome"]' : `frame.iloc[${labels}]["outcome"]`
+      const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+def choose(frame, labels):
+    frame = frame.reset_index(drop=True)
+    X, y = frame[["feature"]], labels.to_numpy()
+    search = GridSearchCV(model, grid)
+    return search.fit(X, y)
+for fold, (train, test) in enumerate(outer.split(frame), start=1):
+    selected = choose(frame.iloc[train], ${labelInput})
+`)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(expected)
+      expect(report.pass).toBe(expected)
+    },
+  )
+
+  test.each([["train", "reset_index", true], ["test", "reset_index", false],
+    ["full", "reset_index", false], ["train", "reindex", false]] as const)(
+    "tracks %s rows through %s without admitting held-out or full-data tuning",
+    async (rows, method, expected) => {
+      const input = rows === "full" ? "frame" : `frame.iloc[${rows}]`
+      const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+def choose(frame):
+    frame = frame.${method}(drop=True)
+    search = GridSearchCV(model, grid)
+    return search.fit(frame[["feature"]], frame["outcome"])
+for fold, (train, test) in enumerate(outer.split(frame), start=1):
+    selected = choose(${input})
+`)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(expected)
+      expect(report.pass).toBe(expected)
+    },
+  )
+
   test("does not manufacture a training alias from a dead branch or another helper's scope", async () => {
     for (const source of [
       `from sklearn.model_selection import GridSearchCV

@@ -3,8 +3,8 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "I have analysis/pubmed/sepsis-bundle-methods.csv from method extraction - 14 studies with pmid, year, sample_size, effect_size_reported (mostly hazard ratios like 'HR 0.81 (0.70-0.94)', a few ORs). I need a defensible HR for 90-day mortality to plug into the power calc. --metric hr",
-      "expected_output": "Parses and filters to HR studies with a complete CI (no sample-size cutoff by default), pools on the log scale with random-effects REML and a Hartung-Knapp CI when at least 3 remain, writes the pooled summary, included-studies CSV, and forest plot, and emits the __CE_EFFECT_SIZE__ envelope for method-power.",
+      "prompt": "I have analysis/pubmed/sepsis-bundle-methods.csv from method extraction - 14 studies with pmid, year, sample_size, effect_size_reported (mostly hazard ratios like 'HR 0.81 (0.70-0.94)', a few ORs). I need a defensible HR for 90-day mortality to plug into the power calc. --metric hr Also address this bounded scientific check as part of the assessment: Use method-meta-analysis to review uncertainty extraction only; do not pool or install packages. Population, estimand, adjustment, outcome horizon, units and independence have already been reconciled. Five synthetic source records are available: A is an MD with a symmetric 90% normal-Wald CI, level and source table confirmed; B is an MD with a symmetric 95% t-Wald CI and 9 df, source and rounding confirmed; C is an HR whose CI level and construction are unknown; D is an asymmetric profile-likelihood HR interval without a reported SE; E reports the log-HR SE directly as 0.12 with its source. Determine which records have a supported uncertainty-extraction path, not whether they should form a common pool. Write workspace/advice.json with booleans normal90_eligible, t9_eligible, unknown_eligible, profile_eligible, reported_log_se_eligible, and invent_symmetric_interval. Explain required input fields and source checks in response.md. No network.",
+      "expected_output": "Parses and filters to HR studies with source-validated uncertainty (no sample-size cutoff by default), pools on the log scale with random-effects REML and a Hartung-Knapp CI when at least 3 remain, writes the pooled summary, included-studies CSV, and forest plot, and emits the __CE_EFFECT_SIZE__ envelope for method-power. Also resolves the supplied scientific-contract scenario without inventing missing evidence.",
       "files": [],
       "expectations": [
         "Reports how many rows failed parsing and how many studies were dropped by the metric and CI filters versus the input N, and does not drop studies by sample size unless the user asks for it as a sensitivity analysis",
@@ -14,7 +14,14 @@
         "Emits a __CE_EFFECT_SIZE__ line with metric=HR, n_studies, point, ci, pi (the 95% prediction interval bounds, or pi=NA if not computable), i2, and mode=reml",
         "Does not compute power itself; it hands off to method-power with a sensitivity range across the prediction interval",
         "Selects a compatible primary estimand/adjustment set before pooling; never emits a mixed primary anchor",
-        "Requires outcome/horizon/unit/scale/design and independent contribution declarations, and preserves the selected contract"
+        "Requires outcome/horizon/unit/scale/design and independent contribution declarations, and preserves the selected contract",
+        "normal90_eligible is true in the requested structured advice, consistent with the explanation",
+        "t9_eligible is true in the requested structured advice, consistent with the explanation",
+        "unknown_eligible is false in the requested structured advice, consistent with the explanation",
+        "profile_eligible is false in the requested structured advice, consistent with the explanation",
+        "reported_log_se_eligible is true in the requested structured advice, consistent with the explanation",
+        "invent_symmetric_interval is false in the requested structured advice, consistent with the explanation",
+        "Before CI-to-SE reconstruction, confirms confidence level, Wald method and applicable df from the read source; otherwise retains unresolved inputs without pooling them."
       ]
     },
     {
@@ -31,16 +38,14 @@
     },
     {
       "id": 3,
-      "prompt": "Use method-meta-analysis to review uncertainty extraction only; do not pool or install packages. Population, estimand, adjustment, outcome horizon, units and independence have already been reconciled. Five synthetic source records are available: A is an MD with a symmetric 90% normal-Wald CI, level and source table confirmed; B is an MD with a symmetric 95% t-Wald CI and 9 df, source and rounding confirmed; C is an HR whose CI level and construction are unknown; D is an asymmetric profile-likelihood HR interval without a reported SE; E reports the log-HR SE directly as 0.12 with its source. Determine which records have a supported uncertainty-extraction path, not whether they should form a common pool. Write workspace/advice.json with booleans normal90_eligible, t9_eligible, unknown_eligible, profile_eligible, reported_log_se_eligible, and invent_symmetric_interval. Explain required input fields and source checks in response.md. No network.",
-      "expected_output": "A source-bound assessment preserving the requested estimand and identifying unsupported validation rather than inventing evidence.",
+      "prompt": "What effect size should I assume for the SAP power section on statins and post-op delirium? Just give me a pooled OR.",
+      "expected_output": "Finds no methods CSV path and no __CE_METHOD_EXTRACT__ signal, so it stops and asks the user to run method-extract first or pass a CSV path instead of inventing an estimate.",
       "files": [],
       "expectations": [
-        "normal90_eligible is true in the requested structured advice, consistent with the explanation",
-        "t9_eligible is true in the requested structured advice, consistent with the explanation",
-        "unknown_eligible is false in the requested structured advice, consistent with the explanation",
-        "profile_eligible is false in the requested structured advice, consistent with the explanation",
-        "reported_log_se_eligible is true in the requested structured advice, consistent with the explanation",
-        "invent_symmetric_interval is false in the requested structured advice, consistent with the explanation"
+        "Checks for an explicit CSV argument and a __CE_METHOD_EXTRACT__ signal in recent chat before proceeding",
+        "Asks the user to load method-extract first or provide a methods CSV path",
+        "Does not fabricate a pooled OR or cite effect estimates from memory",
+        "Does not write files under analysis/effect-size/ without an input table"
       ]
     }
   ]
