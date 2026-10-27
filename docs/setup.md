@@ -430,21 +430,42 @@ denies:
   data or globs a data directory, writing a script and running it in the same
   command, copying a data file to a non-data name, and recursive `grep`/`rg`
   without an `--include`/`-g`/`-t` limited to code are denied too.
-- Running a script file (`python`, `Rscript`, `bash`/`sh`, `quarto render`,
-  `jupyter nbconvert --execute`) whose code names a data path or `data_root`,
-  or calls a reader (`read_csv`, `read_parquet`, `read_excel`, `read_sas`,
+- Running a script file whose code names a data path or `data_root`, or calls
+  a reader (`read_csv`, `read_parquet`, `read_excel`, `read_sas`,
   `read_stata`, `fread`, `readRDS`, `arrow::`, DuckDB, SQLite) on a path held
-  in a variable, unless the command runs through the safe runner. The hook
-  reads the script itself, up to 1 MB. Scripts that do not touch data, or that
-  only read aggregate tables that pass the check below, run as before.
+  in a variable, unless the command runs through the safe runner. This covers
+  every common way to start it: `python`, `Rscript`, `bash`/`sh`, `quarto
+  render`, and `jupyter nbconvert --execute`; run wrappers such as `uv run`
+  and `pdm run`; a direct path with a script extension or interpreter
+  shebang; a script fed on stdin; `source`; `python -m` for a project module;
+  `Rscript -e "source(...)"`; and code inside `sh -c`, `bash -c`, or `eval`.
+  The hook reads the script itself, up to 1 MB. Scripts that do not touch
+  data, or that only read aggregate tables that pass the check below, run as
+  before.
+- Workflow runners (`make`, `snakemake`, `nextflow`, `dvc repro`, `pytest`,
+  `tox`, `nox`, `just`, `papermill`, `dbt run`, package scripts such as `npm
+  run`, `targets::tar_make()`, `rmarkdown::render()`, and similar), unless they
+  run through the safe runner, because the hook cannot see what their targets
+  read. `find -exec` and `xargs` over files the hook cannot rule out as data
+  are denied too.
+
+A command, `Read`, or `Grep` that reaches into a project from outside it (a
+relative path, `cd`, `git -C`, `make -C`, a symlink, or a path inside inline
+code) gets that project's boundary, and when several projects are named the
+strictest wins. Unquoted shell wildcards are expanded (up to 256 matches) and
+checked like the files they name; in schema-only mode a wildcard that matches
+more than that is treated as data.
 
 **Safe runner.** `scripts/method-safe-run -- <command>` runs the command and writes
 its full stdout and stderr to `.methodsmith/runs/<UTC-timestamp>-<pid>.log`
 (gitignored). It prints only the exit code, the duration, the files created or
-modified under the project (path, size, and row count for tabular files), and
-the last 30 lines of stderr with quoted literals, digit runs of 4 or more,
-emails, phone numbers, SSNs, and identifier-index values masked. Traceback file
-and line frames stay readable. It never prints stdout: open the log yourself.
+modified under the project (path, size, and row count for tabular files,
+including in projects too large to snapshot and files copied with their old
+timestamps), and a stderr summary that keeps only traceback file and line
+frames and exception type names, plus a count of withheld lines; identifier
+values in file names are masked. It never prints stdout or other stderr text:
+open the log yourself. It refuses to run when no `.methodsmith/` or `.git` is
+found above the working directory.
 The hook's deny message gives the runner's full path. It accepts only the
 plugin's own runner (or a byte-identical copy) and still checks uploads inside
 it.
