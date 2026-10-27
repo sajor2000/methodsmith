@@ -52,7 +52,12 @@ public docs at `https://common-longitudinal-icu-data-format.github.io/clifpy/`.
    - datetime columns carry the expected zone after each step that can strip it.
 6. **Keep outputs in the boundary.** Set `output_directory`, DuckDB
    `temp_directory`, and log locations to an approved restricted location;
-   gitignore is an extra safeguard, not a substitute for approval. Treat `clifpy` logs, validation CSVs,
+   gitignore is an extra safeguard, not a substitute for approval. If these
+   paths are not already declared approved (project config, the saved
+   sensitive-data boundary, or the user), stop and ask the user to supply or
+   confirm them before running anything on real data; never default to a
+   repo-relative, `/tmp`, or merely gitignored path. Done when every one of the
+   three paths is recorded in the run manifest as user- or config-approved. Treat `clifpy` logs, validation CSVs,
    DQA JSON/PDF, ECDF and summary files, and DuckDB spill files as restricted
    until reviewed; several contain row-level values or sample IDs. Shared
    results still go only to `output/final_no_phi/` under the CLIF small-cell rule
@@ -97,8 +102,10 @@ the mapping, and never write the mapped values back as CLIF data. In-memory
 mapping works for functions that take a frame (legacy `compute_sofa`, the
 waterfall). SOFA-2 and `compute_sofa_polars` read tables from files, so give
 them a mapped copy of `respiratory_support` in a temporary dataset directory in
-the approved restricted area, with its own config pointing there, and delete it
-after the run. On the published 2.1.0 package, validate 3.0 data with table
+the approved restricted area, with its own config pointing there. Create and
+delete it in one `try`/`finally` block so a failed or cancelled run still
+removes it, and confirm the directory no longer exists before reporting the
+run complete. On the published 2.1.0 package, validate 3.0 data with table
 classes (`Table.from_file(..., clif_version="3.0")`); `ClifOrchestrator` has no
 `clif_version` argument there.
 
