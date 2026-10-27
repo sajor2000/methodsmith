@@ -2053,6 +2053,223 @@ def mcp_access_violation(tool_input, cwd, mode):
     return None
 
 
+# Database MCP tools answer queries straight into the context, and PreToolUse cannot filter MCP results, so in
+# schema-only a database call passes only as schema inspection. A call is a database call when a whole word of
+# its server or tool name is in DB_WORDS, or when a query key anywhere in its arguments holds SQL- or
+# Cypher-shaped text. Literature and search servers are exempt.
+DB_WORDS = {"postgres", "postgresql", "pg", "mysql", "mariadb", "sqlite", "duckdb", "motherduck", "bigquery",
+            "snowflake", "databricks", "mssql", "sqlserver", "oracle", "redshift", "athena", "clickhouse", "trino",
+            "presto", "neo4j", "kusto", "cosmos", "supabase", "mongodb", "mongo", "elasticsearch", "opensearch",
+            "redis", "dynamodb", "firestore", "cassandra", "influxdb", "airtable", "sql", "database", "db"}
+DB_EXEMPT_SERVERS = {"pubmed", "paperclip", "exa", "tavily", "notion", "granola", "vercel"}
+DB_QUERY_KEYS = {"sql", "query", "statement", "cypher", "kql", "filter", "pipeline"}
+DB_INSPECTION_WORDS = {"list", "describe", "schema", "tables", "columns", "info", "metadata", "indexes"}
+# A tool name with one of these words reads rows even when it also has an inspection word (list_records_for_table).
+DB_ROW_WORDS = {"row", "rows", "record", "records", "data", "value", "values", "preview", "sample", "head", "tail",
+                "read", "find", "fetch", "select", "query", "scan", "dump", "export", "search",
+                "aggregate", "document", "documents", "item", "items", "content", "contents", "run", "exec",
+                "execute", "count", "distinct", "summarize"}
+DB_QUERY_SHAPE = re.compile(r"(?:select|with|match|from|pragma|show|describe)\b", re.IGNORECASE)
+DB_LEADING_NOISE = re.compile(r"(?:\s+|\(|--[^\n]*(?:\n|$)|/\*.*?\*/)*", re.DOTALL)
+DB_TOKEN = re.compile(r"\s*(?:('(?:[^']|'')*')|(\"(?:[^\"]|\"\")*\"|`[^`]*`)|(\d+(?:\.\d+)?)|([A-Za-z_][\w$]*)|"
+                      r"(<>|!=|<=|>=|[=<>(),.;*])|(\S))", re.DOTALL)
+DB_SCHEMA_SOURCES = {("information_schema", "tables"), ("information_schema", "columns")}
+DB_DENY = ("a database MCP tool returns query results straight into the model context, and in schema-only only "
+           "schema inspection passes (a list/describe tool, DESCRIBE, SHOW TABLES|COLUMNS, PRAGMA table_info, or a "
+           "plain information_schema.tables|columns select); run the query in a script through `method-safe-run` "
+           "that writes an aggregate table under output/, then print that table with `method-aggregate-read <table>`")
+
+
+def _name_words(name):
+    return [w for w in re.split(r"[\s_\-.]+", name.lower()) if w]
+
+
+def _db_shaped(text):
+    """SQL- or Cypher-shaped: the first keyword (after whitespace, parentheses, and comments) opens a statement."""
+    return bool(DB_QUERY_SHAPE.match(text, DB_LEADING_NOISE.match(text).end()))
+
+
+# On a tool whose name has no database word, a leading keyword is not enough ("show deploy notes" is a search):
+# the text must carry a statement's structure.
+DB_STATEMENT = re.compile(
+    r"\bselect\b[\s\S]*?\bfrom\s+[\w`\"\[.(]|\bwith\s+\w+\s+as\s*\(|\bmatch\s*\([\s\S]*?\)[\s\S]*?\breturn\b|"
+    r"^\s*pragma\s+\w+|^\s*show\s+(?:tables|columns|databases|schemas|create)\b|^\s*desc(?:ribe)?\s+[\w`\".]+\s*;?\s*$",
+    re.IGNORECASE)
+
+
+def _db_statement(text):
+    """Text that is structurally a SQL or Cypher statement, not prose that starts with a SQL keyword."""
+    return _db_shaped(text) and bool(DB_STATEMENT.search(text))
+
+
+def _db_queries(value, key=""):
+    """Every value held under a query key, found recursively; non-string values (a filter object) included."""
+    if key in DB_QUERY_KEYS and not (isinstance(value, str) and not value.strip()):
+        yield value
+    elif isinstance(value, dict):
+        for k, v in value.items():
+            yield from _db_queries(v, str(k).lower())
+    elif isinstance(value, list):
+        for v in value:
+            yield from _db_queries(v, key)
+
+
+def _sql_tokens(text):
+    """(kind, text) tokens, or None when the text cannot be tokenized or carries a comment."""
+    tokens, pos, text = [], 0, text.strip()
+    while pos < len(text):
+        match = DB_TOKEN.match(text, pos)
+        if not match or match.end() == pos:
+            return None
+        pos = match.end()
+        literal, quoted, number, word, punct, other = match.groups()
+        if other is not None:  # `-`, `/`, and anything unexpected: comments and operators never pass
+            return None
+        if literal is not None:
+            if "\\" in literal:  # MySQL reads `\'` as an escape, so the statement could end somewhere else
+                return None
+            tokens.append(("lit", literal))
+        elif number is not None:
+            tokens.append(("lit", number))
+        elif quoted is not None:
+            tokens.append(("name", quoted[1:-1].replace('""', '"')))
+        elif word is not None:
+            low = word.lower()
+            tokens.append(("lit", low) if low in ("true", "false", "null") else ("word", low))
+        else:
+            tokens.append(("punct", punct))
+    while tokens and tokens[-1] == ("punct", ";"):
+        tokens.pop()
+    return tokens
+
+
+def _is_name(token):
+    return token[0] in ("word", "name")
+
+
+def _qualified(tokens, i):
+    """A dotted name starting at i: (lowercased parts, next index), or (None, i)."""
+    if i >= len(tokens) or not _is_name(tokens[i]):
+        return None, i
+    parts = [tokens[i][1].lower()]
+    i += 1
+    while i + 1 < len(tokens) and tokens[i] == ("punct", ".") and _is_name(tokens[i + 1]):
+        parts.append(tokens[i + 1][1].lower())
+        i += 2
+    return parts, i
+
+
+SQL_RESERVED = {"select", "from", "where", "and", "or", "not", "in", "like", "ilike", "union", "join", "on", "with",
+                "as", "distinct", "all", "except", "intersect", "lateral", "using", "into", "values", "limit",
+                "order", "group", "having", "by", "case", "when", "then", "else", "end", "exists", "is"}
+
+
+def _bare(token):
+    return token[0] == "name" or (token[0] == "word" and token[1] not in SQL_RESERVED)
+
+
+def _where_ok(tokens):
+    """Column-to-literal comparisons joined by AND/OR: `col = 'x'`, `col LIKE 'x%'`, `col IN ('a', 'b')`."""
+    i, n = 0, len(tokens)
+    while True:
+        if i >= n or not _bare(tokens[i]):
+            return False
+        i += 1
+        if i < n and tokens[i] in (("punct", "="), ("punct", "<>"), ("punct", "!="), ("word", "like"), ("word", "ilike")):
+            if i + 1 >= n or tokens[i + 1][0] != "lit":
+                return False
+            i += 2
+        elif i < n and tokens[i] == ("word", "in") and i + 1 < n and tokens[i + 1] == ("punct", "("):
+            i += 2
+            while True:
+                if i >= n or tokens[i][0] != "lit":
+                    return False
+                i += 1
+                if i < n and tokens[i] == ("punct", ","):
+                    i += 1
+                    continue
+                break
+            if i >= n or tokens[i] != ("punct", ")"):
+                return False
+            i += 1
+        else:
+            return False
+        if i == n:
+            return True
+        if tokens[i] not in (("word", "and"), ("word", "or")):
+            return False
+        i += 1
+
+
+def db_inspection_statement(text):
+    """True only for one schema-inspection statement: DESCRIBE <name>, SHOW TABLES|COLUMNS ..., PRAGMA
+    table_info(<name>), or a select of `*` or bare columns from exactly one information_schema.tables|columns
+    whose WHERE holds only column-to-literal comparisons. Any function call, join, comma source, CTE, subquery,
+    UNION, comment, or second statement fails."""
+    tokens = _sql_tokens(text)
+    if not tokens or ("punct", ";") in tokens:
+        return False
+    head = tokens[0]
+    if head == ("word", "describe"):
+        parts, end = _qualified(tokens, 1)
+        return bool(parts) and end == len(tokens) and not set(parts) & SQL_RESERVED
+    if head == ("word", "show"):
+        return (len(tokens) >= 2 and tokens[1] in (("word", "tables"), ("word", "columns"))
+                and all(t[0] in ("word", "name", "lit") or t == ("punct", ".") for t in tokens[2:])
+                and not any(t[0] == "word" and t[1] in SQL_RESERVED - {"from", "in", "like"} for t in tokens[2:]))
+    if head == ("word", "pragma"):
+        return (len(tokens) == 5 and tokens[1] == ("word", "table_info") and tokens[2] == ("punct", "(")
+                and (_bare(tokens[3]) or tokens[3][0] == "lit") and tokens[4] == ("punct", ")"))
+    if head != ("word", "select"):
+        return False
+    i, n = 1, len(tokens)
+    if i < n and tokens[i] == ("punct", "*"):
+        i += 1
+    else:
+        while True:
+            if i >= n or not _bare(tokens[i]):
+                return False
+            i += 1
+            if i < n and tokens[i] == ("punct", ","):
+                i += 1
+                continue
+            break
+    if i >= n or tokens[i] != ("word", "from"):
+        return False
+    parts, i = _qualified(tokens, i + 1)
+    if not parts or tuple(parts[-2:]) not in DB_SCHEMA_SOURCES or len(parts) > 3:
+        return False
+    if i == n:
+        return True
+    return tokens[i] == ("word", "where") and _where_ok(tokens[i + 1:])
+
+
+def mcp_database_violation(tool, tool_input):
+    """Schema-only: why a database MCP call would return rows, or None for schema inspection and non-database tools."""
+    name = tool[len("mcp__"):]
+    server, _, short = name.rpartition("__")
+    server = server or short
+    if set(_name_words(server)) & DB_EXEMPT_SERVERS:
+        return None
+    queries = list(_db_queries(tool_input))
+    is_db = bool(set(_name_words(name)) & DB_WORDS) or any(isinstance(q, str) and _db_statement(q) for q in queries)
+    if not is_db:
+        return None
+    command = tool_input.get("command")
+    if command is not None:  # a router tool: `command` names a sub-command, it is not query text
+        if not (isinstance(command, str) and re.fullmatch(r"[A-Za-z0-9_.\-]+", command)):
+            return DB_DENY
+        words = set(_name_words(command))
+        if not words & DB_INSPECTION_WORDS or words & DB_ROW_WORDS:
+            return DB_DENY
+    if queries:
+        return None if all(isinstance(q, str) and db_inspection_statement(q) for q in queries) else DB_DENY
+    if command is not None:
+        return None
+    words = set(_name_words(short))
+    return None if words & DB_INSPECTION_WORDS and not words & DB_ROW_WORDS else DB_DENY
+
+
 HTTP_CLIENTS = {"curl", "wget", "http", "https", "xh"}
 # Where an HTTP request carries the caller's own contact by convention: credentials, the From header
 # (RFC 9110: the human user's email), and the User-Agent (polite-pool "mailto:"). An email there is not a patient's.
@@ -2103,7 +2320,7 @@ def classify(call, mode):
         if reason:
             return {"kind": "egress", "reason": reason}
         if mode["mode"] == "schema-only":
-            reason = mcp_access_violation(tool_input, cwd, mode)
+            reason = mcp_access_violation(tool_input, cwd, mode) or mcp_database_violation(tool, tool_input)
             return {"kind": "access", "reason": reason} if reason else None
         return None
     if tool in ("WebFetch", "WebSearch"):
