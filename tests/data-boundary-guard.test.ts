@@ -702,3 +702,117 @@ describe("schema-only: searches and MCP tools that slipped past the access check
     expectAll(project(APPROVED), "allow", [["mcp__filesystem__read_text_file", { path: "My Data/a.csv" }]])
   })
 })
+
+describe("schema-only: database MCP tools return rows into the context", () => {
+  const SELECT_ALL = "SELECT * FROM patients"
+
+  test("row-returning database calls deny; the reason routes to method-safe-run and method-aggregate-read", () => {
+    const root = project(SCHEMA_ONLY)
+    const denied = verdicts(root, [
+      ["mcp__postgres__query", { sql: SELECT_ALL }],
+      ["mcp__postgres__query", { sql: "select column_name from information_schema.columns where table_name='x' UNION SELECT ssn FROM p" }],
+      ["mcp__pg__q", { sql: "SELECT * FROM pg_stats" }],
+      ["mcp__duckdb__run", { query: "SUMMARIZE t" }],
+      ["mcp__sqlite__read_rows", { table: "t" }],
+      ["mcp__duckdb__preview_table", { table: "t" }],
+      ["mcp__postgres__get_table_data", { table: "t" }],
+      ["mcp__postgres__query", { sql: "SELECT pg_read_file('data/cohort.csv') AS column_name FROM information_schema.tables" }],
+      ["mcp__duckdb__run", { query: "SELECT * FROM information_schema.tables, read_csv('data/cohort.csv')" }],
+      ["mcp__mongodb__find", { collection: "patients", filter: {} }],
+      ["mcp__Azure_MCP_Server__cosmos", { command: "database_list", parameters: { query: "SELECT * FROM c" } }],
+      ["mcp__mydb__exec", { params: { statement: "SELECT * FROM t" } }],
+      ["mcp__neo4j__run", { query: "MATCH (p:Patient) RETURN p" }],
+    ])
+    for (const v of denied) expect(v).toEqual({ tool: v.tool, input: v.input, decision: "deny", kind: "access" })
+    const message = runGuard(root, "mcp__postgres__query", { sql: SELECT_ALL })
+    expect(message.decision).toBe("deny")
+    expect(message.reason).toContain("method-safe-run")
+    expect(message.reason).toContain("method-aggregate-read")
+    for (const fragment of [SELECT_ALL, "patients"]) expect(message.stdout).not.toContain(fragment)
+  })
+
+  test("on a database-named tool, a statement under any key is inspected", () => {
+    const root = project(SCHEMA_ONLY)
+    expectAll(root, "deny", [
+      ["mcp__postgres__query", { sql_text: SELECT_ALL }],
+      ["mcp__postgres__query", { q: "select * from patients" }],
+      ["mcp__duckdb__describe_table", { table: "t", options: { raw: "SELECT name, dob FROM patients" } }],
+    ])
+    expectAll(root, "allow", [
+      ["mcp__postgres__inspect", { q: "SHOW TABLES" }],
+      ["mcp__duckdb__describe_table", { table: "t", note: "select a table to describe" }],
+    ])
+  })
+
+  test("an exempt server word does not exempt a server that also names a database", () => {
+    const root = project(SCHEMA_ONLY)
+    expectAll(root, "deny", [
+      ["mcp__vercel_postgres__query", { sql: SELECT_ALL }],
+      ["mcp__notion-sqlite__run", { query: SELECT_ALL }],
+    ])
+    expectAll(root, "allow", [
+      ["mcp__claude_ai_Vercel__list_projects", { query: "select the production project" }],
+      ["mcp__claude_ai_Paperclip__sql", { query: "SELECT title FROM papers" }],
+    ])
+  })
+
+  test("search tools without a database name keep prose queries that start with a SQL keyword", () => {
+    const root = project(SCHEMA_ONLY)
+    expectAll(root, "allow", [
+      ["mcp__claude_ai_Slack__slack_search_public", { query: "show deploy notes from last week" }],
+      ["mcp__claude_ai_Google_Drive__search_files", { query: "select committee minutes" }],
+      ["mcp__claude_ai_Gmail__search_threads", { query: "from: the IRB about describe study" }],
+    ])
+    expectAll(root, "deny", [["mcp__mydb__exec", { params: { statement: "select name, dob from patients" } }]])
+  })
+
+  test("the R2 statement shape is strict: functions, joins, CTEs, subqueries, and unions deny", () => {
+    const root = project(SCHEMA_ONLY)
+    const q = (sql: string): [string, Record<string, unknown>] => ["mcp__postgres__query", { sql }]
+    expectAll(root, "deny", [
+      q("WITH x AS (SELECT * FROM patients) SELECT column_name FROM information_schema.columns"),
+      q("SELECT column_name FROM information_schema.columns WHERE table_name IN (SELECT name FROM patients)"),
+      q("SELECT column_name FROM information_schema.columns c JOIN patients p ON true"),
+      q("SELECT column_name FROM information_schema.columns WHERE table_name = lower('X')"),
+      q("SELECT column_name FROM information_schema.columns; SELECT * FROM patients"),
+      q("SELECT column_name FROM patients"),
+      q("SELECT count(*) FROM information_schema.tables"),
+      q("PRAGMA table_info(t); SELECT * FROM t"),
+      q("SHOW TABLES; SELECT * FROM t"),
+      q("DESCRIBE SELECT * FROM t"),
+      q("SELECT * FROM information_schema.columns WHERE table_name = 'x' -- trailing comment"),
+      q("SELECT * FROM information_schema.columns WHERE table_name = 'x\\' AND table_name = ' UNION SELECT ssn FROM p -- '"),
+      q("SELECT * FROM information_schema.columns WHERE table_name = 'x' OR 1 = 1"),
+      q("SHOW TABLES FROM (SELECT * FROM t)"),
+    ])
+    expectAll(root, "allow", [
+      q("select column_name from information_schema.columns where table_name='x'"),
+      q("SELECT table_name, table_schema FROM information_schema.tables WHERE table_schema = 'public' AND table_type LIKE 'BASE%'"),
+      q("SELECT * FROM information_schema.columns WHERE table_name IN ('a', 'b') OR table_name = 'c';"),
+      q("DESCRIBE t"),
+      q("SHOW TABLES"),
+      q("SHOW COLUMNS FROM t"),
+      q("PRAGMA table_info(t)"),
+    ])
+  })
+
+  test("schema inspection, literature tools, and approved projects stay allowed", () => {
+    const root = project(SCHEMA_ONLY)
+    expectAll(root, "allow", [
+      ["mcp__duckdb__list_tables", {}],
+      ["mcp__duckdb__describe_table", { table: "t" }],
+      ["mcp__Azure_MCP_Server__cosmos", { command: "database_list", parameters: {} }],
+      ["mcp__claude_ai_Paperclip__sql", { query: "SELECT title FROM papers" }],
+      ["mcp__pubmed__pubmed_search_articles", { query: "select sepsis outcomes ICU" }],
+      ["mcp__claude_ai_Notion__notion-query-data-sources", { query: "x" }],
+      ["mcp__pubmed-mcp-server__pubmed_search_articles", { query: "sepsis bundle compliance mortality cohort" }],
+    ])
+    for (const config of [APPROVED, "phi_environment:\n  mode: no-sensitive-data\n"]) {
+      expectAll(project(config), "allow", [
+        ["mcp__postgres__query", { sql: SELECT_ALL }],
+        ["mcp__sqlite__read_rows", { table: "t" }],
+        ["mcp__mongodb__find", { collection: "patients", filter: {} }],
+      ])
+    }
+  })
+})

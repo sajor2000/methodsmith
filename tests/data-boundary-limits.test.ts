@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test"
-import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, utimesSync, writeFileSync } from "fs"
+import { appendFileSync, chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, utimesSync, writeFileSync } from "fs"
+import os from "os"
 import path from "path"
-import { APPROVED, SCHEMA_ONLY, bash, expectAll, guard, helper, pluginRoot, project, py, runGuard, tempDir, verdicts } from "./data-boundary-harness"
+import { APPROVED, SCHEMA_ONLY, bash, expectAll, guard, helper, pluginRoot, project, py, runGuard, tempDir, tempRoots, verdicts } from "./data-boundary-harness"
 
 const safeRun = path.join(pluginRoot, "scripts", "method-safe-run")
 const indexer = path.join(pluginRoot, "scripts", "method-identifier-index")
@@ -231,6 +232,135 @@ describe("limit 1a: agent-written scripts that read data (schema-only)", () => {
     expectAll(root, "allow", [["Bash", bash("R --version")], ["Bash", bash("R -f analysis/clean.R")]])
     expectAll(launchProject(APPROVED), "allow", [["Bash", bash("ipython analysis/run.py")], ["Bash", bash("R -f analysis/run.R")]])
   })
+
+  // Code that runs another file or module: literal targets are followed and scanned, the rest denied (R7, R8).
+  function sourceProject(config = SCHEMA_ONLY) {
+    const root = project(config)
+    withFile(root, "R/x.R", "x <- c(1, 2, 3)\nprint(mean(x))\n")
+    withFile(root, "R/bad.R", "d <- read.csv('data/cohort.csv')\nprint(d)\n")
+    withFile(root, "s.py", "print(1 + 1)\n")
+    withFile(root, "pkg/__init__.py", "")
+    withFile(root, "pkg/ok.py", "print('ok')\n")
+    withFile(root, "pkg/bad.py", "import pandas as pd\nprint(pd.read_csv('data/cohort.csv'))\n")
+    mkdirSync(path.join(root, "sub"), { recursive: true })
+    return root
+  }
+  const calls = (commands: string[]) => commands.map((c) => ["Bash", bash(c)] as [string, Record<string, unknown>])
+  const DYNAMIC_SOURCE_DENIES = [
+    `Rscript -e 'source(file.path("R","bad.R"))'`,
+    `Rscript -e 'source(paste0("R/", step, ".R"))'`,
+    `Rscript -e 'invisible(lapply(list.files("R", full.names=TRUE), source))'`,
+    `Rscript -e 'f<-"R/x.R"' -e 'source(f)'`,
+    `python3 -c "exec(open(p).read())"`,
+    `Rscript -e 'sys.source(f)'`,
+    `Rscript -e 'eval(parse(f))'`,
+    `Rscript -e 'eval(parse(file = f))'`,
+    `python3 -c "exec(compile(open(p).read(), p, 'exec'))"`,
+    `python3 -c "import importlib; importlib.import_module(m)"`,
+    `python3 -c "exec(Path(p).read_text())"`,
+    `python3 -c "import runpy; runpy.run_module(name)"`,
+    `python3 -c "import runpy; runpy.run_module('pkg.bad')"`,
+    `Rscript -e 'source("R/missing.R")'`,
+    `Rscript -e 'setwd("sub"); source("R/x.R")'`,
+  ]
+
+  test("inline code that runs a file whose target cannot be resolved, or reads data, is denied (R7, R8)", () => {
+    const root = sourceProject()
+    expectAll(root, "deny", calls(DYNAMIC_SOURCE_DENIES))
+    const reason = runGuard(root, "Bash", bash(`Rscript -e 'source(paste0("R/", step, ".R"))'`)).reason
+    expect(reason).toContain("method-safe-run")
+    const results = py(DYNAMIC_SOURCE_DENIES.map((c) => ({ fn: "classify" as const, call: { cwd: root, tool_name: "Bash", tool_input: bash(c) } })))
+    for (const [i, result] of results.entries()) {
+      const text = JSON.stringify(result)
+      expect({ command: DYNAMIC_SOURCE_DENIES[i], named: text.includes("method-safe-run"), leaked: ["Zed", "Testperson", "FAKE0001"].some((v) => text.includes(v)) })
+        .toEqual({ command: DYNAMIC_SOURCE_DENIES[i], named: true, leaked: false })
+    }
+  })
+
+  test("inline code that runs a statically resolvable clean file is followed and allowed (R8)", () => {
+    const root = sourceProject()
+    expectAll(root, "allow", calls([
+      `Rscript -e 'source(file.path("R","x.R"))'`,
+      `Rscript -e 'source(file="R/x.R")'`,
+      `Rscript -e 'source(here::here("R","x.R"))'`,
+      `python3 -c "import runpy; runpy.run_path('s.py')"`,
+      `python3 -c "import runpy; runpy.run_module('pkg.ok')"`,
+    ]))
+  })
+
+  test("scanned script files follow literal sourced scripts and deny unresolvable ones (R7, R8)", () => {
+    const root = sourceProject()
+    withFile(root, "analysis/count.R", "df <- data.frame(source = c('a', 'b', 'a'))\nprint(dplyr::count(df, source))\n")
+    withFile(root, "analysis/main.R", "fs <- list.files('R', full.names = TRUE)\nfor (f in fs) source(f)\n")
+    withFile(root, "analysis/follow-bad.R", "source(\"R/bad.R\")\n")
+    withFile(root, "analysis/follow-ok.R", "source(\"R/x.R\")\n")
+    expectAll(root, "allow", calls(["Rscript analysis/count.R", "Rscript analysis/follow-ok.R"]))
+    expectAll(root, "deny", calls(["Rscript analysis/main.R", "Rscript analysis/follow-bad.R"]))
+    expect(runGuard(root, "Bash", bash("Rscript analysis/main.R")).reason).toContain("method-safe-run")
+  })
+
+  test("extensionless and shebang scripts get the run-a-file check in the interpreter's or shebang's language", () => {
+    const root = sourceProject()
+    withFile(root, "analysis/runner", "#!/usr/bin/env python3\nimport runpy, sys\nrunpy.run_path(sys.argv[1])\n")
+    withFile(root, "analysis/runall", "#!/usr/bin/env Rscript\nfs <- list.files('R', full.names = TRUE)\nfor (f in fs) source(f)\n")
+    withFile(root, "analysis/plain", "import runpy\nrunpy.run_path('s.py')\n")
+    chmodSync(path.join(root, "analysis", "runner"), 0o755)
+    chmodSync(path.join(root, "analysis", "runall"), 0o755)
+    expectAll(root, "deny", calls(["./analysis/runner x", "python3 analysis/runner x", "Rscript analysis/runall", "./analysis/runall"]))
+    expectAll(root, "allow", calls(["python3 analysis/plain"]))
+    expectAll(sourceProject(APPROVED), "allow", calls(["python3 s.py"]))
+  })
+
+  test("Python literals that start with f are literals, not f-strings", () => {
+    const root = sourceProject()
+    withFile(root, "features.py", "print('features')\n")
+    expectAll(root, "allow", calls([
+      `python3 -c "import runpy; runpy.run_path('features.py')"`,
+      `python3 -c "__import__('functools')"`,
+    ]))
+    expectAll(root, "deny", calls([`python3 -c "import runpy; runpy.run_path(f'{x}.py')"`]))
+  })
+
+  test("R parse() of a file is followed, and str2expression/str2lang of computed text is denied", () => {
+    const root = sourceProject()
+    expectAll(root, "deny", calls([
+      `Rscript -e 'for (e in parse("R/bad.R")) eval(e)'`,
+      `Rscript -e 'lapply(parse("R/bad.R"), eval)'`,
+      `Rscript -e 'eval(str2expression(readLines(f)))'`,
+      `Rscript -e 'eval(str2lang(code))'`,
+      `Rscript -e 'exprs <- parse(f); for (e in exprs) eval(e)'`,
+    ]))
+    expectAll(root, "allow", calls([
+      `Rscript -e 'parse(text = "1 + 1")'`,
+      `Rscript -e 'for (e in parse("R/x.R")) eval(e)'`,
+      `Rscript -e 'eval(str2lang("1 + 1"))'`,
+    ]))
+  })
+
+  test("an import path changed at run time makes an unresolved literal module name unresolvable", () => {
+    const root = sourceProject()
+    withFile(root, "lib/hidden.py", "import pandas as pd\nprint(pd.read_csv('data/cohort.csv'))\n")
+    withFile(root, "analysis/load.py", "import sys, importlib\nsys.path.insert(0, 'lib')\nimportlib.import_module('hidden')\n")
+    expectAll(root, "deny", calls([
+      `python3 -c "import sys, importlib; sys.path.insert(0, 'lib'); importlib.import_module('hidden')"`,
+      `python3 -c "import sys; sys.path.append('lib'); __import__('hidden')"`,
+      `python3 -c "import sys, runpy; sys.path += ['lib']; runpy.run_module('hidden')"`,
+      `python3 -c "import site, importlib; site.addsitedir('lib'); importlib.import_module('hidden')"`,
+      `python3 -c "import os, importlib; os.environ['PYTHONPATH'] = 'lib'; importlib.import_module('hidden')"`,
+      "python3 analysis/load.py",
+    ]))
+    expectAll(root, "allow", calls([
+      `python3 -c "import importlib; importlib.import_module('numpy')"`,
+      `python3 -c "import sys, importlib; sys.path.insert(0, 'lib'); importlib.import_module('pkg.ok')"`,
+    ]))
+  })
+
+  test("unresolvable run-a-file code is allowed under the plugin's method-safe-run and in approved projects", () => {
+    expectAll(sourceProject(), "allow", calls([`${safeRun} -- Rscript -e 'source(f)'`]))
+    const approved = sourceProject(APPROVED)
+    withFile(approved, "analysis/main.R", "fs <- list.files('R', full.names = TRUE)\nfor (f in fs) source(f)\n")
+    expectAll(approved, "allow", calls([...DYNAMIC_SOURCE_DENIES.filter((c) => !c.includes("bad")), "Rscript analysis/main.R"]))
+  })
 })
 
 describe("wildcards and find patterns (schema-only)", () => {
@@ -323,6 +453,12 @@ describe("wildcards and find patterns (schema-only)", () => {
 })
 
 describe("limit 1b: method-safe-run keeps script output out of the context", () => {
+  test("a command killed by a signal exits 128 + the signal number", () => {
+    const { code, out } = runSafe(project(SCHEMA_ONLY), "sh", "-c", "kill -TERM $$")
+    expect(code).toBe(143)
+    expect(out).toContain("exit code: 143")
+  })
+
   test("runs the command, logs stdout and stderr locally, and prints only the exit code and log path", () => {
     const root = withFile(project(SCHEMA_ONLY), "analysis/leak.py",
       "import sys\nprint('Zed Testperson FAKE0001')\nprint('to stderr', file=sys.stderr)\nsys.exit(3)\n")
@@ -331,7 +467,7 @@ describe("limit 1b: method-safe-run keeps script output out of the context", () 
     expect(out).toContain("exit code: 3")
     expect(out).not.toContain("Zed Testperson")
     expect(out).not.toContain("FAKE0001")
-    const logs = readdirSync(path.join(root, ".methodsmith", "runs"))
+    const logs = readdirSync(path.join(root, ".methodsmith", "runs")).filter((f) => f.endsWith(".log"))
     expect(logs).toHaveLength(1)
     expect(logs[0]).toMatch(/^\d{8}T\d{6}Z-\d+\.log$/)
     expect(out).toContain(`.methodsmith/runs/${logs[0]}`)
@@ -501,6 +637,588 @@ describe("limit 1b: method-safe-run keeps script output out of the context", () 
       ["Grep", { pattern: "Zed", path: ".methodsmith/runs", output_mode: "content" }],
     ])
     expectAll(root, "allow", [["Bash", bash("ls .methodsmith/runs")], ["Read", { file_path: ".methodsmith/config.local.yaml" }]])
+  })
+
+  // --- per-run temp directory and in-progress run markers (R4-R6) ---
+  const runsDir = (root: string) => path.join(root, ".methodsmith", "runs")
+  const listFile = (file: string) => (existsSync(file) ? readFileSync(file, "utf8").split("\n").filter(Boolean) : [])
+  const outputsOf = (root: string) => listFile(path.join(runsDir(root), "outputs.txt"))
+  const tempRootsOf = (root: string) => listFile(path.join(runsDir(root), "temp-roots.txt"))
+  const markersOf = (root: string) => {
+    const dir = path.join(runsDir(root), "active")
+    return existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".json")) : []
+  }
+  const markerJson = (root: string, name: string) => JSON.parse(readFileSync(path.join(runsDir(root), "active", name), "utf8"))
+  // macOS reports /var/... and /private/var/... for the same directory.
+  const norm = (p: string) => p.trim().replace(/^\/private(?=\/)/, "")
+  const underTempRoot = (root: string, p: string) => tempRootsOf(root).some((r) => norm(p).startsWith(norm(r) + "/") || norm(p) === norm(r))
+  function runStdout(root: string) {
+    const log = readdirSync(runsDir(root)).filter((f) => f.endsWith(".log")).sort().at(-1)!
+    const text = readFileSync(path.join(runsDir(root), log), "utf8")
+    return text.slice(text.indexOf("== stdout ==\n") + 13, text.indexOf("\n== stderr =="))
+  }
+  const FAST_ENV = { ...process.env, METHOD_SAFE_RUN_HEARTBEAT_SECONDS: "0.2" }
+  const startSafe = (cwd: string, ...cmd: string[]) =>
+    Bun.spawn([safeRun, "--", ...cmd], { cwd, env: FAST_ENV, stdout: "pipe", stderr: "pipe" })
+  async function waitFor(check: () => boolean, ms = 10000) {
+    const end = Date.now() + ms
+    while (!check()) {
+      if (Date.now() > end) throw new Error("timed out waiting for the run")
+      await Bun.sleep(50)
+    }
+  }
+  const killGroup = (pgid: number) => Bun.spawnSync(["kill", "-KILL", "--", `-${pgid}`])
+  const deadPid = () => {
+    const proc = Bun.spawnSync(["true"])
+    return proc.pid
+  }
+
+  test("a child's tempfile.mkstemp() file lies under a temp dir registered in runs/temp-roots.txt", () => {
+    const root = project(SCHEMA_ONLY)
+    const { code } = runSafe(root, "python3", "-c",
+      "import os, tempfile\nfd, p = tempfile.mkstemp()\nos.write(fd, b'synthetic')\nos.close(fd)\nprint(p)")
+    expect(code).toBe(0)
+    const made = runStdout(root).trim()
+    expect(made).not.toBe("")
+    expect(underTempRoot(root, path.dirname(made))).toBe(true)
+  })
+
+  test.skipIf(!Bun.which("Rscript"))("Rscript tempdir() under the runner lies under a registered temp root", () => {
+    const root = project(SCHEMA_ONLY)
+    const { code } = runSafe(root, "Rscript", "-e", "cat(tempdir())")
+    expect(code).toBe(0)
+    expect(underTempRoot(root, runStdout(root))).toBe(true)
+  }, 30000)
+
+  test("the run's temp dir is owner-only (0700), set as TMPDIR/TMP/TEMP, and removed after a normal finish", () => {
+    const root = project(SCHEMA_ONLY)
+    const { code } = runSafe(root, "python3", "-c",
+      "import os, tempfile\nd = tempfile.gettempdir()\nprint(oct(os.stat(d).st_mode & 0o777))\nprint(d)\n" +
+      "print(os.environ['TMPDIR'].rstrip('/') == os.environ['TMP'].rstrip('/') == os.environ['TEMP'].rstrip('/'))")
+    expect(code).toBe(0)
+    const [mode, dir, same] = runStdout(root).trim().split("\n")
+    expect(mode).toBe("0o700")
+    expect(same).toBe("True")
+    expect(path.basename(dir)).toStartWith("msr-")
+    expect(tempRootsOf(root).map(norm)).toContain(norm(dir))
+    expect(existsSync(dir)).toBe(false)
+    expect(markersOf(root)).toEqual([])
+  })
+
+  test("a SIGTERM to the runner is forwarded to the child; its outputs are recorded and its marker removed", async () => {
+    const root = withFile(project(SCHEMA_ONLY), "analysis/term.py",
+      "import signal, sys, time\n" +
+      "def stop(signum, frame):\n    open('results/got_term.txt', 'w').write('synthetic\\n')\n    sys.exit(0)\n" +
+      "signal.signal(signal.SIGTERM, stop)\nopen('results/partial.txt', 'w').write('synthetic\\n')\ntime.sleep(60)\n")
+    mkdirSync(path.join(root, "results"))
+    const proc = startSafe(root, "python3", "analysis/term.py")
+    await waitFor(() => existsSync(path.join(root, "results", "partial.txt")) && markersOf(root).length === 1)
+    const marker = markerJson(root, markersOf(root)[0])
+    expect(marker.pid).toBe(proc.pid)
+    expect(typeof marker.pid_start).toBe("string")
+    expect(marker.host).toBe(os.hostname())
+    expect(typeof marker.start).toBe("number")
+    proc.kill("SIGTERM")
+    await proc.exited
+    expect(existsSync(path.join(root, "results", "got_term.txt"))).toBe(true)
+    expect(outputsOf(root)).toEqual(expect.arrayContaining([path.join("results", "got_term.txt"), path.join("results", "partial.txt")]))
+    expect(markersOf(root)).toEqual([])
+    expect(await new Response(proc.stdout).text()).not.toContain("synthetic")
+  }, 30000)
+
+  // A writer in the run's process group that waits (at most 20 s) for a release file, then writes results/late.txt.
+  const WRITER = "import os, signal, sys, time\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\n" +
+    "open('results/writer_ready.txt', 'w').write('synthetic\\n')\ndeadline = time.time() + 20\n" +
+    "while not os.path.exists(sys.argv[1]) and time.time() < deadline:\n    time.sleep(0.05)\n" +
+    "open('results/late.txt', 'w').write('synthetic\\n')\n"
+  const groupAlive = (pgid: number) => Bun.spawnSync(["kill", "-0", "--", `-${pgid}`], { stderr: "ignore" }).exitCode === 0
+
+  test("a background writer that outlives the SIGTERM keeps the marker until it exits, and its late file is recorded", async () => {
+    const root = project(SCHEMA_ONLY)
+    withFile(root, "analysis/writer.py", WRITER)
+    withFile(root, "analysis/bg.py",
+      "import subprocess, sys, time\nsubprocess.Popen([sys.executable, 'analysis/writer.py', sys.argv[1]])\ntime.sleep(60)\n")
+    mkdirSync(path.join(root, "results"))
+    const release = path.join(tempDir(), "release")
+    const proc = startSafe(root, "python3", "analysis/bg.py", release)
+    let pgid = 0
+    try {
+      await waitFor(() => existsSync(path.join(root, "results", "writer_ready.txt")) && markersOf(root).length === 1
+        && typeof markerJson(root, markersOf(root)[0]).pgid === "number")
+      pgid = markerJson(root, markersOf(root)[0]).pgid
+      proc.kill("SIGTERM")
+      await Bun.sleep(800)
+      expect(proc.exitCode).toBeNull()
+      expect(markersOf(root)).toHaveLength(1)
+      writeFileSync(release, "")
+      await proc.exited
+      expect(outputsOf(root)).toContain(path.join("results", "late.txt"))
+      expect(markersOf(root)).toEqual([])
+    } finally {
+      writeFileSync(release, "")
+      proc.kill("SIGKILL")
+      if (pgid) killGroup(pgid)
+    }
+  }, 30000)
+
+  test("a child that outlives a SIGKILLed runner keeps the run heartbeating; reconcile records its late write", async () => {
+    const root = project(SCHEMA_ONLY)
+    withFile(root, "analysis/writer.py", WRITER)
+    withFile(root, "analysis/bg.py", "import subprocess, sys\nsubprocess.Popen([sys.executable, 'analysis/writer.py', sys.argv[1]])\n")
+    mkdirSync(path.join(root, "results"))
+    const release = path.join(tempDir(), "release")
+    const proc = startSafe(root, "python3", "analysis/bg.py", release)
+    let pgid = 0
+    try {
+      await waitFor(() => existsSync(path.join(root, "results", "writer_ready.txt")) && markersOf(root).length === 1
+        && typeof markerJson(root, markersOf(root)[0]).pgid === "number")
+      pgid = markerJson(root, markersOf(root)[0]).pgid
+      proc.kill("SIGKILL")
+      await proc.exited
+      await Bun.sleep(2600) // past the runner's last heartbeat plus the 2 s margin
+      writeFileSync(release, "")
+      await waitFor(() => existsSync(path.join(root, "results", "late.txt")) && !groupAlive(pgid))
+      const rec = Bun.spawnSync([safeRun, "--reconcile"], { cwd: root, env: FAST_ENV })
+      expect(rec.stdout.toString()).toMatch(/reconciled 1 stale run/)
+      expect(outputsOf(root)).toContain(path.join("results", "late.txt"))
+      expect(markersOf(root)).toEqual([])
+    } finally {
+      writeFileSync(release, "")
+      proc.kill("SIGKILL")
+      if (pgid) killGroup(pgid)
+    }
+  }, 30000)
+
+  test("a marker is unique per run: a new runner that reuses an old pid leaves that pid's marker alone", () => {
+    const root = project(SCHEMA_ONLY)
+    const active = path.join(runsDir(root), "active")
+    mkdirSync(active, { recursive: true })
+    const planted = `{"pid": 1, "pid_start": "", "pgid": null, "host": "elsewhere.invalid", "start": 1}`
+    const proc = Bun.spawnSync(["sh", "-c", `printf '%s' '${planted}' > .methodsmith/runs/active/$$.json; exec "$0" -- python3 -c "import os, glob; print(sorted(os.path.basename(p) for p in glob.glob('.methodsmith/runs/active/*.json')))"`, safeRun],
+      { cwd: root, env: FAST_ENV })
+    expect(proc.exitCode).toBe(0)
+    const names = markersOf(root)
+    expect(names).toHaveLength(1)
+    expect(JSON.parse(readFileSync(path.join(active, names[0]), "utf8")).host).toBe("elsewhere.invalid")
+    expect(runStdout(root)).toMatch(/'\d+-\d+\.json'/)
+  })
+
+  test("a marker with a malformed pgid is reconciled once its writer is gone and it stopped heartbeating", () => {
+    const root = project(SCHEMA_ONLY)
+    const active = path.join(runsDir(root), "active")
+    mkdirSync(active, { recursive: true })
+    const dead = deadPid()
+    const file = path.join(active, `${dead}-1.json`)
+    writeFileSync(file, `{"pid": ${dead}, "pid_start": "", "pgid": "abc", "host": ${JSON.stringify(os.hostname())}, "start": 1}`)
+    const old = new Date(Date.now() - 600_000)
+    utimesSync(file, old, old)
+    const proc = Bun.spawnSync([safeRun, "--reconcile"], { cwd: root, env: { ...process.env, METHOD_SAFE_RUN_HEARTBEAT_SECONDS: "1" } })
+    expect(proc.stdout.toString()).toMatch(/reconciled 1 stale run/)
+    expect(existsSync(file)).toBe(false)
+  })
+
+  // A run whose runner and process group were SIGKILLed: the marker stays behind.
+  async function crashedRun(root: string) {
+    withFile(root, "analysis/slow.py", "import time\nopen('results/written.txt', 'w').write('synthetic\\n')\ntime.sleep(60)\n")
+    mkdirSync(path.join(root, "results"), { recursive: true })
+    const proc = startSafe(root, "python3", "analysis/slow.py")
+    await waitFor(() => existsSync(path.join(root, "results", "written.txt")) && markersOf(root).length === 1
+      && typeof markerJson(root, markersOf(root)[0]).pgid === "number")
+    await Bun.sleep(500) // at least one heartbeat after the write
+    const { pgid } = markerJson(root, markersOf(root)[0])
+    proc.kill("SIGKILL")
+    killGroup(pgid)
+    await proc.exited
+    await Bun.sleep(200)
+    expect(markersOf(root)).toHaveLength(1)
+  }
+
+  test("after a SIGKILL, --reconcile records the dead run's file but not a file edited after its last heartbeat", async () => {
+    const root = project(SCHEMA_ONLY)
+    await crashedRun(root)
+    expect(outputsOf(root)).not.toContain(path.join("results", "written.txt"))
+    await Bun.sleep(2600) // past the last heartbeat plus the 2 s margin
+    writeFileSync(path.join(root, "results", "later.txt"), "synthetic later\n")
+    const proc = Bun.spawnSync([safeRun, "--reconcile"], { cwd: root })
+    const out = proc.stdout.toString() + proc.stderr.toString()
+    expect(proc.exitCode).toBe(0)
+    expect(out).toMatch(/reconciled 1 stale run/)
+    expect(out.trim().split("\n")).toHaveLength(1)
+    expect(outputsOf(root)).toContain(path.join("results", "written.txt"))
+    expect(outputsOf(root)).not.toContain(path.join("results", "later.txt"))
+    expect(markersOf(root)).toEqual([])
+  }, 30000)
+
+  test("a dead run's marker is reconciled by the next run: its written file is recorded and the marker removed", async () => {
+    const root = project(SCHEMA_ONLY)
+    await crashedRun(root)
+    const { code, out } = runSafe(root, "true")
+    expect(code).toBe(0)
+    expect(out).not.toMatch(/reconcil/i)
+    expect(outputsOf(root)).toContain(path.join("results", "written.txt"))
+    expect(markersOf(root)).toEqual([])
+  }, 30000)
+
+  test("staleness: a mismatched start time is stale; a live runner, a live group, or another host is not", async () => {
+    const root = project(SCHEMA_ONLY)
+    const active = path.join(runsDir(root), "active")
+    mkdirSync(active, { recursive: true })
+    const now = BigInt(Date.now()) * 1000000n
+    const lstart = (pid: number) => Bun.spawnSync(["ps", "-o", "lstart=", "-p", String(pid)], { env: { ...process.env, LC_ALL: "C" } })
+      .stdout.toString().trim().replace(/\s+/g, " ")
+    const group = Bun.spawn(["python3", "-c", "import os, time\nos.setsid()\ntime.sleep(30)\n"])
+    await Bun.sleep(400)
+    const marker = (name: string, pid: number, pidStart: string, pgid: number, host: string) =>
+      writeFileSync(path.join(active, name),
+        `{"pid": ${pid}, "pid_start": ${JSON.stringify(pidStart)}, "pgid": ${pgid}, "host": ${JSON.stringify(host)}, "start": ${now}}`)
+    try {
+      marker("1.json", process.pid, "Thu Jan 1 00:00:00 1970", deadPid(), os.hostname()) // pid reused: stale
+      marker("2.json", process.pid, lstart(process.pid), deadPid(), os.hostname()) // runner alive
+      marker("3.json", deadPid(), "Thu Jan 1 00:00:00 1970", group.pid, os.hostname()) // group alive
+      marker("4.json", deadPid(), "Thu Jan 1 00:00:00 1970", deadPid(), "elsewhere.invalid") // another host
+      const proc = Bun.spawnSync([safeRun, "--reconcile"], { cwd: root })
+      expect(proc.exitCode).toBe(0)
+      expect(proc.stdout.toString()).toMatch(/reconciled 1 stale run/)
+      expect(markersOf(root).sort()).toEqual(["2.json", "3.json", "4.json"])
+    } finally {
+      group.kill("SIGKILL")
+    }
+  }, 30000)
+
+  test("a run's own code cannot erase earlier outputs.txt or temp-roots.txt entries", () => {
+    const root = project(SCHEMA_ONLY)
+    mkdirSync(runsDir(root), { recursive: true })
+    writeFileSync(path.join(runsDir(root), "outputs.txt"), "results/earlier.csv\n")
+    const kept = mkdtempSync(path.join(os.tmpdir(), "msr-kept-"))
+    writeFileSync(path.join(runsDir(root), "temp-roots.txt"), `${kept}\n`)
+    // Erase both lists, wait (up to 10 s) until the runner has put both entries back, then copy what the
+    // guard would see mid-run.
+    const code = "import shutil, sys, time\nruns = '.methodsmith/runs/'\nfor f in ('outputs.txt', 'temp-roots.txt'):\n" +
+      "    open(runs + f, 'w').close()\nend = time.time() + 10\n" +
+      "while not ('results/earlier.csv' in open(runs + 'outputs.txt').read() and sys.argv[1] in open(runs + 'temp-roots.txt').read()):\n" +
+      "    if time.time() > end: break\n    time.sleep(0.05)\n" +
+      "shutil.copy(runs + 'outputs.txt', 'seen-outputs.txt')\nshutil.copy(runs + 'temp-roots.txt', 'seen-temp-roots.txt')\n"
+    const proc = Bun.spawnSync([safeRun, "--", "python3", "-c", code, kept], { cwd: root, env: FAST_ENV })
+    expect(proc.exitCode).toBe(0)
+    expect(listFile(path.join(root, "seen-outputs.txt"))).toContain("results/earlier.csv")
+    expect(listFile(path.join(root, "seen-temp-roots.txt"))).toContain(kept)
+    expect(outputsOf(root)).toContain("results/earlier.csv")
+    expect(tempRootsOf(root)).toContain(kept)
+    rmSync(kept, { recursive: true, force: true })
+  })
+
+  test("a live first run in a fresh project leaves unrelated files readable until its code touches outputs.txt", async () => {
+    const root = withFile(project(SCHEMA_ONLY), "notes/before.txt", "synthetic note\n")
+    await Bun.sleep(2200) // older than the runner's 2 s start margin, so only the list rule can deny it
+    // The child waits for go, then erases outputs.txt and idles; until then it changes nothing.
+    const code = "import os, time\nend = time.time() + 10\n" +
+      "while not os.path.exists('go') and time.time() < end: time.sleep(0.05)\n" +
+      "open('.methodsmith/runs/outputs.txt', 'w').close()\n" +
+      "while not os.path.exists('done') and time.time() < end: time.sleep(0.05)\n"
+    const run = startSafe(root, "python3", "-c", code)
+    await waitFor(() => markersOf(root).length === 1)
+    expectAll(root, "allow", [["Read", { file_path: "notes/before.txt" }]]) // outputs.txt was created inside the start margin
+    const list = path.join(runsDir(root), "outputs.txt")
+    const stamp = statSync(list, { bigint: true }).ctimeNs
+    writeFileSync(path.join(root, "go"), "")
+    await waitFor(() => statSync(list, { bigint: true }).ctimeNs !== stamp)
+    expectAll(root, "deny", [["Read", { file_path: "notes/before.txt" }]])
+    writeFileSync(path.join(root, "done"), "")
+    expect(await run.exited).toBe(0)
+  })
+
+  test("an output another run records after this run started survives this run's code erasing the list", async () => {
+    const root = project(SCHEMA_ONLY)
+    mkdirSync(runsDir(root), { recursive: true })
+    // The child waits for go, erases outputs.txt, then idles past several heartbeats.
+    const code = "import os, time\nend = time.time() + 10\n" +
+      "while not os.path.exists('go') and time.time() < end: time.sleep(0.05)\n" +
+      "open('.methodsmith/runs/outputs.txt', 'w').close()\ntime.sleep(1)\n"
+    const run = startSafe(root, "python3", "-c", code)
+    await waitFor(() => markersOf(root).length === 1)
+    await Bun.sleep(500) // past a heartbeat, so the runner has already re-read the list once
+    appendFileSync(path.join(runsDir(root), "outputs.txt"), "results/b-summary\n") // another run finished
+    await Bun.sleep(500) // and past another, so this run has seen the new entry
+    writeFileSync(path.join(root, "go"), "")
+    expect(await run.exited).toBe(0)
+    expect(outputsOf(root)).toContain("results/b-summary") // extensionless: only outputs.txt marks it as data
+  })
+
+  test("two concurrent runs: both written files land in outputs.txt and both temp dirs in temp-roots.txt", async () => {
+    const root = project(SCHEMA_ONLY)
+    mkdirSync(path.join(root, "results"))
+    const writer = (name: string) => `import tempfile, time\nopen('results/${name}.txt', 'w').write(tempfile.gettempdir())\ntime.sleep(1.5)\n`
+    const a = startSafe(root, "python3", "-c", writer("a"))
+    const b = startSafe(root, "python3", "-c", writer("b"))
+    expect(await a.exited).toBe(0)
+    expect(await b.exited).toBe(0)
+    expect(outputsOf(root)).toEqual(expect.arrayContaining([path.join("results", "a.txt"), path.join("results", "b.txt")]))
+    const dirs = ["a", "b"].map((n) => norm(readFileSync(path.join(root, "results", `${n}.txt`), "utf8")))
+    expect(dirs[0]).not.toBe(dirs[1])
+    expect(tempRootsOf(root).map(norm)).toEqual(expect.arrayContaining(dirs))
+    expect(markersOf(root)).toEqual([])
+  }, 30000)
+})
+
+describe("limit 1c: the guard reads method-safe-run temp roots and in-progress run markers (R4, R5)", () => {
+  const runs = (root: string) => path.join(root, ".methodsmith", "runs")
+  const psField = (field: string, pid: number) =>
+    Bun.spawnSync(["ps", "-o", `${field}=`, "-p", String(pid)], { env: { ...process.env, LC_ALL: "C" } })
+      .stdout.toString().trim().replace(/\s+/g, " ")
+  const deadPid = () => Bun.spawnSync(["true"]).pid
+  // The filesystem clock, read the way the runner reads it (a file's ctime), from outside the project.
+  function fsNow() {
+    const probe = path.join(tempDir(), "clock")
+    writeFileSync(probe, "")
+    return statSync(probe, { bigint: true }).ctimeNs
+  }
+  function marker(root: string, name: string, fields: { pid: number; pid_start: string; pgid: number | null; host: string; start: bigint },
+    extra: { tmp?: string; outputs_lines?: number } = {}) {
+    const dir = path.join(runs(root), "active")
+    mkdirSync(dir, { recursive: true })
+    const more = extra.outputs_lines === undefined ? "" : `, "outputs_lines": ${extra.outputs_lines}`
+    writeFileSync(path.join(dir, name), `{"pid": ${fields.pid}, "pid_start": ${JSON.stringify(fields.pid_start)}, ` +
+      `"pgid": ${fields.pgid}, "host": ${JSON.stringify(fields.host)}, "start": ${fields.start}, ` +
+      `"tmp": ${JSON.stringify(extra.tmp ?? "/nonexistent/msr-x")}${more}}`)
+  }
+  const liveMarker = (start: bigint) => ({
+    pid: process.pid, pid_start: psField("lstart", process.pid), pgid: Number(psField("pgid", process.pid)), host: os.hostname(), start,
+  })
+  const pause = () => Bun.sleepSync(30)
+  // notes/ and R/ and incoming/ exist before the run starts; results/out.txt is written after it.
+  function runProject(config = SCHEMA_ONLY) {
+    const root = project(config)
+    for (const dir of ["results", "notes", "R", "incoming"]) mkdirSync(path.join(root, dir))
+    writeFileSync(path.join(root, "notes", "before.txt"), "synthetic note\n")
+    writeFileSync(path.join(root, "R", "x.R"), "x <- 1\n")
+    pause()
+    const start = fsNow()
+    pause()
+    return { root, start }
+  }
+  function writeAfterStart(root: string) {
+    writeFileSync(path.join(root, "results", "out.txt"), "FAKE0001 synthetic row\n")
+  }
+
+  test("a file in a registered temp root is data: Read and cat deny in schema-only, allow when approved", () => {
+    for (const [config, decision] of [[SCHEMA_ONLY, "deny"], [APPROVED, "allow"]] as const) {
+      const root = project(config)
+      const tmp = mkdtempSync(path.join(os.tmpdir(), "msr-"))
+      tempRoots.push(tmp)
+      writeFileSync(path.join(tmp, "rows.txt"), "FAKE0001 synthetic row\n")
+      mkdirSync(runs(root), { recursive: true })
+      writeFileSync(path.join(runs(root), "temp-roots.txt"), `${tmp}\n`) // as mkdtemp returns it, not realpath'd
+      const viaReal = path.join(realpathSync(tmp), "rows.txt")
+      expectAll(root, decision, [
+        ["Read", { file_path: path.join(tmp, "rows.txt") }],
+        ["Read", { file_path: viaReal }],
+        ["Bash", bash(`cat ${path.join(tmp, "rows.txt")}`)],
+        ["Bash", bash(`cat ${viaReal}`)],
+      ])
+    }
+  })
+
+  test("the pre-rename runs folder's temp-roots.txt is read too", () => {
+    const root = project(SCHEMA_ONLY)
+    const tmp = tempDir("msr-")
+    writeFileSync(path.join(tmp, "rows.txt"), "FAKE0001 synthetic row\n")
+    mkdirSync(path.join(root, ".ce-datascience", "runs"), { recursive: true }) // rebrand:keep
+    writeFileSync(path.join(root, ".ce-datascience", "runs", "temp-roots.txt"), `${tmp}\n`) // rebrand:keep
+    expectAll(root, "deny", [["Read", { file_path: path.join(tmp, "rows.txt") }]])
+  })
+
+  test("with a live run marker, a file changed after its start is data; one last changed before it is not", () => {
+    const { root, start } = runProject()
+    writeAfterStart(root)
+    marker(root, `${process.pid}.json`, liveMarker(start))
+    expectAll(root, "deny", [
+      ["Read", { file_path: "results/out.txt" }],
+      ["Bash", bash("cat results/out.txt")],
+    ])
+    expectAll(root, "allow", [["Read", { file_path: "notes/before.txt" }], ["Bash", bash("cat notes/before.txt")]])
+    const denied = runGuard(root, "Read", { file_path: "results/out.txt" })
+    expect(denied.reason).toContain("still in progress")
+    expect(denied.reason).not.toContain("--reconcile")
+    expect(denied.reason).not.toContain("FAKE0001")
+  })
+
+  test("during a live run, a file renamed into the project and a script edited in place are data", () => {
+    const { root, start } = runProject()
+    const outside = path.join(tempDir(), "r.txt")
+    writeFileSync(outside, "FAKE0001 synthetic row\n")
+    utimesSync(outside, new Date(2020, 0, 1), new Date(2020, 0, 1)) // an old mtime survives the rename
+    marker(root, `${process.pid}.json`, liveMarker(start))
+    renameSync(outside, path.join(root, "incoming", "r.txt"))
+    writeFileSync(path.join(root, "R", "x.R"), "x <- 2\n")
+    expectAll(root, "deny", [
+      ["Read", { file_path: "incoming/r.txt" }],
+      ["Read", { file_path: "R/x.R" }],
+      ["Bash", bash("cat R/x.R")],
+    ])
+  })
+
+  test("during a live run, an outputs.txt changed since the run started makes every project file data", () => {
+    const root = project(SCHEMA_ONLY)
+    for (const dir of ["results", "notes"]) mkdirSync(path.join(root, dir))
+    writeFileSync(path.join(root, "results", "earlier.txt"), "FAKE0001,synthetic\n")
+    writeFileSync(path.join(root, "notes", "before.txt"), "synthetic note\n")
+    mkdirSync(runs(root), { recursive: true })
+    writeFileSync(path.join(runs(root), "outputs.txt"), "results/earlier.txt\n")
+    pause()
+    const start = fsNow()
+    pause()
+    marker(root, `${process.pid}.json`, liveMarker(start), { outputs_lines: 1 })
+    // Untouched since the run started: the list is trusted, the earlier output is data, other files read.
+    expectAll(root, "deny", [["Read", { file_path: "results/earlier.txt" }]])
+    expectAll(root, "allow", [["Read", { file_path: "notes/before.txt" }]])
+    writeFileSync(path.join(runs(root), "outputs.txt"), "") // the run's own code erased it
+    expectAll(root, "deny", [
+      ["Read", { file_path: "results/earlier.txt" }],
+      ["Bash", bash("cat results/earlier.txt")],
+      ["Read", { file_path: "notes/before.txt" }],
+    ])
+    rmSync(path.join(runs(root), "outputs.txt"))
+    expectAll(root, "deny", [["Read", { file_path: "results/earlier.txt" }]])
+    // Empty at the start, but another run may record outputs into it later: any change is untrusted too.
+    marker(root, `${process.pid}.json`, liveMarker(start), { outputs_lines: 0 })
+    expectAll(root, "deny", [["Read", { file_path: "notes/before.txt" }]])
+    // A marker from before outputs_lines existed keeps the per-file rule.
+    marker(root, `${process.pid}.json`, liveMarker(start))
+    expectAll(root, "allow", [["Read", { file_path: "notes/before.txt" }]])
+  })
+
+  test("a live run's own temp directory is data even when temp-roots.txt no longer lists it", () => {
+    const { root, start } = runProject()
+    const tmp = mkdtempSync(path.join(os.tmpdir(), "msr-"))
+    tempRoots.push(tmp)
+    writeFileSync(path.join(tmp, "rows.txt"), "FAKE0001 synthetic row\n")
+    marker(root, `${process.pid}.json`, liveMarker(start), { tmp })
+    writeFileSync(path.join(runs(root), "temp-roots.txt"), "")
+    expectAll(root, "deny", [
+      ["Read", { file_path: path.join(tmp, "rows.txt") }],
+      ["Bash", bash(`cat ${path.join(realpathSync(tmp), "rows.txt")}`)],
+    ])
+    expectAll(project(APPROVED), "allow", [["Read", { file_path: path.join(tmp, "rows.txt") }]])
+  })
+
+  test("a stale marker denies and names --reconcile; another host's marker denies without offering it", () => {
+    const stale = runProject()
+    writeAfterStart(stale.root)
+    marker(stale.root, "123.json", { pid: deadPid(), pid_start: "", pgid: deadPid(), host: os.hostname(), start: stale.start })
+    const staleDeny = runGuard(stale.root, "Read", { file_path: "results/out.txt" })
+    expect(staleDeny.decision).toBe("deny")
+    expect(staleDeny.reason).toContain("method-safe-run --reconcile")
+
+    const foreign = runProject()
+    writeAfterStart(foreign.root)
+    marker(foreign.root, "123.json", { pid: deadPid(), pid_start: "", pgid: deadPid(), host: "elsewhere", start: foreign.start })
+    const foreignDeny = runGuard(foreign.root, "Read", { file_path: "results/out.txt" })
+    expect(foreignDeny.decision).toBe("deny")
+    expect(foreignDeny.reason).toContain("another host")
+    expect(foreignDeny.reason).not.toContain("--reconcile")
+    expectAll(foreign.root, "allow", [["Read", { file_path: "notes/before.txt" }]])
+  })
+
+  test("an unreadable marker counts as an active run starting when the marker was created (fail closed)", () => {
+    const { root } = runProject()
+    const old = new Date(Date.now() - 3600_000)
+    utimesSync(path.join(root, "notes", "before.txt"), old, old) // also sets its ctime to now
+    mkdirSync(path.join(runs(root), "active"), { recursive: true })
+    pause() // coarse filesystem clocks (Linux): keep that ctime strictly before the marker's creation
+    writeFileSync(path.join(runs(root), "active", "77.json"), "{not json")
+    writeFileSync(path.join(runs(root), "active", ".77.json.tmp"), "{not json") // half-written, ignored by name
+    withFile(root, "results/after.csv", "group,n\na,120\n")
+    expectAll(root, "deny", [["Read", { file_path: "results/after.csv" }]])
+    expectAll(root, "allow", [["Read", { file_path: "notes/before.txt" }]])
+  })
+
+  test("--reconcile clears an unreadable marker once its writer is gone and it stopped heartbeating", () => {
+    const { root } = runProject()
+    const marker = path.join(runs(root), "active", "999999.json")
+    mkdirSync(path.dirname(marker), { recursive: true })
+    writeFileSync(marker, "{not json")
+    const old = new Date(Date.now() - 600_000)
+    utimesSync(marker, old, old)
+    const proc = Bun.spawnSync([safeRun, "--reconcile"], { cwd: root, env: { ...process.env, METHOD_SAFE_RUN_HEARTBEAT_SECONDS: "1" } })
+    expect(proc.exitCode).toBe(0)
+    expect(existsSync(marker)).toBe(false)
+  })
+
+  test("in an approved project a marker changes nothing", () => {
+    const { root, start } = runProject(APPROVED)
+    writeAfterStart(root)
+    marker(root, `${process.pid}.json`, liveMarker(start))
+    expectAll(root, "allow", [["Read", { file_path: "results/out.txt" }], ["Bash", bash("cat results/out.txt")]])
+  })
+
+  test("schema-only commands and edits cannot remove, move, truncate, or write the boundary state", () => {
+    const root = project(SCHEMA_ONLY)
+    mkdirSync(path.join(runs(root), "active"), { recursive: true })
+    writeFileSync(path.join(runs(root), "temp-roots.txt"), "/nonexistent/msr-x\n")
+    marker(root, "123.json", { pid: deadPid(), pid_start: "", pgid: null, host: "elsewhere", start: 10n ** 19n }) // starts later than any file here
+    const deny: Array<[string, Record<string, unknown>]> = [
+      ["Bash", bash("rm .methodsmith/runs/active/123.json")],
+      ["Bash", bash(`${safeRun} -- rm .methodsmith/runs/active/123.json`)],
+      ["Bash", bash("rm -f .methodsmith/runs/active/*.json")],
+      ["Bash", bash("rm -rf .methodsmith/runs")],
+      ["Bash", bash("unlink .methodsmith/runs/active/123.json")],
+      ["Bash", bash("mv .methodsmith/runs/active/123.json /tmp/")],
+      ["Bash", bash("cp /dev/null .methodsmith/runs/temp-roots.txt")],
+      ["Bash", bash("echo > .methodsmith/runs/temp-roots.txt")],
+      ["Bash", bash(": > .methodsmith/runs/temp-roots.txt")],
+      ["Bash", bash("echo x >> .methodsmith/runs/temp-roots.txt")],
+      ["Bash", bash("echo x | tee .methodsmith/runs/temp-roots.txt")],
+      ["Bash", bash("sed -i '' -e d .methodsmith/runs/temp-roots.txt")],
+      ["Bash", bash("truncate -s 0 .methodsmith/runs/temp-roots.txt")],
+      ["Bash", bash("rm .methodsmith/runs/outputs.txt")],
+      ["Bash", bash(": > .methodsmith/runs/outputs.txt")],
+      ["Bash", bash("find .methodsmith/runs -name outputs.txt -delete")],
+      ["Write", { file_path: ".methodsmith/runs/outputs.txt", content: "" }],
+      ["Bash", bash("touch .methodsmith/runs/active/123.json")],
+      ["Bash", bash("find .methodsmith/runs/active -name '*.json' -delete")],
+      ["Bash", bash("find . -type f -exec rm {} +")],
+      ["Bash", bash("cd .methodsmith/runs && rm temp-roots.txt")],
+      ["Bash", bash("bash -c 'rm .methodsmith/runs/active/123.json'")],
+      ["Bash", bash(`${safeRun} -- bash -c 'rm .methodsmith/runs/active/123.json'`)],
+      ["Bash", bash(`${safeRun} -- sh -c 'cat notes.txt; echo x > .methodsmith/runs/temp-roots.txt'`)],
+      ["Bash", bash(`${safeRun} -- bash -c "eval 'rm -f .methodsmith/runs/active/*.json'"`)],
+      ["Monitor", bash("rm .methodsmith/runs/active/123.json")],
+      ["Write", { file_path: ".methodsmith/runs/temp-roots.txt", content: "" }],
+      ["Write", { file_path: ".methodsmith/runs/active/9.json", content: "{}" }],
+      ["Edit", { file_path: ".methodsmith/runs/temp-roots.txt", old_string: "x", new_string: "" }],
+    ]
+    expectAll(root, "deny", deny)
+    expectAll(root, "allow", [
+      ["Bash", bash("ls .methodsmith/runs/active")],
+      ["Bash", bash(`${safeRun} --reconcile`)],
+      ["Bash", bash("rm -f notes.txt")],
+      ["Bash", bash("rm -f .methodsmith/runs/*.log")],
+      ["Bash", bash("find . -name '*.pyc' -delete")],
+      ["Bash", bash("cp src/load.py src/load_copy.py")],
+      ["Write", { file_path: "analysis/new.py", content: "print(1)\n" }],
+    ])
+    const reason = runGuard(root, "Bash", bash("rm .methodsmith/runs/active/123.json")).reason
+    expect(reason).toContain("method-safe-run")
+    const approved = project(APPROVED)
+    expectAll(approved, "allow", [["Bash", bash("rm .methodsmith/runs/active/123.json")],
+      ["Write", { file_path: ".methodsmith/runs/temp-roots.txt", content: "" }]])
+  })
+
+  test("with 20 run markers present a guard decision stays under 1 s (R9)", () => {
+    const { root, start } = runProject()
+    writeAfterStart(root)
+    const live = liveMarker(start)
+    for (let i = 0; i < 20; i++) {
+      marker(root, `${1000 + i}.json`, i % 2 ? live : { pid: deadPid(), pid_start: "", pgid: deadPid(), host: os.hostname(), start })
+    }
+    const t0 = performance.now()
+    const result = runGuard(root, "Read", { file_path: "results/out.txt" })
+    const elapsed = performance.now() - t0
+    expect(result.decision).toBe("deny")
+    expect(elapsed).toBeLessThan(1000)
+    const t1 = performance.now()
+    expect(runGuard(root, "Bash", bash("cat notes/before.txt results/out.txt R/x.R src/load.py")).decision).toBe("deny")
+    expect(performance.now() - t1).toBeLessThan(1000)
   })
 })
 

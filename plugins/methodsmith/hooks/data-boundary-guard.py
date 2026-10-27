@@ -40,7 +40,8 @@ and recursive content searches are denied. Script files are read statically
 path, unless the command runs through the plugin's method-safe-run, however the
 script is launched: python/Rscript/bash/sh/quarto render/jupyter nbconvert
 --execute, run wrappers (uv/pdm/poetry run), a direct path with a script
-extension or interpreter shebang, stdin, source/., python -m for a project
+extension or interpreter shebang (scanned in the shebang's or interpreter's
+language even without an extension), stdin, source/., python -m for a project
 module, Rscript -e source(), and sh -c/bash -c/eval code. Workflow runners
 (make, snakemake, pytest, dvc, npm/pnpm/yarn/bun run scripts, targets::tar_make,
 rmarkdown::render, and similar) are denied unless run through method-safe-run.
@@ -48,15 +49,34 @@ Relative, cd, -C, symlinked, and inline-code paths anchor the project they
 reach, so a call from outside a project gets that project's boundary (strictest
 wins). Unquoted shell wildcards are expanded (bounded) and checked match by
 match; an over-cap expansion is data in schema-only access checks.
+Code that runs another file (R source/sys.source/parse(), str2lang/
+str2expression of computed text, source passed to apply-style functions, Python
+runpy, exec/eval of computed code, import_module, __import__) follows literal
+targets and denies computed, missing, or setwd/chdir-relative ones; after a
+run-time import path change (sys.path, site.addsitedir, PYTHONPATH) a literal
+module name with no project file is denied too. Database MCP tools (named with a
+database word, or carrying SQL/Cypher statement text) deny in schema-only unless
+the call only inspects the schema (list/describe tools, or one DESCRIBE, SHOW
+TABLES|COLUMNS, PRAGMA table_info, or plain information_schema select); on a
+database-named tool a statement under any argument key counts, and an exempt
+literature server word does not exempt a server name that also has a database
+word.
 Inside method-safe-run only the copy rule still applies (output stays in the log),
-and files a run wrote (runs/outputs.txt) are data afterwards. Tables under
+and files a run wrote (runs/outputs.txt) are data afterwards, as are its temp
+directories (runs/temp-roots.txt) and, while a run is live or was never
+reconciled (runs/active/*.json), project files changed since it started. Those
+state files can only be changed by method-safe-run itself, also not by shell code
+it runs (method-safe-run -- bash -c 'rm ...'). Tables under
 phi_environment.aggregate_dirs print through the plugin's method-aggregate-read,
 which reads once and checks the bytes it prints (no identifier headers or
 indexed cells, no counts 1-10, at most 500 rows); a hook-time check of a later
 shell or script read could be raced. Markdown tables, which are not data
 files, are also checked on Read and cat. Limits: the script check is
-heuristic; obfuscation the parser cannot see is out of scope; this is defense
-in depth, not a sandbox.
+heuristic; obfuscation the parser cannot see is out of scope; writes to
+hard-coded paths outside the project and the run's temp directory, processes
+that leave the run's process group, database servers with no database word and
+no SQL text, and MCP resources are not covered; this is defense in depth, not a
+sandbox.
 
 Fail mode: config problems resolve to schema-only. An unexpected internal error
 denies only calls that mention a data-like path or an upload; anything else is
@@ -149,9 +169,29 @@ YARN_BUILTINS = {"add", "install", "remove", "upgrade", "up", "init", "info", "w
 PY_WORKFLOW_MODULES = {"pytest", "tox", "nox", "invoke", "papermill", "snakemake", "unittest", "kedro", "dbt"}
 R_WORKFLOW = re.compile(r"\b(?:targets::)?tar_make\w*\s*\(|\b(?:rmarkdown::)?render(?:_site)?\s*\(|"
                         r"\bquarto::quarto_render\s*\(|\bbookdown::render_book\s*\(|\bknitr::(?:knit|purl)\s*\(")
-# Inline code that runs a script file: R source()/sys.source(), Python runpy.run_path() and exec(open(...)).
-SOURCED = re.compile(r"\b(?:sys\.)?source\s*\(\s*['\"]([^'\"]+)['\"]|\brun_path\s*\(\s*['\"]([^'\"]+)['\"]|"
-                     r"\bexec\s*\(\s*open\s*\(\s*['\"]([^'\"]+)['\"]")
+# Code that runs another file or module (sink table, R7). The group name says how the target is read.
+# parse() is a sink wherever it appears (its expressions can be eval'd later); str2expression/str2lang turn text
+# into code, so only a literal argument is resolvable.
+R_SINKS = re.compile(r"(?<![\w.$@])(?:base::)?(?P<source>sys\.source|source)\s*\(|"
+                     r"(?<![\w.$@:])(?:base::)?(?P<parse>parse)\s*\(|"
+                     r"(?<![\w.$@:])(?:base::)?(?P<str2>str2expression|str2lang)\s*\(")
+PY_SINKS = re.compile(r"(?<![\w.])(?:runpy\.)?(?P<run_path>run_path)\s*\(|"
+                      r"(?<![\w.])(?:runpy\.|importlib\.)?(?P<module>run_module|import_module|__import__)\s*\(|"
+                      r"(?<![\w.])(?:importlib\.)?(?:util\.)?(?P<spec>spec_from_file_location)\s*\(|"
+                      r"(?<![\w.])(?:builtins\.)?(?P<exec>exec|eval)\s*\(")
+# R higher-order calls that can take source/sys.source as a function value (a bare `source` elsewhere is a name).
+R_HIGHER_ORDER = re.compile(r"(?<![\w.$@])(?:purrr::|base::)?(?:[lsvmt]?apply|Map|Reduce|Filter|do\.call|"
+                            r"[ip]?walk\w*|[ip]?map\w*)\s*\(")
+R_SOURCE_VALUE = re.compile(r"^(?:(?:base::)?(?:sys\.)?source|['\"](?:sys\.)?source['\"])$")
+# Python code that changes the import path at run time: a literal module name that resolves to no project file
+# may then be a local module the guard cannot find, not an installed one.
+IMPORT_PATH_CHANGE = re.compile(
+    r"(?<![\w.])sys\s*\.\s*path\s*(?:\.\s*(?:insert|append|extend)\s*\(|\+=|\[[^\]\n]*\]\s*=(?!=)|=(?!=))|"
+    r"(?<![\w.])site\s*\.\s*addsitedir\s*\(|PYTHONPATH")
+# A working-directory change before a sink makes its relative target unresolvable.
+CHDIR_CALL = re.compile(r"(?<![\w.$@])(?:base::)?setwd\s*\(|(?<![\w])os\.chdir\s*\(|(?<![\w.])chdir\s*\(")
+SINK_LANGS = {"r": ("r",), "rmd": ("r", "py-file"), "qmd": ("r", "py-file"), "py": ("py",), "pyw": ("py",),
+              "ipynb": ("py",)}
 FIND_EXEC = ("-exec", "-execdir", "-ok", "-okdir")
 SEPARATORS = {";", "&", "&&", "||", "|", "|&", "(", ")", ";;"}
 REDIRECTS = {"<", ">", ">>", "<>", ">|", "&>", "&>>", ">&", "<&"}
@@ -366,6 +406,8 @@ def _header_patterns():
 INDEX_REL = os.path.join(STATE_DIR, "identifier-index.local.json")
 LEGACY_INDEX_REL = os.path.join(LEGACY_STATE_DIR, "identifier-index.local.json")
 OUTPUTS = "outputs.txt"  # method-safe-run lists the files its runs wrote here, one project-relative path per line
+TEMP_ROOTS = "temp-roots.txt"  # method-safe-run lists each run's temp directory here, one absolute path per line
+ACTIVE = "active"  # method-safe-run marks each run in progress with active/<runner pid>-<start>.json
 
 
 def run_outputs(mode):
@@ -380,6 +422,196 @@ def run_outputs(mode):
             except OSError:
                 continue
     return mode["_outputs"]
+
+
+def temp_roots(runs, base):
+    """Each temp directory listed in a runs folder's temp-roots.txt, as written and resolved: run output."""
+    roots = set()
+    try:
+        with open(os.path.join(runs, TEMP_ROOTS), encoding="utf-8", errors="replace") as fh:
+            lines = fh.read().splitlines()
+    except OSError:
+        return roots
+    for line in lines:
+        line = line.strip()
+        if line:
+            path = os.path.normpath(os.path.join(base, os.path.expanduser(line)))
+            roots.update({path, os.path.realpath(path)})
+    return roots
+
+
+def run_markers(mode):
+    """The in-progress run markers of schema-only projects, read once per decision. Only runs/active/ is listed.
+
+    A marker that cannot be read, or has no integer start, counts as a run of unknown start (fail closed).
+    """
+    if "_markers" not in mode:
+        mode["_markers"] = []
+        for active, root in mode.get("marker_dirs", []):
+            try:
+                names = sorted(n for n in os.listdir(active) if n.endswith(".json") and not n.startswith("."))
+            except OSError:
+                continue
+            roots = sorted({root, os.path.realpath(root)})
+            for name in names:
+                try:
+                    with open(os.path.join(active, name), encoding="utf-8") as fh:
+                        fields = json.load(fh)
+                except FileNotFoundError:
+                    continue  # the run finished between the listing and the read; its outputs are recorded
+                except (OSError, ValueError):
+                    fields = None
+                start = fields.get("start") if isinstance(fields, dict) else None
+                if type(start) is not int:  # unreadable: count from when the marker file was created, still live
+                    fields, start = None, _created_ns(os.path.join(active, name))
+                tmp = fields.get("tmp") if fields else None
+                tmps = sorted({tmp, os.path.realpath(tmp)}) if isinstance(tmp, str) and os.path.isabs(tmp) else []
+                mode["_markers"].append({"start": start, "roots": roots, "fields": fields, "hit": False, "tmp": tmps,
+                                         "lists_changed": _lists_changed(os.path.dirname(active), fields, start)})
+    return mode["_markers"]
+
+
+def _lists_changed(runs, fields, start):
+    """outputs.txt changed or went missing since an in-progress run started (the runner creates it first): the
+    run's own code may have erased entries, its own or another run's, which the runner puts back only at its next
+    heartbeat, so the list cannot be trusted. The marker's outputs_stamp is the list's [mtime, ctime] at the start;
+    markers without it but with outputs_lines compare against the start; older markers keep the per-file rule."""
+    if not fields:
+        return False
+    stamp = fields.get("outputs_stamp")
+    exact = isinstance(stamp, list) and len(stamp) == 2 and all(type(t) is int for t in stamp)
+    if not exact and type(fields.get("outputs_lines")) is not int:
+        return False
+    try:
+        st = os.lstat(os.path.join(runs, OUTPUTS))
+    except OSError:
+        return True
+    if exact:
+        return [st.st_mtime_ns, st.st_ctime_ns] != stamp
+    return max(st.st_mtime_ns, st.st_ctime_ns) >= start
+
+
+def marker_tmp_hit(path, mode):
+    """A path under the temp directory an in-progress run's marker names, listed in temp-roots.txt or not."""
+    return any(m["tmp"] and _under(c, m["tmp"]) for m in run_markers(mode) for c in {path, os.path.realpath(path)})
+
+
+def _changed_ns(path, mode):
+    cache = mode.setdefault("_changed", {})
+    if path not in cache:
+        try:
+            st = os.lstat(path)
+            cache[path] = max(st.st_mtime_ns, st.st_ctime_ns)
+        except OSError:
+            cache[path] = None
+    return cache[path]
+
+
+def marker_hit(path, mode):
+    """An existing project path that, or whose directory, changed at or after the start of an in-progress run."""
+    markers = run_markers(mode)
+    if not markers or not os.path.lexists(path):
+        return False
+    hit = False
+    for candidate in {path, os.path.realpath(path)}:
+        parent = os.path.dirname(candidate)
+        for marker in markers:
+            if candidate in marker["roots"] or not _under(candidate, marker["roots"]):
+                continue
+            if marker["lists_changed"]:
+                marker["hit"] = hit = True
+                continue
+            times = [_changed_ns(candidate, mode)]
+            if _under(parent, marker["roots"]):
+                times.append(_changed_ns(parent, mode))
+            if any(t is not None and t >= marker["start"] for t in times):
+                marker["hit"] = hit = True
+    return hit
+
+
+def _pid_alive(pid, group=False):
+    try:
+        (os.killpg if group else os.kill)(pid, 0)
+    except PermissionError:
+        return True
+    except (OSError, OverflowError, ValueError):
+        return False
+    return True
+
+
+def _process_start(pid, cache):
+    """The process start time as `ps -o lstart=` prints it (whitespace collapsed); "" when unknown."""
+    if pid not in cache:
+        import subprocess  # only a marker hit on a live runner needs it
+
+        try:
+            out = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True, text=True, timeout=2,
+                                 env={**os.environ, "LC_ALL": "C"})
+            cache[pid] = " ".join(out.stdout.split()) if out.returncode == 0 else ""
+        except (OSError, ValueError, subprocess.SubprocessError):
+            cache[pid] = ""
+    return cache[pid]
+
+
+def _created_ns(path):
+    """A file's creation time (birth time where the filesystem records it, else its change time), or 0."""
+    try:
+        st = os.stat(path)
+    except OSError:
+        return 0
+    birth = getattr(st, "st_birthtime", None)
+    return int(birth * 1e9) if birth else min(st.st_ctime_ns, st.st_mtime_ns)
+
+
+def marker_state(marker, cache):
+    """"stale" (runner and its process group gone, this host), "foreign" (another host), else "live".
+
+    Mirrors method-safe-run's own staleness test; anything it cannot tell is live.
+    """
+    import socket
+
+    fields = marker["fields"]
+    if fields is None:
+        return "live"
+    pid, pgid, host = fields.get("pid"), fields.get("pgid"), fields.get("host")
+    if isinstance(host, str) and host != socket.gethostname():
+        return "foreign"
+    if host is None or type(pid) is not int:
+        return "live"
+    if _pid_alive(pid):
+        recorded = fields.get("pid_start")
+        if not isinstance(recorded, str) or not recorded:
+            return "live"
+        current = _process_start(pid, cache)
+        if not current or current == recorded:
+            return "live"
+    if pgid is not None and (type(pgid) is not int or _pid_alive(pgid, group=True)):
+        return "live"
+    return "stale"
+
+
+def marker_note(mode):
+    """Why a marker hit is data, and what clears it. None when no marker matched this decision."""
+    hits = [m for m in mode.get("_markers", []) if m["hit"]]
+    if not hits:
+        return None
+    cache = {}
+    states = {marker_state(m, cache) for m in hits}
+    notes = []
+    if "stale" in states:
+        notes.append("a method-safe-run that changed files here ended without recording its outputs, so files "
+                     f"changed since it started count as data; run `{SAFE_RUNNER} --reconcile` to record them "
+                     "and clear its marker")
+    if any(m["lists_changed"] for m in hits):
+        notes.append("a method-safe-run's outputs.txt changed while the run is in progress, so until it finishes "
+                     "every project file counts as data")
+    if "live" in states:
+        notes.append("a method-safe-run is still in progress (or its marker cannot be read), so files changed "
+                     "since it started count as data until it finishes")
+    if "foreign" in states:
+        notes.append("a method-safe-run marker from another host is in force, so files changed since that run "
+                     "started count as data until it is cleared on that host")
+    return "; ".join(notes)
 
 
 def load_index(mode):
@@ -594,9 +826,18 @@ def _project_mode(ce_root, main):
         mode, why, detail = mode_from_config(phi, error)
     runs = os.path.join(ce_root, STATE_DIR, "runs")  # method-safe-run logs hold raw output
     data_roots = {runs, os.path.realpath(runs)}
+    runs_dirs = [runs]
     for base in bases:  # logs left in an unmoved pre-rename folder are still data
         legacy_runs = os.path.join(base, LEGACY_STATE_DIR, "runs")
         data_roots.update({legacy_runs, os.path.realpath(legacy_runs)})
+        runs_dirs.append(legacy_runs)
+    for runs_dir in runs_dirs:  # files a run wrote to its own temp directory are data
+        data_roots.update(temp_roots(runs_dir, ce_root))
+    boundary_state = set()  # only method-safe-run may change these
+    for runs_dir in runs_dirs:
+        for rel in (ACTIVE, TEMP_ROOTS, OUTPUTS):
+            path = os.path.join(runs_dir, rel)
+            boundary_state.update({path, os.path.realpath(path)})
     for root in (data_root, legacy_root):
         if not root:
             continue
@@ -625,7 +866,8 @@ def _project_mode(ce_root, main):
             break
     return {"mode": mode, "why": why, "detail": detail, "roots": [ce_root], "data_roots": sorted(data_roots),
             "aggregate_dirs": aggregate, "index_paths": index_paths, "output_lists": output_lists,
-            "locale": locale or None}
+            "locale": locale or None, "marker_dirs": [[os.path.join(runs, ACTIVE), ce_root]],
+            "boundary_state": sorted(boundary_state)}
 
 
 RANK = {"off": 0, "approved": 1, "no-sensitive-data": 1, "schema-only": 2}
@@ -736,6 +978,7 @@ def resolve_mode(context):
     cwd, anchors = _anchors(context)
     cache, projects = {}, {}
     best, data_roots, roots, aggregate, index_paths, output_lists = None, set(), [], set(), [], []
+    marker_dirs, boundary_state = [], set()
     for anchor in anchors:
         found = _locate(anchor, cache)
         if not found or found in projects:
@@ -746,13 +989,18 @@ def resolve_mode(context):
         index_paths.extend(p for p in project["index_paths"] if p not in index_paths)
         output_lists.extend(p for p in project["output_lists"] if p not in output_lists)
         roots.extend(r for r in project["roots"] if r not in roots)
+        if project["mode"] == "schema-only":  # in-progress runs and their state matter only where access is limited
+            marker_dirs.extend(project["marker_dirs"])
+            boundary_state.update(project["boundary_state"])
         if best is None or RANK[project["mode"]] > RANK[best["mode"]]:
             best = project
     if best is None:
         return {"mode": "off", "why": None, "detail": "", "roots": [], "data_roots": [], "aggregate_dirs": [],
-                "index_paths": [], "output_lists": [], "cwd": cwd, "locale": None}
+                "index_paths": [], "output_lists": [], "cwd": cwd, "locale": None, "marker_dirs": [],
+                "boundary_state": []}
     return dict(best, roots=roots, data_roots=sorted(data_roots), aggregate_dirs=sorted(aggregate),
-                index_paths=index_paths, output_lists=output_lists, cwd=cwd)
+                index_paths=index_paths, output_lists=output_lists, cwd=cwd, marker_dirs=marker_dirs,
+                boundary_state=sorted(boundary_state))
 
 
 # ------------------------------------------------------------------- data refs
@@ -913,6 +1161,8 @@ def is_data_path(raw, cwd, mode, over_cap_is_data=False):
             if parts and parts[-1].lower() in DATAISH_DIRS:
                 return True
             continue
+        if mode.get("marker_dirs") and (marker_hit(path, mode) or marker_tmp_hit(path, mode)):
+            return True
         if os.path.lexists(path):
             real = os.path.realpath(path)
             if real != path and (DATA_REF.search(real) or _under(real, mode["data_roots"])):
@@ -1428,12 +1678,211 @@ def script_reads_data(path, cwd, mode, kind=None):
             _SCANNING.discard(path)
     if lists_dataish_dir(text, cwd, mode):
         return True
+    if ext in SINK_LANGS and run_problem(text, SINK_LANGS[ext], cwd, mode):
+        return True  # runs a file it cannot resolve, or one that reads data
     if any(first not in ("'", '"', "") for first in READ_CALL.findall(text)):
         return True  # reads a path held in a variable or argument
     for literal in (a or b for a, b in LITERAL.findall(text)):
         if is_data_path(literal, cwd, mode):  # aggregate tables too: the script reads them later than this check
             return True
     return False
+
+
+_ARG_TOKEN = re.compile(r"'(?:\\.|[^'\\\n])*'|\"(?:\\.|[^\"\\\n])*\"|[()\[\]{},]|[^'\"()\[\]{},]+")
+_NAMED_ARG = re.compile(r"^([A-Za-z_.][\w.]*)\s*=(?!=)\s*(.*)$", re.S)
+_R_STRING = re.compile(r"'([^'\\\n]*)'|\"([^\"\\\n]*)\"")
+_PY_STRING = re.compile(r"[rRuUbB]{0,2}(?:'([^'\\\n]*)'|\"([^\"\\\n]*)\")")
+_CALL_WINDOW = 4000
+UNRESOLVED = ("unresolved", None)
+
+
+def _call_args(text, start):
+    """(positional, named, end) for the call whose `(` ends just before start, or None when it does not close.
+
+    Splits top-level commas outside strings and brackets; looks at most _CALL_WINDOW characters ahead.
+    """
+    parts, current, depth = [], [], 0
+    for m in _ARG_TOKEN.finditer(text, start, min(len(text), start + _CALL_WINDOW)):
+        token = m.group()
+        if token in ("(", "[", "{"):
+            depth += 1
+        elif token in (")", "]", "}"):
+            if depth == 0:
+                parts.append("".join(current).strip())
+                positional, named = [], {}
+                for part in filter(None, parts):
+                    found = _NAMED_ARG.match(part)
+                    if found:
+                        named[found.group(1)] = found.group(2).strip()
+                    else:
+                        positional.append(part)
+                return positional, named, m.end()
+            depth -= 1
+        elif token == "," and depth == 0:
+            parts.append("".join(current).strip())
+            current = []
+            continue
+        current.append(token)
+    return None
+
+
+def _whole_call(expr, pattern):
+    """(positional, named) when expr is exactly one call matching pattern at its start, else None."""
+    head = re.match(pattern, expr)
+    parsed = head and _call_args(expr, head.end())
+    if not parsed or expr[parsed[2]:].strip():
+        return None
+    return parsed[0], parsed[1]
+
+
+def _r_value(expr, root):
+    """The string an R expression evaluates to when it is built from literals only, else None.
+
+    Literals, and file.path / paste0 / paste(sep=) / here() / here::here() over literals (here() is relative to
+    the project root).
+    """
+    expr = expr.strip()
+    literal = _R_STRING.fullmatch(expr)
+    if literal:
+        return literal.group(1) if literal.group(1) is not None else literal.group(2)
+    head = re.match(r"(?:base::)?(file\.path|paste0|paste|(?:here::)?here)\s*\(", expr)
+    call = head and _whole_call(expr, re.escape(head.group(0)))
+    if not call:
+        return None
+    positional, named = call
+    func = head.group(1)
+    seps = {"file.path": ("fsep", "/"), "paste0": (None, ""), "paste": ("sep", " ")}.get(func, (None, "/"))
+    if set(named) - {seps[0]}:
+        return None
+    sep = _r_value(named[seps[0]], root) if seps[0] in named else seps[1]
+    values = [_r_value(p, root) for p in positional]
+    if sep is None or None in values:
+        return None
+    joined = sep.join(values)
+    return os.path.join(root, joined) if func.endswith("here") else joined
+
+
+def _py_value(expr):
+    """The string a Python literal holds (no f-strings), else None."""
+    literal = _PY_STRING.fullmatch(expr.strip())  # the prefix set has no f, so f-strings never match
+    if not literal:
+        return None
+    return literal.group(1) if literal.group(1) is not None else literal.group(2)
+
+
+def _py_code_file(expr):
+    """For exec/eval: ("code", None) for a string literal, ("file", path) for open(LIT).read(),
+    Path(LIT).read_text(), or compile(<either>, ...); None otherwise."""
+    expr = expr.strip()
+    if _py_value(expr) is not None:
+        return "code", None
+    compiled = _whole_call(expr, r"(?:builtins\.)?compile\s*\(")
+    if compiled:
+        return _py_code_file(compiled[0][0]) if compiled[0] else None
+    reader = re.match(r"(?:io\.)?open\s*\(|(?:pathlib\.)?Path\s*\(", expr)
+    parsed = reader and _call_args(expr, reader.end())
+    if not parsed or not parsed[0]:
+        return None
+    method = "read_text" if "Path" in reader.group(0) else "read"
+    if not re.fullmatch(r"\s*\.\s*" + method + r"\s*\(\s*\)\s*", expr[parsed[2]:]):
+        return None
+    path = _py_value(parsed[0][0])
+    return ("file", path) if path is not None else None
+
+
+def _sink_target(lang, kind, positional, named, root):
+    """("file", path), ("module", name), ("code", None), ("none", None), or UNRESOLVED for one sink call."""
+    if lang == "r":
+        if kind == "source":
+            if named.get("chdir", "FALSE") not in ("FALSE", "F"):
+                return UNRESOLVED  # nested relative paths resolve against the sourced file's directory
+            expr = named.get("file", positional[0] if positional else None)
+        elif kind == "str2":
+            expr = named.get("text", named.get("s", positional[0] if positional else None))
+            return ("code", None) if expr is not None and _r_value(expr, root) is not None else UNRESOLVED
+        else:  # parse(...): a file, or text that is code
+            if "file" not in named and not positional and "text" in named:
+                return ("code", None) if _r_value(named["text"], root) is not None else UNRESOLVED
+            expr = named.get("file", positional[0] if positional else None)
+        if expr is None:
+            return "none", None
+        value = _r_value(expr, root)
+        return ("file", value) if value is not None else UNRESOLVED
+    if kind == "exec":
+        expr = positional[0] if positional else named.get("source", named.get("expression"))
+        if expr is None:
+            return "none", None
+        return _py_code_file(expr) or UNRESOLVED
+    if kind == "module":
+        expr = named.get("mod_name", named.get("name", positional[0] if positional else None))
+        if expr is None:
+            return "none", None
+        value = _py_value(expr)
+        return ("module", value) if value and re.fullmatch(r"[A-Za-z_][\w.]*", value) else UNRESOLVED
+    if kind == "spec":
+        expr = named.get("location", positional[1] if len(positional) > 1 else None)
+    else:  # run_path
+        expr = named.get("path_name", named.get("path", positional[0] if positional else None))
+    if expr is None:
+        return "none", None
+    value = _py_value(expr)
+    return ("file", value) if value is not None else UNRESOLVED
+
+
+def run_problem(code, langs, cwd, mode, env=()):
+    """None, UNRESOLVED, or ("reads", shown) for code that runs another file or module (R7, R8).
+
+    A literal target (see _r_value / _py_value) is followed and scanned with script_reads_data; a target that is
+    not built from literals, a file that does not exist, a working-directory change before the call, or R's
+    source passed as a function value to an apply/map-style call cannot be checked and is unresolved. A literal
+    module name that resolves to no project file is an installed module and is not scanned.
+    """
+    code = re.sub(r"(?m)^[ \t]*#.*$", "", code)  # whole-line comments (and Quarto/R Markdown headings)
+    root = (mode.get("roots") or [cwd])[0]
+    moved = CHDIR_CALL.search(code)
+    moved_at = moved.start() if moved else len(code) + 1
+    for lang in langs:
+        sinks = R_SINKS if lang == "r" else PY_SINKS
+        for m in sinks.finditer(code):
+            kind = m.lastgroup
+            if lang == "py-file" and m.group(kind) == "eval":
+                continue  # R's eval() in a mixed document; Python exec() is still checked
+            if m.start() > moved_at:
+                return UNRESOLVED
+            parsed = _call_args(code, m.end())
+            if parsed is None:
+                return UNRESOLVED
+            what, target = _sink_target("r" if lang == "r" else "py", kind, parsed[0], parsed[1], root)
+            if what == "unresolved":
+                return UNRESOLVED
+            if what == "module":
+                paths = [(target, path) for path in module_files(target, cwd, env)]
+                if not paths and IMPORT_PATH_CHANGE.search(code, 0, m.start()):
+                    return UNRESOLVED  # may be a module on the changed path, not an installed one
+            elif what == "file":
+                path = _resolve(target, cwd)
+                if not os.path.isfile(path):
+                    return UNRESOLVED
+                paths = [(target, path)]
+            else:
+                continue
+            for shown, path in paths:
+                if path in _SCANNING:
+                    continue
+                if len(_SCANNING) >= 8:
+                    return UNRESOLVED  # too deep to follow
+                _SCANNING.add(path)
+                try:
+                    if script_reads_data(path, cwd, mode, "r" if lang == "r" else "py"):
+                        return "reads", shown
+                finally:
+                    _SCANNING.discard(path)
+        if lang == "r":
+            for m in R_HIGHER_ORDER.finditer(code):
+                parsed = _call_args(code, m.end())
+                if parsed and any(R_SOURCE_VALUE.match(v) for v in parsed[0] + list(parsed[1].values())):
+                    return UNRESOLVED
+    return None
 
 
 AGGREGATE_EXTS = {"csv": ",", "tsv": "\t", "tab": "\t", "md": None}
@@ -1551,13 +2000,23 @@ def script_kind(path, interpreter=None):
     """
     ext = _ext(path)
     if interpreter:
-        return "sh" if program(interpreter) in SHELLS else (ext or "code")
+        return "sh" if program(interpreter) in SHELLS else (ext if ext in SINK_LANGS else _lang_of(interpreter, ext))
     if ext in SCRIPT_EXTS or ext == "ipynb":
         return ext
     found = shebang(path)
     if found:
-        return "sh" if found in SHELLS else "code"
+        return "sh" if found in SHELLS else _lang_of(found, "")
     return None
+
+
+def _lang_of(interpreter, ext):
+    """The SINK_LANGS key for an interpreter (python/pypy/ipython -> py, Rscript/R -> r), else ext or "code"."""
+    name = program(interpreter)
+    if re.match(r"^(?:python|pypy|ipython)", name):
+        return "py"
+    if name in ("rscript", "r"):
+        return "r"
+    return ext or "code"
 
 
 def _script_ops(verb, args):
@@ -1794,14 +2253,22 @@ def judge(cmd, cwd, mode, tainted, written, fed=(), env=()):
     refs = any(token_ref(t, cwd, mode, tainted) for t in cmd)
     inline_index = next((i for i, t in enumerate(args) if INLINE_FLAG.match(t)), None)
     if INTERPRETERS.match(verb) and inline_index is not None and args[inline_index] != "-":  # `-`: code on stdin
-        code = " ".join(args[inline_index + 1:inline_index + 2])
+        # Every code argument (`Rscript -e A -e B` runs both), in order, as one program.
+        code = "\n".join(args[i + 1] for i in range(inline_index, len(args) - 1)
+                         if INLINE_FLAG.match(args[i]) and args[i] != "-")
         if refs or text_ref(code, cwd, mode) or lists_dataish_dir(code, cwd, mode):
             return f"inline `{verb}` code that opens data returns its values", False
         if verb in ("rscript", "r") and R_WORKFLOW.search(code):
             return workflow_reason(f"{cmd[0]} -e"), False
-        for target in (a or b or c for a, b, c in SOURCED.findall(code)):
-            if script_reads_data(_resolve(target, cwd), cwd, mode):
-                return f"the script `{target}` reads data and can print its values", False
+        langs = ("r",) if verb in ("rscript", "r") else ("py",) if re.match(r"^(?:i?python|pypy)", verb) else ()
+        problem = run_problem(code, langs, cwd, mode, env)
+        if problem == UNRESOLVED:
+            return (f"inline `{verb}` code runs a file or module whose path is only known when it runs (or after "
+                    "a working-directory change), so the guard cannot check it; run it as "
+                    f"`method-safe-run -- {cmd[0]} ...` so its output stays in the run log"), False
+        if problem:
+            return (f"the script `{problem[1]}` reads data and can print its values; run it as "
+                    f"`method-safe-run -- {cmd[0]} ...` so its output stays in the run log"), False
         return None, False
     runner = next((t for t in args if not t.startswith("-")), "") if re.match(r"^python", verb) else cmd[0]
     if os.path.basename(runner) == "method-aggregate-read" and is_plugin_script(runner, cwd, AGGREGATE_READER):
@@ -1822,7 +2289,8 @@ def judge(cmd, cwd, mode, tainted, written, fed=(), env=()):
         return workflow_reason(workflow), False
     for shown, path, kind in launched_scripts(cmd, cwd, fed, env):
         if not token_ref(shown, cwd, mode, tainted) and script_reads_data(path, cwd, mode, kind):
-            return f"the script `{shown}` reads data and can print its values", False
+            return (f"the script `{shown}` reads data, or runs a file it names only at run time, and can print "
+                    f"its values; run it as `method-safe-run -- {cmd[0]} ...` so its output stays in the run log"), False
     if verb == "find":
         reason, unrestricted = find_exec_violation(args, cwd, mode)
         if reason or not refs:
@@ -1857,6 +2325,94 @@ def judge(cmd, cwd, mode, tainted, written, fed=(), env=()):
         if verb == "rscript" and ext == "r":
             return None, False
     return f"`{verb}` on a data file prints its values", False
+
+
+STATE_REASON = ("`.methodsmith/runs/active/`, `.methodsmith/runs/temp-roots.txt`, and `.methodsmith/runs/outputs.txt` "
+                "are the boundary's record of "
+                "method-safe-run runs, and only method-safe-run changes them (a dead run's marker is cleared by "
+                f"`{SAFE_RUNNER} --reconcile`)")
+STATE_REMOVERS = {"rm", "unlink", "rmdir", "shred", "srm"}
+STATE_WRITERS = {"cp", "ln", "rsync", "install", "truncate", "tee", "touch", "chmod", "chown", "chgrp", "dd"}
+WRITE_REDIRECTS = {">", ">>", ">|", "&>", "&>>", "<>", ">&"}
+
+
+def _state_part(pattern, name, globbed):
+    if not globbed:
+        return pattern == name
+    if name.startswith(".") and not pattern.startswith("."):
+        return False  # a shell wildcard does not match a leading dot
+    return fnmatch.fnmatchcase(name, pattern)
+
+
+def names_state(raw, cwd, mode, remove=False):
+    """A path (or unquoted wildcard) that is, or lies under, the boundary state; remove=True adds its ancestors."""
+    targets = mode.get("boundary_state") or []
+    if not targets or not raw:
+        return False
+    for variant in expand_braces(raw):
+        globbed = isinstance(raw, GlobToken) and any(ch in variant for ch in "*?[")
+        path = _resolve(variant, cwd)
+        for candidate in {path} if globbed else {path, os.path.realpath(path)}:
+            parts = [p for p in candidate.split(os.sep) if p]
+            for target in targets:
+                tparts = [p for p in target.split(os.sep) if p]
+                if len(parts) < len(tparts) and not remove:
+                    continue
+                if all(_state_part(a, b, globbed) for a, b in zip(parts, tparts)):
+                    return True
+    return False
+
+
+def state_redirect(seg, cwd, mode):
+    """A shell redirect in this segment that writes the boundary state."""
+    for index, token in enumerate(seg[:-1]):
+        target = seg[index + 1]
+        if token in WRITE_REDIRECTS and not (token == ">&" and re.match(r"^(?:\d+|-)$", target)):
+            if names_state(target, cwd, mode):
+                return True
+    return False
+
+
+def _find_removes(args):
+    """find -delete, or an -exec/-ok command line that removes or moves files."""
+    if "-delete" in args:
+        return True
+    return any(t in FIND_EXEC and i + 1 < len(args) and program(args[i + 1]) in STATE_REMOVERS | {"mv"}
+               for i, t in enumerate(args))
+
+
+def state_violation(cmd, cwd, mode):
+    """A command that removes, moves, truncates, or writes the boundary state (runs/active/, runs/temp-roots.txt, runs/outputs.txt)."""
+    verb, args = program(cmd[0]), cmd[1:]
+    values = [t.split("=", 1)[1] for t in args if t.startswith("--") and "=" in t]
+    ops = [t for t in args if not t.startswith("-") and t not in REDIRECTS]
+    if verb in STATE_REMOVERS:
+        return any(names_state(t, cwd, mode, remove=True) for t in ops + values)
+    if verb == "mv":
+        dest = None if any(t == "-t" or t.startswith("--target-directory") for t in args) else (ops[-1:] or [None])[0]
+        return any(names_state(t, cwd, mode, remove=t is not dest) for t in ops + values)
+    if verb == "dd":
+        return any(t.startswith("of=") and names_state(t[3:], cwd, mode) for t in args)
+    if verb in STATE_WRITERS or (verb in ("sed", "perl") and any(re.match(r"^(?:-[A-Za-z]*i|--in-place)", t) for t in args)):
+        return any(names_state(t, cwd, mode) for t in ops + values)
+    if verb == "find" and _find_removes(args):
+        starts = []
+        for t in args:
+            if t.startswith("-") or t in ("!", "("):
+                break
+            starts.append(t)
+        if not _find_negates_or_alternates(args):  # a -name filter that cannot match a state file keeps it safe
+            names = [(args[i], args[i + 1]) for i in range(len(args) - 1) if args[i] in FIND_NAME_ONLY_OPTS]
+            state_names = (TEMP_ROOTS, OUTPUTS, ACTIVE, "0.json")
+            if names and not any(fnmatch.fnmatchcase(n.lower() if opt == "-iname" else n,
+                                                     p.lower() if opt == "-iname" else p)
+                                 for opt, p in names for n in state_names):
+                return False
+        return any(names_state(t, cwd, mode, remove=True) for t in starts or ["."])
+    if verb == "git" and _git_sub(args)[:1] == ["clean"]:
+        cleans_ignored = any(re.match(r"^-[A-Za-z]*[xX]", t) for t in args)
+        return cleans_ignored and names_state(".", cwd, mode, remove=True)
+    return False
 
 
 def safe_companion(cmd):
@@ -1939,6 +2495,9 @@ def bash_violations(command, cwd, mode, depth=0):
                 name, value = assignment.split("=", 1)
                 if token_ref(value, cur, mode, tainted):
                     tainted.add(name)
+            if mode["mode"] == "schema-only" and state_redirect(seg, run_cwd, mode):
+                access = access or STATE_REASON
+                mode["_state_hits"] = mode.get("_state_hits", 0) + 1
             if not cmd:
                 continue
             safe = False
@@ -1950,14 +2509,20 @@ def bash_violations(command, cwd, mode, depth=0):
             egress = egress or upload_violation(cmd, cur, mode) or ncbi_violation(cmd, mode)
             inner = shell_code(cmd)
             if inner is not None:
+                hits = mode.get("_state_hits", 0)
                 e, a = bash_violations(inner, cur, mode, depth + 1)
                 egress = egress or e
                 if not safe:  # under the plugin's method-safe-run the inner code's output stays in the log
                     access = access or a
+                elif mode.get("_state_hits", 0) > hits:  # but it must not change the boundary state
+                    access = access or STATE_REASON
             feeding, fed = fed, (tuple(t for t in operands(cmd[1:]) if t != "-") if program(cmd[0]) == "cat" else ())
             if mode["mode"] != "schema-only":
                 continue
             verb = program(cmd[0])
+            if state_violation(cmd, run_cwd, mode):  # also under method-safe-run: only the runner itself changes it
+                access = access or STATE_REASON
+                mode["_state_hits"] = mode.get("_state_hits", 0) + 1
             if safe:  # output stays in the run log; a copy to a readable path still leaks
                 if verb in COPY_VERBS:
                     access = access or judge(cmd, cur, mode, tainted, written)[0]
@@ -2053,6 +2618,226 @@ def mcp_access_violation(tool_input, cwd, mode):
     return None
 
 
+# Database MCP tools answer queries straight into the context, and PreToolUse cannot filter MCP results, so in
+# schema-only a database call passes only as schema inspection. A call is a database call when a whole word of
+# its server or tool name is in DB_WORDS, or when a query key anywhere in its arguments holds SQL- or
+# Cypher-shaped text. Literature and search servers are exempt.
+DB_WORDS = {"postgres", "postgresql", "pg", "mysql", "mariadb", "sqlite", "duckdb", "motherduck", "bigquery",
+            "snowflake", "databricks", "mssql", "sqlserver", "oracle", "redshift", "athena", "clickhouse", "trino",
+            "presto", "neo4j", "kusto", "cosmos", "supabase", "mongodb", "mongo", "elasticsearch", "opensearch",
+            "redis", "dynamodb", "firestore", "cassandra", "influxdb", "airtable", "sql", "database", "db"}
+DB_EXEMPT_SERVERS = {"pubmed", "paperclip", "exa", "tavily", "notion", "granola", "vercel"}
+DB_QUERY_KEYS = {"sql", "query", "statement", "cypher", "kql", "filter", "pipeline"}
+DB_INSPECTION_WORDS = {"list", "describe", "schema", "tables", "columns", "info", "metadata", "indexes"}
+# A tool name with one of these words reads rows even when it also has an inspection word (list_records_for_table).
+DB_ROW_WORDS = {"row", "rows", "record", "records", "data", "value", "values", "preview", "sample", "head", "tail",
+                "read", "find", "fetch", "select", "query", "scan", "dump", "export", "search",
+                "aggregate", "document", "documents", "item", "items", "content", "contents", "run", "exec",
+                "execute", "count", "distinct", "summarize"}
+DB_QUERY_SHAPE = re.compile(r"(?:select|with|match|from|pragma|show|describe)\b", re.IGNORECASE)
+DB_LEADING_NOISE = re.compile(r"(?:\s+|\(|--[^\n]*(?:\n|$)|/\*.*?\*/)*", re.DOTALL)
+DB_TOKEN = re.compile(r"\s*(?:('(?:[^']|'')*')|(\"(?:[^\"]|\"\")*\"|`[^`]*`)|(\d+(?:\.\d+)?)|([A-Za-z_][\w$]*)|"
+                      r"(<>|!=|<=|>=|[=<>(),.;*])|(\S))", re.DOTALL)
+DB_SCHEMA_SOURCES = {("information_schema", "tables"), ("information_schema", "columns")}
+DB_DENY = ("a database MCP tool returns query results straight into the model context, and in schema-only only "
+           "schema inspection passes (a list/describe tool, DESCRIBE, SHOW TABLES|COLUMNS, PRAGMA table_info, or a "
+           "plain information_schema.tables|columns select); run the query in a script through `method-safe-run` "
+           "that writes an aggregate table under output/, then print that table with `method-aggregate-read <table>`")
+
+
+def _name_words(name):
+    return [w for w in re.split(r"[\s_\-.]+", name.lower()) if w]
+
+
+def _db_shaped(text):
+    """SQL- or Cypher-shaped: the first keyword (after whitespace, parentheses, and comments) opens a statement."""
+    return bool(DB_QUERY_SHAPE.match(text, DB_LEADING_NOISE.match(text).end()))
+
+
+# On a tool whose name has no database word, a leading keyword is not enough ("show deploy notes" is a search):
+# the text must carry a statement's structure.
+DB_STATEMENT = re.compile(
+    r"\bselect\b[\s\S]*?\bfrom\s+[\w`\"\[.(]|\bwith\s+\w+\s+as\s*\(|\bmatch\s*\([\s\S]*?\)[\s\S]*?\breturn\b|"
+    r"^\s*pragma\s+\w+|^\s*show\s+(?:tables|columns|databases|schemas|create)\b|^\s*desc(?:ribe)?\s+[\w`\".]+\s*;?\s*$",
+    re.IGNORECASE)
+
+
+def _db_statement(text):
+    """Text that is structurally a SQL or Cypher statement, not prose that starts with a SQL keyword."""
+    return _db_shaped(text) and bool(DB_STATEMENT.search(text))
+
+
+def _db_queries(value, key=""):
+    """Every value held under a query key, found recursively; non-string values (a filter object) included."""
+    if key in DB_QUERY_KEYS and not (isinstance(value, str) and not value.strip()):
+        yield value
+    elif isinstance(value, dict):
+        for k, v in value.items():
+            yield from _db_queries(v, str(k).lower())
+    elif isinstance(value, list):
+        for v in value:
+            yield from _db_queries(v, key)
+
+
+def _sql_tokens(text):
+    """(kind, text) tokens, or None when the text cannot be tokenized or carries a comment."""
+    tokens, pos, text = [], 0, text.strip()
+    while pos < len(text):
+        match = DB_TOKEN.match(text, pos)
+        if not match or match.end() == pos:
+            return None
+        pos = match.end()
+        literal, quoted, number, word, punct, other = match.groups()
+        if other is not None:  # `-`, `/`, and anything unexpected: comments and operators never pass
+            return None
+        if literal is not None:
+            if "\\" in literal:  # MySQL reads `\'` as an escape, so the statement could end somewhere else
+                return None
+            tokens.append(("lit", literal))
+        elif number is not None:
+            tokens.append(("lit", number))
+        elif quoted is not None:
+            tokens.append(("name", quoted[1:-1].replace('""', '"')))
+        elif word is not None:
+            low = word.lower()
+            tokens.append(("lit", low) if low in ("true", "false", "null") else ("word", low))
+        else:
+            tokens.append(("punct", punct))
+    while tokens and tokens[-1] == ("punct", ";"):
+        tokens.pop()
+    return tokens
+
+
+def _is_name(token):
+    return token[0] in ("word", "name")
+
+
+def _qualified(tokens, i):
+    """A dotted name starting at i: (lowercased parts, next index), or (None, i)."""
+    if i >= len(tokens) or not _is_name(tokens[i]):
+        return None, i
+    parts = [tokens[i][1].lower()]
+    i += 1
+    while i + 1 < len(tokens) and tokens[i] == ("punct", ".") and _is_name(tokens[i + 1]):
+        parts.append(tokens[i + 1][1].lower())
+        i += 2
+    return parts, i
+
+
+SQL_RESERVED = {"select", "from", "where", "and", "or", "not", "in", "like", "ilike", "union", "join", "on", "with",
+                "as", "distinct", "all", "except", "intersect", "lateral", "using", "into", "values", "limit",
+                "order", "group", "having", "by", "case", "when", "then", "else", "end", "exists", "is"}
+
+
+def _bare(token):
+    return token[0] == "name" or (token[0] == "word" and token[1] not in SQL_RESERVED)
+
+
+def _where_ok(tokens):
+    """Column-to-literal comparisons joined by AND/OR: `col = 'x'`, `col LIKE 'x%'`, `col IN ('a', 'b')`."""
+    i, n = 0, len(tokens)
+    while True:
+        if i >= n or not _bare(tokens[i]):
+            return False
+        i += 1
+        if i < n and tokens[i] in (("punct", "="), ("punct", "<>"), ("punct", "!="), ("word", "like"), ("word", "ilike")):
+            if i + 1 >= n or tokens[i + 1][0] != "lit":
+                return False
+            i += 2
+        elif i < n and tokens[i] == ("word", "in") and i + 1 < n and tokens[i + 1] == ("punct", "("):
+            i += 2
+            while True:
+                if i >= n or tokens[i][0] != "lit":
+                    return False
+                i += 1
+                if i < n and tokens[i] == ("punct", ","):
+                    i += 1
+                    continue
+                break
+            if i >= n or tokens[i] != ("punct", ")"):
+                return False
+            i += 1
+        else:
+            return False
+        if i == n:
+            return True
+        if tokens[i] not in (("word", "and"), ("word", "or")):
+            return False
+        i += 1
+
+
+def db_inspection_statement(text):
+    """True only for one schema-inspection statement: DESCRIBE <name>, SHOW TABLES|COLUMNS ..., PRAGMA
+    table_info(<name>), or a select of `*` or bare columns from exactly one information_schema.tables|columns
+    whose WHERE holds only column-to-literal comparisons. Any function call, join, comma source, CTE, subquery,
+    UNION, comment, or second statement fails."""
+    tokens = _sql_tokens(text)
+    if not tokens or ("punct", ";") in tokens:
+        return False
+    head = tokens[0]
+    if head == ("word", "describe"):
+        parts, end = _qualified(tokens, 1)
+        return bool(parts) and end == len(tokens) and not set(parts) & SQL_RESERVED
+    if head == ("word", "show"):
+        return (len(tokens) >= 2 and tokens[1] in (("word", "tables"), ("word", "columns"))
+                and all(t[0] in ("word", "name", "lit") or t == ("punct", ".") for t in tokens[2:])
+                and not any(t[0] == "word" and t[1] in SQL_RESERVED - {"from", "in", "like"} for t in tokens[2:]))
+    if head == ("word", "pragma"):
+        return (len(tokens) == 5 and tokens[1] == ("word", "table_info") and tokens[2] == ("punct", "(")
+                and (_bare(tokens[3]) or tokens[3][0] == "lit") and tokens[4] == ("punct", ")"))
+    if head != ("word", "select"):
+        return False
+    i, n = 1, len(tokens)
+    if i < n and tokens[i] == ("punct", "*"):
+        i += 1
+    else:
+        while True:
+            if i >= n or not _bare(tokens[i]):
+                return False
+            i += 1
+            if i < n and tokens[i] == ("punct", ","):
+                i += 1
+                continue
+            break
+    if i >= n or tokens[i] != ("word", "from"):
+        return False
+    parts, i = _qualified(tokens, i + 1)
+    if not parts or tuple(parts[-2:]) not in DB_SCHEMA_SOURCES or len(parts) > 3:
+        return False
+    if i == n:
+        return True
+    return tokens[i] == ("word", "where") and _where_ok(tokens[i + 1:])
+
+
+def mcp_database_violation(tool, tool_input):
+    """Schema-only: why a database MCP call would return rows, or None for schema inspection and non-database tools."""
+    name = tool[len("mcp__"):]
+    server, _, short = name.rpartition("__")
+    server = server or short
+    server_words = set(_name_words(server))
+    if server_words & DB_EXEMPT_SERVERS and not server_words & DB_WORDS:  # vercel_postgres is a database server
+        return None
+    queries = list(_db_queries(tool_input))
+    named_db = bool(set(_name_words(name)) & DB_WORDS)
+    if not (named_db or any(isinstance(q, str) and _db_statement(q) for q in queries)):
+        return None
+    if named_db:  # a statement under any key (sql_text, q, options.raw) is query text too
+        queries += [text for _, text in _strings(tool_input) if _db_statement(text)]
+    command = tool_input.get("command")
+    if command is not None:  # a router tool: `command` names a sub-command, it is not query text
+        if not (isinstance(command, str) and re.fullmatch(r"[A-Za-z0-9_.\-]+", command)):
+            return DB_DENY
+        words = set(_name_words(command))
+        if not words & DB_INSPECTION_WORDS or words & DB_ROW_WORDS:
+            return DB_DENY
+    if queries:
+        return None if all(isinstance(q, str) and db_inspection_statement(q) for q in queries) else DB_DENY
+    if command is not None:
+        return None
+    words = set(_name_words(short))
+    return None if words & DB_INSPECTION_WORDS and not words & DB_ROW_WORDS else DB_DENY
+
+
 HTTP_CLIENTS = {"curl", "wget", "http", "https", "xh"}
 # Where an HTTP request carries the caller's own contact by convention: credentials, the From header
 # (RFC 9110: the human user's email), and the User-Agent (polite-pool "mailto:"). An email there is not a patient's.
@@ -2103,7 +2888,7 @@ def classify(call, mode):
         if reason:
             return {"kind": "egress", "reason": reason}
         if mode["mode"] == "schema-only":
-            reason = mcp_access_violation(tool_input, cwd, mode)
+            reason = mcp_access_violation(tool_input, cwd, mode) or mcp_database_violation(tool, tool_input)
             return {"kind": "access", "reason": reason} if reason else None
         return None
     if tool in ("WebFetch", "WebSearch"):
@@ -2118,6 +2903,10 @@ def classify(call, mode):
     if mode["mode"] != "schema-only":
         return None
     reason = access
+    if tool in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
+        path = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
+        if isinstance(path, str) and names_state(path, cwd, mode):
+            return {"kind": "access", "reason": STATE_REASON}
     if tool in ("Read", "NotebookRead", "Edit", "MultiEdit", "NotebookEdit"):  # edits return a snippet
         path = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
         resolved = _resolve(path, cwd) if path else ""
@@ -2133,6 +2922,9 @@ def classify(call, mode):
             reason = "reading a data file returns its values"
     elif tool == "Grep":
         reason = grep_tool_violation(tool_input, cwd, mode)
+    if reason and reason != STATE_REASON:
+        note = marker_note(mode)
+        reason = f"{reason}; {note}" if note else reason
     return {"kind": "access", "reason": reason} if reason else None
 
 
