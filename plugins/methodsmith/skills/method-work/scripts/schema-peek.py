@@ -547,7 +547,7 @@ def main(argv):
     if not paths:
         print(__doc__.strip())
         return 2
-    for start in [os.getcwd()] + [os.path.dirname(os.path.abspath(p)) for p in paths]:
+    for start in dict.fromkeys([os.getcwd()] + [os.path.dirname(os.path.abspath(p)) for p in paths]):
         refused = legacy_refusal("schema-peek", start)
         if refused:
             return refused

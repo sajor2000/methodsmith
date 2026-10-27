@@ -94,12 +94,14 @@ fi
 # can outlive the install that created it. The folder is no longer read, so the boundary
 # guard runs the project as schema-only until it is moved.
 project_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+has_old_state=0
+[ -d "$project_root/.$OLD" ] && has_old_state=1
 legacy_state=0
-if [ -d "$project_root/.$OLD" ] && [ ! -d "$project_root/.methodsmith" ]; then
+if [ "$has_old_state" -eq 1 ] && [ ! -d "$project_root/.methodsmith" ]; then
   legacy_state=1
 fi
 
-if [ "$found" -eq 0 ] && [ ! -d "$project_root/.$OLD" ]; then
+if [ "$found" -eq 0 ] && [ "$has_old_state" -eq 0 ]; then
   echo "No $OLD install found. Nothing to migrate."
   exit 0
 fi
@@ -111,7 +113,7 @@ if [ "$legacy_state" -eq 1 ]; then
   echo "boundary guard treats the project as schema-only and the data helpers refuse to run."
   echo "Move it (it keeps the PHI-boundary settings in config.local.yaml):"
   echo "mv \"$project_root/.$OLD\" \"$project_root/.methodsmith\""
-elif [ -d "$project_root/.$OLD" ]; then
+elif [ "$has_old_state" -eq 1 ]; then
   [ "$found" -eq 1 ] && echo
   echo "## Project state folder"
   echo "This project has both .$OLD/ and .methodsmith/. Only .methodsmith/ is read. Compare"
