@@ -57,12 +57,13 @@ Appends to outputs.txt and temp-roots.txt are O_APPEND writes under an fcntl
 lock. The command's own code could erase those lists, so the runner snapshots
 them before the command starts and re-appends any missing line at every
 heartbeat and again before recording outputs; an erased entry is missing for at
-most one heartbeat interval. Meanwhile the guard does not trust the list: the
-marker records how many outputs.txt lines there were at the start
-(outputs_lines), and while that was more than none and outputs.txt has changed
-or gone since the start, every project file counts as data until the run
-finishes. The marker's tmp directory is data whether or not temp-roots.txt
-still lists it.
+most one heartbeat interval. At each heartbeat the runner first merges the lists' current
+lines into its saved set, so entries other runs record later are kept too.
+Meanwhile the guard does not trust the list: outputs.txt exists before the
+start, the marker records its line count then (outputs_lines), and while
+outputs.txt has changed or gone since the start, every project file counts as
+data until the run finishes. The marker's tmp directory is data whether or not
+temp-roots.txt still lists it.
 
 Environment: METHOD_SAFE_RUN_HEARTBEAT_SECONDS overrides the 10 s heartbeat
 interval (tests use a short one).
@@ -348,7 +349,11 @@ def read_lists(runs):
 
 
 def restore_lists(runs, saved):
-    """Re-append saved lines the run's code removed; the lists only grow while a run is live."""
+    """Merge the lists' current lines into saved (never replace: the file may already be truncated), then
+    re-append saved lines the run's code removed. The lists only grow while a run is live."""
+    for name, lines in read_lists(runs).items():
+        known = set(saved[name])
+        saved[name].extend(line for line in lines if line not in known and not known.add(line))
     for name, lines in saved.items():
         if lines:
             try:
@@ -867,6 +872,7 @@ def main(argv):
     name = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime()) + f"-{os.getpid()}.log"
     log_path = os.path.join(runs, name)
     before, capped = snapshot(root)
+    append_lines(os.path.join(runs, "outputs.txt"), [])  # exists before the start, so any later change is a change
     run_start = run_start_ns(runs)
     since_ns = run_start if capped else None
     active = os.path.join(runs, "active")

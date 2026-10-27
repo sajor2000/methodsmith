@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, utimesSync, writeFileSync } from "fs"
+import { appendFileSync, chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, utimesSync, writeFileSync } from "fs"
 import os from "os"
 import path from "path"
 import { APPROVED, SCHEMA_ONLY, bash, expectAll, guard, helper, pluginRoot, project, py, runGuard, tempDir, tempRoots, verdicts } from "./data-boundary-harness"
@@ -891,18 +891,37 @@ describe("limit 1b: method-safe-run keeps script output out of the context", () 
     writeFileSync(path.join(runsDir(root), "outputs.txt"), "results/earlier.csv\n")
     const kept = mkdtempSync(path.join(os.tmpdir(), "msr-kept-"))
     writeFileSync(path.join(runsDir(root), "temp-roots.txt"), `${kept}\n`)
-    // Erase both lists, wait past several heartbeats, then copy what the guard would see mid-run.
-    const code = "import shutil, time\nfor f in ('outputs.txt', 'temp-roots.txt'):\n" +
-      "    open('.methodsmith/runs/' + f, 'w').close()\ntime.sleep(1.5)\n" +
-      "shutil.copy('.methodsmith/runs/outputs.txt', 'seen-outputs.txt')\n" +
-      "shutil.copy('.methodsmith/runs/temp-roots.txt', 'seen-temp-roots.txt')\n"
-    const proc = Bun.spawnSync([safeRun, "--", "python3", "-c", code], { cwd: root, env: FAST_ENV })
+    // Erase both lists, wait (up to 10 s) until the runner has put both entries back, then copy what the
+    // guard would see mid-run.
+    const code = "import shutil, sys, time\nruns = '.methodsmith/runs/'\nfor f in ('outputs.txt', 'temp-roots.txt'):\n" +
+      "    open(runs + f, 'w').close()\nend = time.time() + 10\n" +
+      "while not ('results/earlier.csv' in open(runs + 'outputs.txt').read() and sys.argv[1] in open(runs + 'temp-roots.txt').read()):\n" +
+      "    if time.time() > end: break\n    time.sleep(0.05)\n" +
+      "shutil.copy(runs + 'outputs.txt', 'seen-outputs.txt')\nshutil.copy(runs + 'temp-roots.txt', 'seen-temp-roots.txt')\n"
+    const proc = Bun.spawnSync([safeRun, "--", "python3", "-c", code, kept], { cwd: root, env: FAST_ENV })
     expect(proc.exitCode).toBe(0)
     expect(listFile(path.join(root, "seen-outputs.txt"))).toContain("results/earlier.csv")
     expect(listFile(path.join(root, "seen-temp-roots.txt"))).toContain(kept)
     expect(outputsOf(root)).toContain("results/earlier.csv")
     expect(tempRootsOf(root)).toContain(kept)
     rmSync(kept, { recursive: true, force: true })
+  })
+
+  test("an output another run records after this run started survives this run's code erasing the list", async () => {
+    const root = project(SCHEMA_ONLY)
+    mkdirSync(runsDir(root), { recursive: true })
+    // The child waits for go, erases outputs.txt, then idles past several heartbeats.
+    const code = "import os, time\nend = time.time() + 10\n" +
+      "while not os.path.exists('go') and time.time() < end: time.sleep(0.05)\n" +
+      "open('.methodsmith/runs/outputs.txt', 'w').close()\ntime.sleep(1)\n"
+    const run = startSafe(root, "python3", "-c", code)
+    await waitFor(() => markersOf(root).length === 1)
+    await Bun.sleep(500) // past a heartbeat, so the runner has already re-read the list once
+    appendFileSync(path.join(runsDir(root), "outputs.txt"), "results/b-summary\n") // another run finished
+    await Bun.sleep(500) // and past another, so this run has seen the new entry
+    writeFileSync(path.join(root, "go"), "")
+    expect(await run.exited).toBe(0)
+    expect(outputsOf(root)).toContain("results/b-summary") // extensionless: only outputs.txt marks it as data
   })
 
   test("two concurrent runs: both written files land in outputs.txt and both temp dirs in temp-roots.txt", async () => {
@@ -1040,9 +1059,11 @@ describe("limit 1c: the guard reads method-safe-run temp roots and in-progress r
     ])
     rmSync(path.join(runs(root), "outputs.txt"))
     expectAll(root, "deny", [["Read", { file_path: "results/earlier.csv" }]])
-    // With nothing recorded before the run there is nothing to lose, so a new list changes nothing.
+    // Empty at the start, but another run may record outputs into it later: any change is untrusted too.
     marker(root, `${process.pid}.json`, liveMarker(start), { outputs_lines: 0 })
-    writeFileSync(path.join(runs(root), "outputs.txt"), "")
+    expectAll(root, "deny", [["Read", { file_path: "notes/before.txt" }]])
+    // A marker from before outputs_lines existed keeps the per-file rule.
+    marker(root, `${process.pid}.json`, liveMarker(start))
     expectAll(root, "allow", [["Read", { file_path: "notes/before.txt" }]])
   })
 

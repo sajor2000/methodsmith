@@ -472,10 +472,10 @@ def run_markers(mode):
 
 
 def _lists_changed(runs, fields, start):
-    """outputs.txt held entries when the run started and has since changed or gone: the run's own code may have
-    erased them (the runner puts them back only at its next heartbeat), so the list cannot be trusted."""
-    lines = fields.get("outputs_lines") if fields else None
-    if type(lines) is not int or lines <= 0:
+    """outputs.txt changed or went missing since an in-progress run started (the runner creates it first): the
+    run's own code may have erased entries, its own or another run's, which the runner puts back only at its next
+    heartbeat, so the list cannot be trusted. Markers older than outputs_lines keep the per-file rule."""
+    if not fields or type(fields.get("outputs_lines")) is not int:
         return False
     try:
         st = os.lstat(os.path.join(runs, OUTPUTS))
