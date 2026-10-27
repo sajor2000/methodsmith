@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "fs"
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, utimesSync, writeFileSync } from "fs"
 import path from "path"
-import { APPROVED, SCHEMA_ONLY, bash, expectAll, guard, helper, pluginRoot, project, runGuard, verdicts } from "./data-boundary-harness"
+import { APPROVED, SCHEMA_ONLY, bash, expectAll, guard, helper, pluginRoot, project, runGuard, tempDir, verdicts } from "./data-boundary-harness"
 
 const safeRun = path.join(pluginRoot, "scripts", "method-safe-run")
 const indexer = path.join(pluginRoot, "scripts", "method-identifier-index")
@@ -116,18 +116,21 @@ describe("limit 1b: method-safe-run keeps script output out of the context", () 
     expect(out).not.toMatch(/(created|modified)\s+\.methodsmith/)
   })
 
-  test("prints a masked stderr tail that keeps traceback structure", () => {
+  test("prints a strict stderr tail: traceback frames and exception type names only, plus a withheld count", () => {
     const root = withFile(project(SCHEMA_ONLY), "analysis/boom.py",
       "import sys\nfor i in range(40):\n    print(f'noise {i}', file=sys.stderr)\n" +
       "print('contact zed.t@example.com or (312) 555-0142, ssn 123-45-6789, id 00123456', file=sys.stderr)\n" +
       "rows = {'Zed Testperson': 1}\nrows['Yan Testperson']\n")
     const { code, out } = runSafe(root, "python3", "analysis/boom.py")
     expect(code).toBe(1)
-    const tail = out.slice(out.indexOf("stderr (last 30 lines, masked):"))
+    const tail = out.slice(out.indexOf("stderr (last 30 lines"))
     expect(tail).toContain('File "')
     expect(tail).toContain("analysis/boom.py\", line 6, in <module>")
-    expect(tail).toContain("KeyError: '…'")
-    expect(tail).not.toContain("noise 0")
+    expect(tail).toContain("  KeyError\n")
+    expect(tail).not.toContain("KeyError:")
+    expect(tail).toMatch(/\d+ lines? withheld; full stderr in \.methodsmith\/runs\/\S+\.log/)
+    expect(tail).not.toContain("noise")
+    expect(tail).not.toContain("contact")
     for (const value of ["Testperson", "zed.t@example.com", "555-0142", "123-45-6789", "00123456"]) {
       expect({ value, leaked: out.includes(value) }).toEqual({ value, leaked: false })
     }
@@ -148,15 +151,107 @@ describe("limit 1b: method-safe-run keeps script output out of the context", () 
     expect(readFileSync(path.join(covered, ".gitignore"), "utf8")).toBe(".methodsmith/\n")
   })
 
-  test("masks identifier-index hits in the stderr tail and in reported file names", () => {
+  test("reduces R-style error lines to their type and masks identifier-index hits in reported file names", () => {
     const root = withFile(project(SCHEMA_ONLY), "analysis/r_style.py",
       "import sys\nopen('output_zed_testperson.txt', 'w').write('x')\n" +
       "print('Error in lookup: Zed Testperson not found; record FAKE0002 skipped; Testperson alone is fine', file=sys.stderr)\n")
     expect(buildIndex(root).code).toBe(0)
     const { out } = runSafe(root, "python3", "analysis/r_style.py")
-    expect(out).toContain("Error in lookup: [masked] not found; record [masked] skipped; Testperson alone is fine")
+    expect(out).toContain("  Error in\n")
     expect(out).toMatch(/created  output_\[masked\]\.txt  1 bytes/)
-    expect(out).not.toContain("zed")
+    for (const value of ["zed", "Zed", "Testperson", "FAKE0002", "lookup", "not found"]) {
+      expect({ value, leaked: out.includes(value) }).toEqual({ value, leaked: false })
+    }
+  })
+
+  test("free-text stderr lines are withheld: only the exception type name and a count are printed", () => {
+    const root = withFile(project(SCHEMA_ONLY), "analysis/msg.py",
+      "import sys\nsys.stderr.write(\"KeyError: 'Zed Testperson'\\nSynth Person, diabetes, age 67\\n\")\n")
+    const { code, out } = runSafe(root, "python3", "analysis/msg.py")
+    expect(code).toBe(0)
+    const log = readdirSync(path.join(root, ".methodsmith", "runs")).find((f) => f.endsWith(".log"))!
+    const shown = out.replaceAll(log, "<log>")
+    expect(shown).toContain("  KeyError\n")
+    expect(shown).toMatch(/1 line withheld; full stderr in \.methodsmith\/runs\/<log>/)
+    for (const value of ["Zed", "Testperson", "diabetes", "67", "Synth"]) {
+      expect({ value, leaked: shown.includes(value) }).toEqual({ value, leaked: false })
+    }
+    expect(readFileSync(path.join(root, ".methodsmith", "runs", log), "utf8")).toContain("Synth Person, diabetes, age 67")
+  })
+
+  test("a traceback frame for a real project file keeps its path and line number", () => {
+    const root = withFile(project(SCHEMA_ONLY), "src/deep/fail_here.py", "def go():\n    raise ValueError('Zed Testperson')\n")
+    withFile(root, "analysis/call.py", "import sys\nsys.path.insert(0, 'src/deep')\nimport fail_here\nfail_here.go()\n")
+    const { code, out } = runSafe(root, "python3", "analysis/call.py")
+    expect(code).toBe(1)
+    expect(out).toContain('analysis/call.py", line 4, in <module>')
+    expect(out).toContain('src/deep/fail_here.py", line 2, in go')
+    expect(out).toContain("  ValueError\n")
+    expect(out).not.toContain("Testperson")
+  })
+
+  // More files than the pre-run snapshot holds (MAX_FILES = 20000), all at the root so the walk is
+  // capped before it reaches results/.
+  function bigProject() {
+    const root = project(SCHEMA_ONLY)
+    for (let i = 0; i <= 20000; i++) writeFileSync(path.join(root, `f${String(i).padStart(5, "0")}.txt`), "")
+    mkdirSync(path.join(root, "results"))
+    writeFileSync(path.join(root, "results", "untouched.txt"), "synthetic note\n")
+    return root
+  }
+
+  test("in a project larger than the snapshot cap, a file the run writes is still recorded and becomes data", () => {
+    const root = bigProject()
+    expect(runGuard(root, "Read", { file_path: path.join(root, "results", "untouched.txt") }).decision).toBe("allow")
+    // Files changed within the 2 s timestamp margin before the run count as written (fail closed); wait it out
+    // so untouched.txt shows that files the snapshot never saw are not all recorded.
+    Bun.sleepSync(2500)
+    const { code } = runSafe(root, "python3", "-c", "open('results/summary.txt', 'w').write('synthetic summary\\n')")
+    expect(code).toBe(0)
+    const outputs = readFileSync(path.join(root, ".methodsmith", "runs", "outputs.txt"), "utf8").split("\n")
+    expect(outputs).toContain(path.join("results", "summary.txt"))
+    expect(outputs).not.toContain(path.join("results", "untouched.txt"))
+    const [written, untouched] = verdicts(root, [
+      ["Read", { file_path: path.join(root, "results", "summary.txt") }],
+      ["Read", { file_path: path.join(root, "results", "untouched.txt") }],
+    ])
+    expect([written.decision, untouched.decision]).toEqual(["deny", "allow"])
+  }, 60000)
+
+  test("in a project larger than the snapshot cap, a copy that preserves an old mtime is still recorded", () => {
+    const root = bigProject()
+    writeFileSync(path.join(root, "src", "template.txt"), "synthetic template\n")
+    utimesSync(path.join(root, "src", "template.txt"), new Date("2020-01-01"), new Date("2020-01-01"))
+    const { code } = runSafe(root, "python3", "-c", "import shutil; shutil.copy2('src/template.txt', 'results/summary.txt')")
+    expect(code).toBe(0)
+    const outputs = readFileSync(path.join(root, ".methodsmith", "runs", "outputs.txt"), "utf8").split("\n")
+    expect(outputs).toContain(path.join("results", "summary.txt"))
+    expect(runGuard(root, "Read", { file_path: path.join(root, "results", "summary.txt") }).decision).toBe("deny")
+  }, 60000)
+
+  test("an overwrite that keeps the same size and copies the mtime is recorded (uncapped project)", () => {
+    const root = project(SCHEMA_ONLY)
+    withFile(root, "results/summary.txt", "aaaa\n")
+    withFile(root, "src/other.txt", "bbbb\n")
+    for (const rel of ["results/summary.txt", "src/other.txt"]) {
+      utimesSync(path.join(root, rel), new Date("2020-01-01"), new Date("2020-01-01"))
+    }
+    const { code, out } = runSafe(root, "python3", "-c", "import shutil; shutil.copy2('src/other.txt', 'results/summary.txt')")
+    expect(code).toBe(0)
+    expect(out).toMatch(/modified results\/summary\.txt  5 bytes/)
+    const outputs = readFileSync(path.join(root, ".methodsmith", "runs", "outputs.txt"), "utf8").split("\n")
+    expect(outputs).toContain(path.join("results", "summary.txt"))
+    expect(outputs).not.toContain(path.join("src", "other.txt"))
+  })
+
+  test("outside a project (no .git, no .methodsmith) it refuses with exit 2 and creates nothing", () => {
+    const dir = tempDir()
+    const { code, out } = runSafe(dir, "python3", "-c", "open('made.txt', 'w').write('x')")
+    expect(code).toBe(2)
+    expect(out).toContain("no project")
+    expect(existsSync(path.join(dir, ".methodsmith"))).toBe(false)
+    expect(existsSync(path.join(dir, "made.txt"))).toBe(false)
+    expect(existsSync(path.join(dir, ".gitignore"))).toBe(false)
   })
 
   test("run logs are data in schema-only mode: Read, cat, tail, and grep are denied", () => {
