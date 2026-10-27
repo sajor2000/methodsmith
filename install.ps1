@@ -187,7 +187,12 @@ function Install-ClaudeAliases([string]$PluginDir, [string]$PrebuiltCommandsDir 
 
   $sources = @()
   if (-not [string]::IsNullOrWhiteSpace($PrebuiltCommandsDir) -and (Test-Path $PrebuiltCommandsDir)) {
-    $sources = Get-ChildItem $PrebuiltCommandsDir -Filter "method-*.md" -File
+    $sources = @(Get-ChildItem $PrebuiltCommandsDir -Filter "method-*.md" -File)
+    if ($sources.Count -eq 0) {
+      # Stale-alias removal would delete every managed alias, so refuse a package made before 5.0.
+      Write-Error "No method-*.md commands in $PrebuiltCommandsDir; this alias package is too old for this installer. Nothing was changed."
+      return
+    }
   } elseif (Test-Path (Join-Path $PluginDir "skills")) {
     $sources = Get-ChildItem (Join-Path $PluginDir "skills") -Directory -Filter "method-*" |
       Where-Object { Test-Path (Join-Path $_.FullName "SKILL.md") }

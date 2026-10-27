@@ -59,7 +59,9 @@ compound loop.
 `mv .ce-datascience .methodsmith` (`/method-update` prints this command
 for the current project). The folder holds the PHI-boundary settings in `config.local.yaml`, so
 until it is moved the boundary guard treats the project as schema-only and
-says why; it never reads the old folder.
+says why. It never takes the mode from the old folder; it reads that folder
+only for settings that tighten the boundary (data root, identifier index, run
+outputs).
 
 **What the switch does:** the first Methodsmith install moves the old plugin's
 files to a `backups/` folder next to the new install. Nothing is deleted, and

@@ -978,7 +978,7 @@ def scan_shell(command):
     Returns (shell_text, bodies) where bodies is a list of (header_line, body_text).
     """
     out, bodies, pending = [], [], []
-    i, n, quote, line_start = 0, len(command), None, 0
+    i, n, quote, line_start = 0, len(command), None, 0  # line_start: index in out where the line begins
     while i < n:
         ch = command[i]
         if quote:
@@ -1015,7 +1015,7 @@ def scan_shell(command):
                 i += match.end()
                 continue
         if ch == "\n":
-            header = "".join(out)[line_start:]
+            header = "".join(out[line_start:])
             out.append(" ; ")
             i += 1
             for delim in pending:
@@ -1029,7 +1029,7 @@ def scan_shell(command):
                     body.append(line)
                 bodies.append((header, "\n".join(body)))
             pending = []
-            line_start = len("".join(out))
+            line_start = len(out)
             continue
         out.append(ch)
         i += 1
@@ -1734,6 +1734,25 @@ def find_pattern_data(args, cwd, mode):
     return False
 
 
+FIND_LOGIC_OPS = ("!", "-not", "-o", "-or")
+
+
+def _find_negates_or_alternates(args):
+    """True when the find expression, outside any -exec command line, uses `!`, -not, -o, or -or.
+
+    A negated or alternated test no longer limits the listed files to what -name or -type names.
+    """
+    in_exec = False
+    for token in args:
+        if in_exec:
+            in_exec = token not in (";", "+")
+        elif token in FIND_EXEC:
+            in_exec = True
+        elif token in FIND_LOGIC_OPS:
+            return True
+    return False
+
+
 def find_exec_violation(args, cwd, mode):
     """(reason, unrestricted) for find: -exec of a content reader over files not limited to code is denied.
 
@@ -1744,7 +1763,7 @@ def find_exec_violation(args, cwd, mode):
     names = [args[i + 1] for i, t in enumerate(args[:-1]) if t in ("-name", "-iname")]
     types = [args[i + 1] for i, t in enumerate(args[:-1]) if t == "-type"]
     limited = ((names and all(_is_code_glob(n) for n in names)) or (types and all(t == "d" for t in types))) \
-        and not find_pattern_data(args, cwd, mode)
+        and not _find_negates_or_alternates(args) and not find_pattern_data(args, cwd, mode)
     if limited:
         return None, False
     for index, token in enumerate(args[:-1]):

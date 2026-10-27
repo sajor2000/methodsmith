@@ -11,6 +11,7 @@ Use connected MCP servers for literature; never invent a citation, effect size, 
 
 Applies to the orchestrator and to every reviewer sub-agent that cites a reporting-guideline item, a methods reference, or a benchmark in a finding.
 
+- In `mode:agent` and `mode:report-only`, do not run the `method-pubmed` fallback, which writes CSV and summary files; when PubMed MCP is unavailable or errors, record the citation as an evidence gap in the finding instead.
 - **Look up here:** reporting-guideline statements and item wording (start from the PMIDs/DOIs in `references/guideline-registry.yaml` and the selected checklist files) and the methods references a reviewer cites to justify a finding; a guideline item or methods claim without a read source stays at anchor 50 or below and names the gap in `evidence`.
 - Reviewer prompts inherit the PHI Safety Boundary: only code, schemas, metadata, and PHI-free context may appear in a literature query.
 - The registry `status` (`verified`, `verified-but-superseded`, `provisional`, `unverified`) is a source-identity status, not an evidence label; a finding still labels what was read (`abstract`, `full_text`, and so on).

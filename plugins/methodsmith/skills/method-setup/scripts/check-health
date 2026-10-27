@@ -179,7 +179,11 @@ if [ "$in_repo" = "yes" ]; then
     section "Project"
 
     if [ "$legacy_state" = "yes" ]; then
-      warn "Pre-rename state folder found; move it: mv .ce-datascience .methodsmith (the guard runs schema-only until then)"  # rebrand:keep
+      if [ -d "$repo_root/.methodsmith" ]; then
+        warn "Both .ce-datascience and .methodsmith exist; only .methodsmith sets the mode. Compare the two config.local.yaml files, keep what you need in .methodsmith, then remove .ce-datascience"  # rebrand:keep
+      else
+        warn "Pre-rename state folder found; move it: mv .ce-datascience .methodsmith (the guard runs schema-only until then)"  # rebrand:keep
+      fi
       issues=$((issues + 1))
     fi
 

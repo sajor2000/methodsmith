@@ -253,5 +253,12 @@ if [ "$mode" = "uninstall" ]; then
   uninstall_aliases
 else
   source_dir="$(build_source_dir)"
+  # Stale-alias removal treats every managed alias missing from the source as
+  # stale, so a package with no method-* commands (made before 5.0) would empty
+  # the commands directory. Refuse it before anything is touched.
+  if [ -z "$(source_files_in "$source_dir")" ]; then
+    echo "No method-*.md commands in $source_dir; this alias package is too old for this installer. Nothing was changed." >&2
+    exit 2
+  fi
   install_aliases "$source_dir"
 fi

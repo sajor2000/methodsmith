@@ -88,6 +88,7 @@ The script prints three diagnostic lines to stderr the user should always see:
 
 Filters are discovery aids, not validated systematic-review filters:
 - The human limit is the Cochrane double negative (`NOT (animals[mh] NOT humans[mh])`, Cochrane Handbook ch. 4, Box 4.4.a), so records not yet MeSH-indexed survive.
+- `--include-animal` drops the human limit from the query (and from `[query]` and the CSV `query_used`); pass it only when the question is preclinical/animal research.
 - No language limit is applied unless `--english-only` is passed (Cochrane Handbook §4.4: language restrictions risk language bias).
 - `--study-type rct` is high-precision (indexed publication type only, misses unindexed trials); `rct-sensitive` is the Cochrane Highly Sensitive Search Strategy (Box 4.4.a). `prediction` and `diagnostic` are high-precision, low-sensitivity MeSH filters; for a review, use a validated filter such as Geersing et al. 2012 (PLoS One, PMID 22393453) and name it in the search record.
 

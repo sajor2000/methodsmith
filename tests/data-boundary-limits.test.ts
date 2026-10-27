@@ -148,9 +148,36 @@ describe("limit 1a: agent-written scripts that read data (schema-only)", () => {
     expectAll(root, "allow", [
       ["Bash", bash("find . -name x -exec ls -l {} +")],
       ["Bash", bash("find . -name '*.py' -exec cat {} +")],
+      ["Bash", bash("find . -name '*.py'")],
       ["Bash", bash("find . -type f | xargs wc -l")],
     ])
   })
+
+  test("negation or alternation in the find expression lifts the code-only limit", () => {
+    const root = launchProject()
+    expectAll(root, "deny", [
+      ["Bash", bash("find . ! -name '*.py' -exec cat {} +")],
+      ["Bash", bash("find . -not -name '*.py' -exec cat {} +")],
+      ["Bash", bash("find . -name '*.py' -o -type f -exec cat {} +")],
+      ["Bash", bash("find . -name '*.py' -or -type f -exec cat {} +")],
+      ["Bash", bash("find . -type d -o -type f -exec cat {} +")],
+      ["Bash", bash("find . ! -name '*.py' | xargs cat")],
+    ])
+    // An -o or ! inside the -exec command line is an argument of that command, not a find operator.
+    expectAll(root, "allow", [["Bash", bash("find . -name '*.py' -exec grep -o import {} +")]])
+  })
+
+  test("a long shell script is scanned in linear time", () => {
+    const root = launchProject()
+    const lines = Array.from({ length: 20000 }, () => "echo ok")
+    withFile(root, "analysis/big.sh", lines.join("\n") + "\n")
+    const started = performance.now()
+    expect(runGuard(root, "Bash", bash("bash analysis/big.sh")).decision).toBe("allow")
+    expect(performance.now() - started).toBeLessThan(3000)
+    lines.splice(19990, 0, "cat data/cohort.csv")
+    withFile(root, "analysis/big-read.sh", lines.join("\n") + "\n")
+    expect(runGuard(root, "Bash", bash("bash analysis/big-read.sh")).decision).toBe("deny")
+  }, 120000)
 
   test("tools, unresolvable modules, compiled binaries, and clean scripts stay allowed", () => {
     const root = launchProject()

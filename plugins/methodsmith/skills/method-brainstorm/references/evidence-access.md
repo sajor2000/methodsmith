@@ -14,6 +14,7 @@ Use connected MCP servers for literature; never invent a citation, effect size, 
 Run in Phase 1.2 for the prior-evidence gap and in Phase 2 before presenting design approaches. It adds no sub-agents; run it inline in the normal collaborative flow.
 
 1. For each design option (or for the opening question when no options exist yet), run one search (`pubmed_search_articles` or `search_articles`) built from population, exposure, comparison, and outcome terms, `max_results` of 3-5. Never pass patient-level values, small-cell counts, or repository data.
+   For a preclinical (animal-model) design option, search with animal studies included: leave out any human-only limit, and pass `--include-animal` on the `method-pubmed` script fallback.
 2. Record the total hit count and the query string. Fetch metadata for the top 2-3 hits (`pubmed_fetch_articles` or `get_article_metadata`) and read the title and abstract before naming a paper.
 3. Report it in one line per option as "literature pulse (not a systematic search): N hits; PMID ..., PMID ... (`abstract`)". Use it to say whether an option replicates, extends, or is net new, and to probe the prior-evidence gap with what was found rather than asking the user to recall it.
 4. Carry the PMIDs and the date into the requirements document (Problem Frame or Dependencies / Assumptions) as provenance; put the systematic search itself under Deferred to Planning for `method-pubmed` or `method-lit-search`.

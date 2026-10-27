@@ -195,6 +195,38 @@ describe("corporate install artifacts", () => {
     expect(await fs.readFile(path.join(commandsDir, "method-plan.md"), "utf8")).toBe("user-owned command\n")
   }, SLOW_TEST_TIMEOUT_MS)
 
+  test("Claude alias installer rejects a prebuilt package without method-* commands before cleanup", async () => {
+    // The installer reads a prebuilt package from commands/ beside the script, so
+    // stage a copy away from the repo checkout to make it fall back to that package.
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "method-claude-aliases-old-"))
+    const packageDir = path.join(tempRoot, "a", "b", "aliases")
+    const commandsDir = path.join(tempRoot, "commands")
+    await fs.mkdir(path.join(packageDir, "commands"), { recursive: true })
+    await fs.mkdir(commandsDir, { recursive: true })
+    await fs.copyFile(
+      path.join(repoRoot, "scripts", "install", "install-claude-aliases.sh"),
+      path.join(packageDir, "install-claude-aliases.sh"),
+    )
+    // A pre-5.0 package holds only ce-* commands. // rebrand:keep
+    await fs.writeFile(
+      path.join(packageDir, "commands", "ce-plan.md"), // rebrand:keep
+      "<!-- METHODSMITH_ALIAS_MANAGED v1 plugin=methodsmith skill=ce-plan -->\nold\n", // rebrand:keep
+    )
+    const existingAlias = "<!-- METHODSMITH_ALIAS_MANAGED v1 plugin=methodsmith skill=method-plan -->\nkeep\n"
+    await fs.writeFile(path.join(commandsDir, "method-plan.md"), existingAlias)
+
+    const proc = Bun.spawn(
+      ["bash", path.join(packageDir, "install-claude-aliases.sh"), "--commands-dir", commandsDir],
+      { cwd: tempRoot, stdout: "pipe", stderr: "pipe" },
+    )
+    const exitCode = await proc.exited
+    const stderr = await new Response(proc.stderr).text()
+
+    expect(exitCode).not.toBe(0)
+    expect(stderr).toContain("method-")
+    expect(await fs.readFile(path.join(commandsDir, "method-plan.md"), "utf8")).toBe(existingAlias)
+  }, SLOW_TEST_TIMEOUT_MS)
+
   test("packaging stages offline Claude, alias, and Codex artifacts without dev/cache files", async () => {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "method-corporate-package-"))
     const stagingDir = path.join(tempRoot, "stage")
