@@ -1010,8 +1010,9 @@ describe("limit 1c: the guard reads method-safe-run temp roots and in-progress r
   test("an unreadable marker counts as an active run starting when the marker was created (fail closed)", () => {
     const { root } = runProject()
     const old = new Date(Date.now() - 3600_000)
-    utimesSync(path.join(root, "notes", "before.txt"), old, old)
+    utimesSync(path.join(root, "notes", "before.txt"), old, old) // also sets its ctime to now
     mkdirSync(path.join(runs(root), "active"), { recursive: true })
+    pause() // coarse filesystem clocks (Linux): keep that ctime strictly before the marker's creation
     writeFileSync(path.join(runs(root), "active", "77.json"), "{not json")
     writeFileSync(path.join(runs(root), "active", ".77.json.tmp"), "{not json") // half-written, ignored by name
     withFile(root, "results/after.csv", "group,n\na,120\n")
