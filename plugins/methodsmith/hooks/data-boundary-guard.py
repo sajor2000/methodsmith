@@ -116,7 +116,32 @@ LISTING_FUNCS = re.compile(r"\b(?:glob|iglob|listdir|scandir|walk|iterdir|rglob|
 EXEC_CONSUMERS = {"xargs", "parallel", "sh", "bash", "zsh", "while", "until", "source", ".", "eval", "exec"}
 WRAPPERS = {"sudo", "time", "nice", "nohup", "command", "builtin", "exec", "stdbuf", "caffeinate", "env"}
 RUN_WRAPPERS = {"uv": "run", "poetry": "run", "pipenv": "run", "pixi": "run", "conda": "run",
-                "mamba": "run", "micromamba": "run", "hatch": "run", "rye": "run"}
+                "mamba": "run", "micromamba": "run", "hatch": "run", "rye": "run", "pdm": "run"}
+# Run-wrapper options that take a value, so the value is never mistaken for the program.
+RUN_VALUE_FLAGS = {"-n", "--name", "-p", "--prefix", "--with", "--python", "-e", "--env", "--directory", "--project",
+                   "--with-editable", "--with-requirements", "--package", "--extra", "--group", "--only-group",
+                   "--no-group", "--env-file", "--index", "--default-index", "--environment"}
+SHELLS = {"sh", "bash", "zsh", "dash", "ksh"}
+PY_VALUE_FLAGS = {"-X", "-W", "--check-hash-based-pycs"}
+# Workflow runners run project code that can read data; in schema-only they run under method-safe-run.
+WORKFLOW_RUNNERS = {"make", "gmake", "snakemake", "nextflow", "tox", "nox", "just", "invoke", "inv", "task",
+                    "papermill", "pytest", "py.test"}
+WORKFLOW_SUBCOMMANDS = {
+    "dvc": {"repro", "run", "exp"}, "kedro": {"run"}, "dbt": {"run", "build", "test", "show", "seed", "snapshot"},
+    "npm": {"run", "run-script", "test", "t", "start", "restart"},
+    "pnpm": {"run", "run-script", "test", "t", "start", "restart"},
+}
+YARN_BUILTINS = {"add", "install", "remove", "upgrade", "up", "init", "info", "why", "config", "cache", "list",
+                 "outdated", "audit", "set", "plugin", "dlx", "workspaces", "help", "login", "logout", "link",
+                 "unlink", "pack", "publish", "version", "global", "import", "licenses", "constraints", "explain",
+                 "npm", "patch", "rebuild", "search", "stage", "unplug"}
+PY_WORKFLOW_MODULES = {"pytest", "tox", "nox", "invoke", "papermill", "snakemake", "unittest", "kedro", "dbt"}
+R_WORKFLOW = re.compile(r"\b(?:targets::)?tar_make\w*\s*\(|\b(?:rmarkdown::)?render(?:_site)?\s*\(|"
+                        r"\bquarto::quarto_render\s*\(|\bbookdown::render_book\s*\(|\bknitr::(?:knit|purl)\s*\(")
+# Inline code that runs a script file: R source()/sys.source(), Python runpy.run_path() and exec(open(...)).
+SOURCED = re.compile(r"\b(?:sys\.)?source\s*\(\s*['\"]([^'\"]+)['\"]|\brun_path\s*\(\s*['\"]([^'\"]+)['\"]|"
+                     r"\bexec\s*\(\s*open\s*\(\s*['\"]([^'\"]+)['\"]")
+FIND_EXEC = ("-exec", "-execdir", "-ok", "-okdir")
 SEPARATORS = {";", "&", "&&", "||", "|", "|&", "(", ")", ";;"}
 REDIRECTS = {"<", ">", ">>", "<>", ">|", "&>", "&>>", ">&", "<&"}
 
@@ -941,7 +966,7 @@ def unwrap(tokens):
             rest = rest[2:]
             while rest and rest[0].startswith("-"):
                 flag = rest.pop(0)
-                if flag in ("-n", "--name", "-p", "--prefix", "--with", "--python", "-e", "--env") and rest:
+                if flag in RUN_VALUE_FLAGS and rest:
                     rest.pop(0)
         elif program(head) in ("uvx", "npx", "bunx", "pipx") and len(rest) > 1:
             rest.pop(0)
@@ -1209,8 +1234,12 @@ def is_plugin_script(token, cwd, script=SAFE_RUNNER):
 _SCANNING = set()
 
 
-def script_reads_data(path, cwd, mode):
-    """Static, heuristic: does the script file name a data path? Reads at most 1 MB. Plugin scripts are trusted."""
+def script_reads_data(path, cwd, mode, kind=None):
+    """Static, heuristic: does the script file name a data path? Reads at most 1 MB. Plugin scripts are trusted.
+
+    kind overrides the extension when the language comes from elsewhere ("sh" for a shell shebang or a
+    shell fed the file on standard input).
+    """
     if _under(os.path.realpath(path), [PLUGIN_ROOT]):
         return False
     try:
@@ -1218,14 +1247,14 @@ def script_reads_data(path, cwd, mode):
             text = fh.read(SCRIPT_CAP)
     except OSError:
         return False
-    ext = path.rsplit(".", 1)[-1].lower()
+    ext = kind or path.rsplit(".", 1)[-1].lower()
     if ext == "ipynb":
         try:
             cells = json.loads(text).get("cells", [])
             text = "\n".join("".join(c.get("source", "")) for c in cells if isinstance(c, dict))
         except (ValueError, AttributeError, TypeError):
             return True  # cannot verify
-    if ext in ("sh", "bash", "zsh") and path not in _SCANNING and len(_SCANNING) < 8:
+    if ext in SHELLS and path not in _SCANNING and len(_SCANNING) < 8:
         _SCANNING.add(path)
         try:
             if bash_violations(text, cwd, mode, 1)[1]:
@@ -1328,24 +1357,197 @@ def in_aggregate_dir(raw, cwd, mode):
             and not _under(path, mode["data_roots"]) and not _under(real, mode["data_roots"]))
 
 
-def script_file(verb, args):
-    """The script, Quarto document, or executed notebook a command runs, or None."""
+def _ext(token):
+    return token.rsplit(".", 1)[-1].lower() if "." in os.path.basename(token) else ""
+
+
+def shebang(path):
+    """The known interpreter a file's `#!` line names, else None. Reads 256 bytes; binaries have no `#!`."""
+    try:
+        with open(path, "rb") as fh:
+            head = fh.read(256)
+    except OSError:
+        return None
+    if not head.startswith(b"#!"):
+        return None
+    words = head[2:].split(b"\n", 1)[0].decode("utf-8", "replace").split()
+    if words and program(words[0]) == "env":
+        words = [w for w in words[1:] if not w.startswith("-") and "=" not in w]
+    name = program(words[0]) if words else ""
+    return name if INTERPRETERS.match(name) else None
+
+
+def script_kind(path, interpreter=None):
+    """How to scan a file run as code ("sh" for shell, else its extension or "code"); None when it is not a script.
+
+    A file fed to an interpreter is scanned in that interpreter's language. A file executed directly is
+    scanned only with a script extension or a `#!` line naming a known interpreter, so compiled
+    binaries are never read.
+    """
+    ext = _ext(path)
+    if interpreter:
+        return "sh" if program(interpreter) in SHELLS else (ext or "code")
+    if ext in SCRIPT_EXTS or ext == "ipynb":
+        return ext
+    found = shebang(path)
+    if found:
+        return "sh" if found in SHELLS else "code"
+    return None
+
+
+def _script_ops(verb, args):
+    """An interpreter's operands: no options, option values, or redirects and their targets."""
+    out, skip = [], False
+    values = PY_VALUE_FLAGS if re.match(r"^(?:python|pypy)", verb) else set()
+    for token in args:
+        if skip:
+            skip = False
+            continue
+        if token in REDIRECTS or token in values:
+            skip = True
+            continue
+        if token.startswith("-"):
+            continue
+        out.append(token)
+    return out
+
+
+def _module_flag(args):
+    """The module named by python's `-m MOD` (also `-Bm MOD`), else None. Stops at a script or `-c`."""
+    skip = False
+    for index, token in enumerate(args):
+        if skip:
+            skip = False
+            continue
+        if token in PY_VALUE_FLAGS:
+            skip = True
+            continue
+        if re.match(r"^-[A-Za-z]*m$", token):
+            return args[index + 1] if index + 1 < len(args) else None
+        if not token.startswith("-") or re.match(r"^-[A-Za-z]*c$", token):
+            return None
+    return None
+
+
+def module_files(module, cwd, env):
+    """Project files `python -m module` runs: pkg/mod.py, pkg/mod/__init__.py, pkg/mod/__main__.py.
+
+    Looked up under the working directory, src/, and directories in an inline PYTHONPATH= assignment.
+    An installed module (pytest, http.server) resolves to nothing and is not scanned.
+    """
+    if not re.fullmatch(r"[A-Za-z_][\w.]*", module or ""):
+        return []
+    rel = module.replace(".", os.sep)
+    dirs = [cwd, os.path.join(cwd, "src")]
+    for assignment in env:
+        name, _, value = assignment.partition("=")
+        if name == "PYTHONPATH":
+            dirs.extend(_resolve(part, cwd) for part in value.split(os.pathsep) if part)
+    found = []
+    for base in dirs:
+        for candidate in (rel + ".py", os.path.join(rel, "__init__.py"), os.path.join(rel, "__main__.py")):
+            path = os.path.join(base, candidate)
+            if os.path.isfile(path) and path not in found:
+                found.append(path)
+    return found
+
+
+def launched_scripts(cmd, cwd, fed=(), env=()):
+    """(shown name, path, scan kind) for every script file a command runs.
+
+    Covers a path-shaped program run directly, source/., interpreters given a script operand, a script
+    fed on standard input (`< file`, or `cat file |` passed in as fed), python -m on a project module,
+    quarto render FILE, and jupyter nbconvert --execute.
+    """
+    verb, args, head = program(cmd[0]), cmd[1:], cmd[0]
+    if "/" in head or _ext(head) in SCRIPT_EXTS:
+        path = _resolve(head, cwd)
+        kind = script_kind(path) if os.path.isfile(path) else None
+        if kind:
+            return [(head, path, kind)]
+    if verb in ("source", "."):
+        ops = operands(args)
+        return [(ops[0], _resolve(ops[0], cwd), "sh")] if ops else []
     ops = [t for t in args if not t.startswith("-")]
     if verb == "quarto":
-        return ops[1] if ops[:1] == ["render"] and len(ops) > 1 else None
+        return [(ops[1], _resolve(ops[1], cwd), None)] if ops[:1] == ["render"] and len(ops) > 1 else []
     if verb == "jupyter":
         if ops[:1] == ["nbconvert"] and "--execute" in args:
-            return next((t for t in ops[1:] if t.lower().endswith(".ipynb")), None)
-        return None
-    if not SCRIPT_RUNNERS.match(verb):
-        return None
-    script = ops[0] if ops else ""
-    ext = script.rsplit(".", 1)[-1].lower() if "." in os.path.basename(script) else ""
-    return script if ext in SCRIPT_EXTS else None
+            notebook = next((t for t in ops[1:] if t.lower().endswith(".ipynb")), None)
+            return [(notebook, _resolve(notebook, cwd), None)] if notebook else []
+        return []
+    if not INTERPRETERS.match(verb):
+        return []
+    if re.match(r"^(?:python|pypy)", verb):
+        module = _module_flag(args)
+        if module is not None:
+            return [(module, path, "py") for path in module_files(module, cwd, env)]
+    ops = _script_ops(verb, args)
+    if verb in ("bun", "deno") and ops[:1] == ["run"]:
+        ops = ops[1:]
+    if ops and "-" not in args and not (verb in SHELLS and "-s" in args):
+        script = ops[0]
+        if SCRIPT_RUNNERS.match(verb) and _ext(script) in SCRIPT_EXTS:
+            return [(script, _resolve(script, cwd), None)]
+        return []
+    # The code comes from standard input: a `<` redirect, or the files a `cat` earlier in the pipe printed.
+    sources = [args[i + 1] for i, t in enumerate(args[:-1]) if t == "<"] or list(fed)
+    return [(s, _resolve(s, cwd), script_kind(_resolve(s, cwd), verb)) for s in sources]
 
 
-def judge(cmd, cwd, mode, tainted, written):
-    """Classify one unwrapped command. Returns (reason or None, listed_data)."""
+def workflow_runner(verb, args, cwd):
+    """The workflow runner a command starts (make, pytest, npm run, ...), as shown in a deny reason, else None."""
+    ops = [t for t in args if not t.startswith("-")]
+    if verb in WORKFLOW_RUNNERS:
+        return verb
+    if verb in WORKFLOW_SUBCOMMANDS and ops[:1] and ops[0] in WORKFLOW_SUBCOMMANDS[verb]:
+        return f"{verb} {ops[0]}"
+    if verb == "yarn" and ops and ops[0] not in YARN_BUILTINS:
+        return f"yarn {ops[0]}" if ops[0] == "run" else "yarn"
+    if verb == "bun" and ops[:1] == ["run"]:
+        target = ops[1] if len(ops) > 1 else ""
+        if not target or ("/" not in target and _ext(target) not in SCRIPT_EXTS):
+            return "bun run"
+    if verb == "quarto" and ops[:1] == ["render"] and (len(ops) == 1 or os.path.isdir(_resolve(ops[1], cwd))):
+        return "quarto render"
+    if verb == "r" and args[:2] == ["CMD", "BATCH"]:
+        return "R CMD BATCH"
+    if re.match(r"^(?:python|pypy)", verb):
+        module = _module_flag(args)
+        if module and module.split(".")[0] in PY_WORKFLOW_MODULES:
+            return f"{verb} -m {module.split('.')[0]}"
+    return None
+
+
+def workflow_reason(name):
+    return (f"`{name}` runs project code that can read data and print its values; run it as "
+            f"`method-safe-run -- {name} ...` so its output stays in the run log")
+
+
+def find_exec_violation(args):
+    """(reason, unrestricted) for find: -exec of a content reader over files not limited to code is denied.
+
+    unrestricted is True when the files find lists are not limited to code or directories, so a
+    command that consumes the list (xargs cat, while read) is treated as reading listed data files.
+    """
+    names = [args[i + 1] for i, t in enumerate(args[:-1]) if t in ("-name", "-iname")]
+    types = [args[i + 1] for i, t in enumerate(args[:-1]) if t == "-type"]
+    limited = (names and all(_is_code_glob(n) for n in names)) or (types and all(t == "d" for t in types))
+    if limited:
+        return None, False
+    for index, token in enumerate(args[:-1]):
+        if token in FIND_EXEC and program(args[index + 1]) not in METADATA_VERBS:
+            return (f"`find {token} {program(args[index + 1])}` over files not limited to code can print data values; "
+                    "add -name with a code pattern (for example '*.py') or run it through method-safe-run"), True
+    return None, True
+
+
+def judge(cmd, cwd, mode, tainted, written, fed=(), env=()):
+    """Classify one unwrapped command. Returns (reason or None, listed_data).
+
+    fed: files a `cat` earlier in the pipe sends to this command's standard input.
+    env: the command's inline assignments (PYTHONPATH= for python -m).
+    """
     if not cmd:
         return None, False
     verb = program(cmd[0])
@@ -1360,10 +1562,15 @@ def judge(cmd, cwd, mode, tainted, written):
         return (git_violation(args, cwd, mode, tainted) if refs else None), refs
     refs = any(token_ref(t, cwd, mode, tainted) for t in cmd)
     inline_index = next((i for i, t in enumerate(args) if INLINE_FLAG.match(t)), None)
-    if INTERPRETERS.match(verb) and inline_index is not None:
+    if INTERPRETERS.match(verb) and inline_index is not None and args[inline_index] != "-":  # `-`: code on stdin
         code = " ".join(args[inline_index + 1:inline_index + 2])
         if refs or text_ref(code, cwd, mode) or lists_dataish_dir(code, cwd, mode):
             return f"inline `{verb}` code that opens data returns its values", False
+        if verb in ("rscript", "r") and R_WORKFLOW.search(code):
+            return workflow_reason(f"{cmd[0]} -e"), False
+        for target in (a or b or c for a, b, c in SOURCED.findall(code)):
+            if script_reads_data(_resolve(target, cwd), cwd, mode):
+                return f"the script `{target}` reads data and can print its values", False
         return None, False
     runner = next((t for t in args if not t.startswith("-")), "") if re.match(r"^python", verb) else cmd[0]
     if os.path.basename(runner) == "method-aggregate-read" and is_plugin_script(runner, cwd, AGGREGATE_READER):
@@ -1379,9 +1586,16 @@ def judge(cmd, cwd, mode, tainted, written):
                 return f"`{table}` is not an aggregate table: {problem}", False
         if tables and not any(token_ref(t, cwd, mode, tainted) for t in ops if t not in tables):
             return None, False
-    script = script_file(verb, args)
-    if script and script_reads_data(_resolve(script, cwd), cwd, mode):
-        return f"the script `{script}` reads data and can print its values", False
+    workflow = workflow_runner(verb, args, cwd)
+    if workflow:
+        return workflow_reason(workflow), False
+    for shown, path, kind in launched_scripts(cmd, cwd, fed, env):
+        if not token_ref(shown, cwd, mode, tainted) and script_reads_data(path, cwd, mode, kind):
+            return f"the script `{shown}` reads data and can print its values", False
+    if verb == "find":
+        reason, unrestricted = find_exec_violation(args)
+        if reason or not refs:
+            return reason, unrestricted
     if not refs:
         return None, False
     if verb in METADATA_VERBS:
@@ -1400,8 +1614,6 @@ def judge(cmd, cwd, mode, tainted, written):
     if any(os.path.basename(t) == "schema-peek.py" for t in cmd[:3]) and re.match(r"^python", verb):
         return None, False
     if verb in ("jupyter",) and args[:1] == ["nbconvert"] and "--clear-output" in args:
-        return None, False
-    if verb in ("make", "quarto", "snakemake", "nextflow", "dvc", "pytest", "targets"):
         return None, False
     if SCRIPT_RUNNERS.match(verb):
         ops = [t for t in args if not t.startswith("-")]
@@ -1434,6 +1646,19 @@ def shell_code(cmd):
         if flags and flags[0] + 1 < len(cmd):
             return cmd[flags[0] + 1]
     return None
+
+
+def _wrapper_dir(seg, cur):
+    """The directory a run wrapper switches to (`uv run --directory D`), else cur."""
+    head = next((t for t in seg if not re.match(r"^[A-Za-z_]\w*=", t)), "")
+    if program(head) != "uv":
+        return cur
+    for index, token in enumerate(seg):
+        if token == "--directory" and index + 1 < len(seg):
+            return _resolve(seg[index + 1], cur)
+        if token.startswith("--directory="):
+            return _resolve(token.split("=", 1)[1], cur)
+    return cur
 
 
 def bash_violations(command, cwd, mode, depth=0):
@@ -1473,8 +1698,10 @@ def bash_violations(command, cwd, mode, depth=0):
     tainted, cur = set(), cwd
     for pipeline in pipelines:
         listed = piped = False
+        fed = ()
         for seg in pipeline:
             assignments, cmd = unwrap(seg)
+            run_cwd = _wrapper_dir(seg, cur)
             egress = egress or stdin_upload(seg, cmd, piped, cur, mode, tainted)
             piped = piped or input_refs(seg, cur, mode, tainted)
             for assignment in assignments:
@@ -1492,7 +1719,11 @@ def bash_violations(command, cwd, mode, depth=0):
             egress = egress or upload_violation(cmd, cur, mode) or ncbi_violation(cmd, mode)
             inner = shell_code(cmd)
             if inner is not None:
-                egress = egress or bash_violations(inner, cur, mode, depth + 1)[0]
+                e, a = bash_violations(inner, cur, mode, depth + 1)
+                egress = egress or e
+                if not safe:  # under the plugin's method-safe-run the inner code's output stays in the log
+                    access = access or a
+            feeding, fed = fed, (tuple(t for t in operands(cmd[1:]) if t != "-") if program(cmd[0]) == "cat" else ())
             if mode["mode"] != "schema-only":
                 continue
             verb = program(cmd[0])
@@ -1504,7 +1735,7 @@ def bash_violations(command, cwd, mode, depth=0):
                 sub = [t for t in cmd[1:] if not t.startswith("-")]
                 if verb != "xargs" or not sub or program(sub[0]) not in METADATA_VERBS:
                     access = access or f"`{verb}` runs a command on listed data files"
-            reason, listing = judge(cmd, cur, mode, tainted, written)
+            reason, listing = judge(cmd, run_cwd, mode, tainted, written, feeding, assignments)
             access = access or reason
             listed = listed or listing
             if verb in ("cd", "pushd") and len(cmd) > 1:

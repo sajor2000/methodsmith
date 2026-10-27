@@ -351,7 +351,7 @@ describe("classify: schema-only data access", () => {
       ["Bash", bash("Rscript analysis/model.R data/cohort.csv")],
       ["Bash", bash("uv run python analysis/run.py data/cohort.csv")],
       ["Bash", bash("quarto render report.qmd")],
-      ["Bash", bash("make all")],
+      ["Bash", bash(`${path.join(pluginRoot, "scripts", "method-safe-run")} -- make all`)], // workflow runners go through method-safe-run
       ["Bash", bash(`python3 "${helper}" data/cohort.csv`)],
       ["Bash", bash("ls data && wc -l data/cohort.csv")],
       ["Bash", bash("git status && git add src/load.py")],

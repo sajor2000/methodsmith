@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, utimesSync, writeFileSync } from "fs"
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, utimesSync, writeFileSync } from "fs"
 import path from "path"
-import { APPROVED, SCHEMA_ONLY, bash, expectAll, guard, helper, pluginRoot, project, runGuard, tempDir, verdicts } from "./data-boundary-harness"
+import { APPROVED, SCHEMA_ONLY, bash, expectAll, guard, helper, pluginRoot, project, py, runGuard, tempDir, verdicts } from "./data-boundary-harness"
 
 const safeRun = path.join(pluginRoot, "scripts", "method-safe-run")
 const indexer = path.join(pluginRoot, "scripts", "method-identifier-index")
@@ -56,7 +56,7 @@ describe("limit 1a: agent-written scripts that read data (schema-only)", () => {
       ["Bash", bash("quarto render report.qmd")],
       ["Bash", bash("jupyter nbconvert --to html --execute notebooks/run.ipynb")],
     ])
-    expectAll(root, "allow", [["Bash", bash("quarto render")], ["Bash", bash("jupyter nbconvert --to html notebooks/clean.ipynb")]])
+    expectAll(root, "allow", [["Bash", bash("jupyter nbconvert --to html notebooks/clean.ipynb")]])
   })
 
   test("the same script wrapped in the plugin's method-safe-run is allowed; a look-alike wrapper is not", () => {
@@ -82,6 +82,104 @@ describe("limit 1a: agent-written scripts that read data (schema-only)", () => {
     withFile(root, "analysis/hello.R", "x <- c(1, 2, 3)\nprint(mean(x))\n")
     expectAll(root, "allow", [["Bash", bash(`${safeRun} -- python3 analysis/plot.py`)], ["Bash", bash("Rscript analysis/hello.R")]])
     expectAll(root, "deny", [["Bash", bash("python3 analysis/plot.py")]])
+  })
+
+  // A project whose analysis code reads data/cohort.csv, launched every way a shell allows (R1-R3).
+  function launchProject(config = SCHEMA_ONLY) {
+    const root = project(config)
+    withFile(root, "analysis/__init__.py", "")
+    withFile(root, "analysis/run.py", "#!/usr/bin/env python3\nimport pandas as pd\nprint(pd.read_csv('data/cohort.csv'))\n")
+    withFile(root, "analysis/run.sh", "cat data/cohort.csv\n")
+    withFile(root, "analysis/run.R", "d <- read.csv('data/cohort.csv')\nprint(d)\n")
+    withFile(root, "analysis/clean.ts", "console.log(1 + 1)\n")
+    withFile(root, "bin/analyze", "#!/bin/bash\ncat data/cohort.csv\n")
+    // A compiled binary: no shebang, non-text bytes, and a quoted data path that a text scan would flag.
+    mkdirSync(path.join(root, "build"), { recursive: true })
+    writeFileSync(path.join(root, "build", "app"), Buffer.concat([
+      Buffer.from([0x7f, 0x45, 0x4c, 0x46, 0x02, 0x01, 0x01, 0x00, 0xff, 0xfe, 0x00]),
+      Buffer.from("read_csv('data/cohort.csv')\0"), Buffer.from([0x89, 0x00, 0xc3]),
+    ]))
+    for (const rel of ["analysis/run.py", "analysis/run.sh", "bin/analyze", "build/app"]) chmodSync(path.join(root, rel), 0o755)
+    return root
+  }
+
+  const LAUNCH_DENIES = [
+    "uv run analysis/run.py", "uv run python analysis/run.py", "pdm run analysis/run.py",
+    "uv run --directory analysis python run.py", "uv run --directory . python analysis/run.py",
+    "./analysis/run.py", "analysis/run.sh", "./bin/analyze",
+    "python3 - < analysis/run.py", "python3 < analysis/run.py", "cat analysis/run.py | python3",
+    "source analysis/run.sh", ". analysis/run.sh",
+    "python3 -m analysis.run", "PYTHONPATH=analysis python3 -m run",
+    `Rscript -e "source('analysis/run.R')"`,
+  ]
+  const INNER_SHELL_DENIES = [`bash -c "python3 analysis/run.py"`, `sh -c "python3 analysis/run.py"`, `eval "python3 analysis/run.py"`]
+  const WORKFLOW_DENIES = [
+    "make", "make test", "make -C analysis", "snakemake", "pytest tests/", "python3 -m pytest", "dvc repro",
+    `Rscript -e "targets::tar_make()"`, `Rscript -e "rmarkdown::render('report.Rmd')"`, "npm run analyze", "pnpm run analyze",
+    "yarn analyze", "bun run analyze", "tox", "nox", "just", "papermill in.ipynb out.ipynb", "kedro run", "dbt run",
+    "quarto render", "R CMD BATCH analysis/run.R",
+  ]
+
+  test("every launch shape of a script that reads data is scanned and denied (R1)", () => {
+    const root = launchProject()
+    expectAll(root, "deny", LAUNCH_DENIES.map((c) => ["Bash", bash(c)] as [string, Record<string, unknown>]))
+  })
+
+  test("code run through sh -c, bash -c, or eval is judged for access, except under the plugin's method-safe-run (R2)", () => {
+    const root = launchProject()
+    expectAll(root, "deny", INNER_SHELL_DENIES.map((c) => ["Bash", bash(c)] as [string, Record<string, unknown>]))
+    expectAll(root, "allow", [["Bash", bash(`${safeRun} -- bash -c "python3 analysis/run.py"`)]])
+  })
+
+  test("workflow runners are denied in schema-only and allowed under method-safe-run (R3)", () => {
+    const root = launchProject()
+    expectAll(root, "deny", WORKFLOW_DENIES.map((c) => ["Bash", bash(c)] as [string, Record<string, unknown>]))
+    expectAll(root, "allow", [["Bash", bash(`${safeRun} -- make`)], ["Bash", bash(`${safeRun} -- npm run analyze`)]])
+    expect(runGuard(root, "Bash", bash("make test")).reason).toContain("method-safe-run -- make")
+  })
+
+  test("find -exec with a content reader over an unrestricted tree is denied; metadata and code-only finds pass", () => {
+    const root = launchProject()
+    expectAll(root, "deny", [
+      ["Bash", bash("find . -type f -exec cat {} +")],
+      ["Bash", bash("find . -type f -exec grep -h Zed {} +")],
+      ["Bash", bash("find . -type f | xargs cat")],
+    ])
+    expectAll(root, "allow", [
+      ["Bash", bash("find . -name x -exec ls -l {} +")],
+      ["Bash", bash("find . -name '*.py' -exec cat {} +")],
+      ["Bash", bash("find . -type f | xargs wc -l")],
+    ])
+  })
+
+  test("tools, unresolvable modules, compiled binaries, and clean scripts stay allowed", () => {
+    const root = launchProject()
+    expectAll(root, "allow", [
+      ["Bash", bash("uv run ruff check .")],
+      ["Bash", bash("python3 -m http.server")],
+      ["Bash", bash("./build/app")],
+      ["Bash", bash("bun run analysis/clean.ts")],
+      ["Bash", bash("cat analysis/clean.ts | node")],
+      ["Bash", bash("bun test")],
+    ])
+  })
+
+  test("deny reasons for every launch shape carry no data values", () => {
+    const root = launchProject()
+    const commands = [...LAUNCH_DENIES, ...INNER_SHELL_DENIES, ...WORKFLOW_DENIES, "find . -type f -exec cat {} +"]
+    const results = py(commands.map((c) => ({ fn: "classify" as const, call: { cwd: root, tool_name: "Bash", tool_input: bash(c) } })))
+    for (const [i, result] of results.entries()) {
+      const text = JSON.stringify(result)
+      expect({ command: commands[i], denied: !!result, leaked: ["Zed", "Testperson", "FAKE0001"].some((v) => text.includes(v)) })
+        .toEqual({ command: commands[i], denied: true, leaked: false })
+    }
+  })
+
+  test("in an approved project the same launch shapes and workflow runners stay allowed", () => {
+    const root = launchProject(APPROVED)
+    expectAll(root, "allow", ["make test", "uv run analysis/run.py", "npm run analyze", "./analysis/run.py",
+      "cat analysis/run.py | python3", `bash -c "python3 analysis/run.py"`, "python3 -m pytest", "find . -type f -exec cat {} +",
+    ].map((c) => ["Bash", bash(c)] as [string, Record<string, unknown>]))
   })
 })
 
