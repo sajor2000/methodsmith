@@ -54,7 +54,10 @@ several heartbeats. Each run start, and `method-safe-run --reconcile` (prints
 one count line), records the project files a stale run changed between its
 start and its last heartbeat (plus 2 s) in outputs.txt and removes the marker.
 Appends to outputs.txt and temp-roots.txt are O_APPEND writes under an fcntl
-lock.
+lock. The command's own code could erase those lists, so the runner snapshots
+them before the command starts and re-appends any missing line at every
+heartbeat and again before recording outputs; an erased entry is missing for at
+most one heartbeat interval.
 
 Environment: METHOD_SAFE_RUN_HEARTBEAT_SECONDS overrides the 10 s heartbeat
 interval (tests use a short one).
@@ -327,6 +330,28 @@ def append_lines(path, lines):
         os.close(fd)  # releases the lock
 
 
+def read_lists(runs):
+    """The current outputs.txt and temp-roots.txt lines, so a run can put back any its own code erases."""
+    saved = {}
+    for name in ("outputs.txt", "temp-roots.txt"):
+        try:
+            with open(os.path.join(runs, name), encoding="utf-8", errors="replace") as fh:
+                saved[name] = [line for line in fh.read().splitlines() if line]
+        except OSError:
+            saved[name] = []
+    return saved
+
+
+def restore_lists(runs, saved):
+    """Re-append saved lines the run's code removed; the lists only grow while a run is live."""
+    for name, lines in saved.items():
+        if lines:
+            try:
+                append_lines(os.path.join(runs, name), lines)
+            except OSError:
+                pass
+
+
 def record_outputs(runs, changed):
     """Add written files to runs/outputs.txt; the boundary guard treats them as data. Raster figures are exempt."""
     return append_lines(os.path.join(runs, "outputs.txt"), [rel for rel in changed if not rel.lower().endswith(RASTER)])
@@ -588,7 +613,7 @@ def keeper(argv):
     return code if code >= 0 else 128 - code
 
 
-def run_command(cmd, env, marker_path, marker):
+def run_command(cmd, env, marker_path, marker, on_beat=lambda: None):
     """Run cmd under a keeper (see keeper()) that leads its own session and process group, heartbeat the marker,
     and return (code, stdout, stderr, group_gone, signaled) once the whole group has exited. SIGTERM, SIGINT,
     and SIGHUP are forwarded to the group."""
@@ -676,6 +701,7 @@ def run_command(cmd, env, marker_path, marker):
                 os.utime(marker_path)
             except OSError:
                 pass
+            on_beat()
             next_beat = now + beat
         try:
             proc.wait(timeout=0.05)
@@ -843,13 +869,14 @@ def main(argv):
     tmp = tempfile.mkdtemp(prefix="msr-")
     os.chmod(tmp, 0o700)
     append_lines(os.path.join(runs, "temp-roots.txt"), [os.path.abspath(tmp)])
+    saved = read_lists(runs)  # includes this run's temp dir
     marker_path = os.path.join(active, f"{os.getpid()}-{run_start}.json")  # unique per run, even on pid reuse
     marker = {"pid": os.getpid(), "pid_start": process_start(os.getpid()), "pgid": None,
               "host": socket.gethostname(), "start": run_start, "tmp": os.path.abspath(tmp)}
     write_marker(marker_path, marker)
     env = {**os.environ, "TMPDIR": tmp, "TMP": tmp, "TEMP": tmp}
     start = time.monotonic()
-    code, out, err, group_gone, signaled = run_command(cmd, env, marker_path, marker)
+    code, out, err, group_gone, signaled = run_command(cmd, env, marker_path, marker, lambda: restore_lists(runs, saved))
     duration = time.monotonic() - start
     fd = os.open(log_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "wb") as fh:
@@ -859,6 +886,7 @@ def main(argv):
     index = find_index(root)
     after, _ = snapshot(root, None)  # always complete: the run may push the project past the cap
     written = changed_files(before, after, since_ns)
+    restore_lists(runs, saved)
     record_outputs(runs, written)
     if group_gone:  # recorded first, so the marker covers every write until outputs.txt does
         shutil.rmtree(tmp, ignore_errors=True)

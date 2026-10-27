@@ -885,6 +885,26 @@ describe("limit 1b: method-safe-run keeps script output out of the context", () 
     }
   }, 30000)
 
+  test("a run's own code cannot erase earlier outputs.txt or temp-roots.txt entries", () => {
+    const root = project(SCHEMA_ONLY)
+    mkdirSync(runsDir(root), { recursive: true })
+    writeFileSync(path.join(runsDir(root), "outputs.txt"), "results/earlier.csv\n")
+    const kept = mkdtempSync(path.join(os.tmpdir(), "msr-kept-"))
+    writeFileSync(path.join(runsDir(root), "temp-roots.txt"), `${kept}\n`)
+    // Erase both lists, wait past several heartbeats, then copy what the guard would see mid-run.
+    const code = "import shutil, time\nfor f in ('outputs.txt', 'temp-roots.txt'):\n" +
+      "    open('.methodsmith/runs/' + f, 'w').close()\ntime.sleep(1.5)\n" +
+      "shutil.copy('.methodsmith/runs/outputs.txt', 'seen-outputs.txt')\n" +
+      "shutil.copy('.methodsmith/runs/temp-roots.txt', 'seen-temp-roots.txt')\n"
+    const proc = Bun.spawnSync([safeRun, "--", "python3", "-c", code], { cwd: root, env: FAST_ENV })
+    expect(proc.exitCode).toBe(0)
+    expect(listFile(path.join(root, "seen-outputs.txt"))).toContain("results/earlier.csv")
+    expect(listFile(path.join(root, "seen-temp-roots.txt"))).toContain(kept)
+    expect(outputsOf(root)).toContain("results/earlier.csv")
+    expect(tempRootsOf(root)).toContain(kept)
+    rmSync(kept, { recursive: true, force: true })
+  })
+
   test("two concurrent runs: both written files land in outputs.txt and both temp dirs in temp-roots.txt", async () => {
     const root = project(SCHEMA_ONLY)
     mkdirSync(path.join(root, "results"))
