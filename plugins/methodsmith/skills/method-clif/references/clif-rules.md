@@ -29,7 +29,7 @@ These rules apply whenever `__CE_CLIF__ active=true` is present in chat context.
 ## 2. Identifiers
 
 - `patient_id` and `hospitalization_id` are **VARCHAR**. Never cast to `int`/`int64`/`numeric`. Joins, group-bys, and filters preserve string type.
-- `hospitalization_joined_id` is the linkage key for chained encounters; do not invent your own grouping key when this exists.
+- `hospitalization_joined_id` is an optional linkage key for chained encounters. Use it when the site populates it; otherwise use `clifpy` encounter stitching (`ClifOrchestrator(stitch_encounter=True, stitch_time_interval=...)`) and state the window. Do not invent an ad-hoc grouping key, and never assume the column exists.
 - Primary unit of analysis is `hospitalization_id` for encounter-level analyses, `patient_id` for cross-encounter analyses.
 
 ## 3. Datetime
@@ -38,6 +38,7 @@ These rules apply whenever `__CE_CLIF__ active=true` is present in chat context.
 - `birth_date` is a `DATE` (no time, no zone).
 - When parsing, always specify `tz="UTC"` (Python) or `tz = "UTC"` (R, lubridate). When writing, ensure timestamps round-trip as UTC.
 - Time arithmetic uses `dt.total_hours()` / `as.numeric(difftime(..., units="hours"))`. Never subtract naive timestamps.
+- `clifpy`'s `timezone=` setting relabels loaded UTC data into the site zone without moving the instant; naive stored values are assumed to already be in that zone. Never strip the zone after loading. When analysis uses local calendar days or shifts, state which zone defines the boundary (the dictionary's date-only rule is local midnight, then UTC).
 
 ## 4. mCIDE vocabularies
 
@@ -51,8 +52,9 @@ These rules apply whenever `__CE_CLIF__ active=true` is present in chat context.
 project/
 ├── code/                  # Cohort, QC, outlier handling, and analysis scripts
 ├── config/
-│   └── config.json        # Site-specific paths, NEVER committed with patient data
-├── outlier-thresholds/    # Site-specific override thresholds (optional)
+│   ├── config_template.json  # Committed template; copy to config.json
+│   └── config.json        # Site-specific paths, gitignored, never committed
+├── guides/                # Creator guide, primer, buddy-testing guide and report template
 ├── output/
 │   ├── intermediate_phi/  # Optional only when approved, local, non-synced, and gitignored
 │   └── final_no_phi/      # Aggregate, shareable results only
@@ -61,9 +63,13 @@ project/
 ├── pyproject.toml         # Python dependencies (if Python)
 ├── uv.lock                # Python lockfile used by current CLIF repos
 ├── requirements.txt       # Optional exported Python requirements
-├── utils/                 # Shared helpers
+├── utils/                 # Shared helpers, including Python and R config loaders
 └── README.md
 ```
+
+The template supports Python and R (`code/templates/Python/` and `code/templates/R/`).
+Outlier thresholds come from `clifpy` (`outlier_config.yaml`) or the project's
+documented analysis step, not from a site-level override folder.
 
 Rules:
 - New analysis files go under `code/`. Do not create top-level `analysis.py` / `script.R`.
@@ -85,7 +91,7 @@ templates as adaptable, but preserve the data-sharing boundary:
    - Set physiologically implausible values to missing using the CLIF-approved handling path.
 
 4. **Analysis** (`code/04_*analysis*`)
-   - Read the prepared cohort and write only aggregate results with every reported cell `n >= 10` (the CLIF project floor) to `output/final_no_phi/`.
+   - Read the prepared cohort and write only aggregate results with every reported cell above 10 (`n >= 11`, the CLIF floor) to `output/final_no_phi/`.
 
 When `method-plan` runs under CLIF profile, reflect this workflow rather than a generic QC-first three-script split.
 
@@ -94,7 +100,7 @@ When `method-plan` runs under CLIF profile, reflect this workflow rather than a 
 - **Sensitive-data boundary.** Resolve `phi_environment.mode` in `.ce-datascience/config.local.yaml` (worktree, then main checkout; legacy `compliant: true` = `approved`, `compliant: false` = `schema-only`, `sensitive_data: false` = `no-sensitive-data`; any schema-only signal wins; unreadable = `schema-only`). `approved` or `no-sensitive-data`: proceed silently and never mention the boundary again. `schema-only`: headings, types, counts, and aggregates only; never open, print, or paste data values; run data-reading scripts as `method-safe-run -- <command>` (path in the guard's deny message); save results as aggregate tables (counts under 11 suppressed) in `output/` or a `phi_environment.aggregate_dirs` entry. Unset, interactive: ask once with the blocking question tool (else a numbered list) offering `Approved endpoint: full access`, `Not approved or unsure: schema-only`, and `No sensitive data: public or synthetic`; save the answer as `phi_environment.mode` there once `git check-ignore -q .ce-datascience/config.local.yaml` passes (else first add `.ce-datascience/*.local.yaml` to `.gitignore`) so the guard hook sees it. Unset, headless: schema-only.
 - An orchestrator's exact `PHI authorization: confirmed` marker counts as `approved`; `PHI authorization: not confirmed` counts as `schema-only`.
 - **Never** share, commit, upload, or send patient-level CLIF tables across sites. CLIF is federated: code travels, data does not.
-- Keep patient-level work under the approved restricted data root. Use `output/intermediate_phi/` only when explicitly verified as approved, local, non-synced, and gitignored. Share only reviewed aggregates in `output/final_no_phi/`, with every reported cell `n >= 10` and no raw data files. `n >= 10` is the CLIF project floor; a stricter site or DUA rule always wins.
+- Keep patient-level work under the approved restricted data root. Use `output/intermediate_phi/` only when explicitly verified as approved, local, non-synced, and gitignored. Share only reviewed aggregates in `output/final_no_phi/`, with every reported cell above 10 (`n >= 11`) and no raw data files. The CLIF floor comes from the clif-icu.com FAQ ("more than 10 patients per cell"); the template README states `n >= 10`, so use the stricter FAQ rule, and a stricter site or DUA rule always wins.
 - When the user asks to commit or share data, refuse and provide code or instructions for a secure local run instead.
 - Treat clinical notes, imaging, raw names, and free-text fields as PHI-suspect. CLIF 3.0's notes and imaging require the same prohibition with heightened caution.
 
@@ -104,9 +110,13 @@ These paths must not be edited without the responsible point-of-contact's author
 
 - `mCIDE/**` — minimum Common ICU Data Elements. Schema-level changes here ripple across every consortium site.
 - `ddl/**` — DDL statements that define the relational schema.
-- `outlier-handling/**` — agreed thresholds for outlier rules.
-- `reference_ranges/**` — clinical reference ranges.
 - `WORKFLOW.md` — process document; any change is a consortium-level decision.
+
+The CLIF repository removed its `outlier-handling/` and `reference_ranges/`
+directories: outlier thresholds and reference ranges are applied downstream in
+`clifpy` or in each project, not in the ETL specification. Changes to `clifpy`'s
+shared `outlier_config.yaml` go through the `clifpy` repository and the affected
+table POC.
 
 To override: include `POC: @<github-handle> approved` (or `--poc-approved`) in the prompt. Without that, refuse and stage the diff under `analysis/clif-protected-edits/`.
 
@@ -121,6 +131,16 @@ To override: include `POC: @<github-handle> approved` (or `--poc-approved`) in t
 - For formal site-to-lead or literature synthesis, use `method-clif-meta-analysis`; it covers aggregate contracts, failed/suppressed sites, R/Python estimator differences, and lead-to-site feedback.
 - Site output files follow `{SITE_ID}_{descriptor}.{ext}` naming. The site identifier is always the prefix.
 - Keep aggregation separate from patient-level analysis. Use the project's approved layout; do not assert that a separate repository is universally required.
+
+### Consortium project lifecycle (clif-icu.com)
+
+1. **Scope:** check feasibility against each site's IRB cohort criteria and data windows; propose through the consortium's proposal form or contact channel on clif-icu.com.
+2. **Code:** build from `CLIF-Project-Template` and develop on CLIF-MIMIC or demo data.
+3. **Buddy test:** one other site runs the project end to end and records the buddy-test report; data-security failures block release.
+4. **Preliminary results report:** methods summary, results summary, aggregated Table 1, and two primary figures before consortium release.
+5. **Share:** the PI releases the project to sites, which return only `output/final_no_phi/`.
+
+For a full repository audit against these rules, use `method-clif-audit`.
 
 ## 9b. Staged data loading
 
@@ -147,7 +167,8 @@ Some consortium projects use Python for data wrangling and R for statistical mod
 - `lab_value` may be non-numeric (e.g., `"> upper limit"`, `"<0.01"`). Use `lab_value_numeric` for arithmetic; preserve `lab_value` for QC.
 - `mar_action_group == "administered"` is the only value that means the medication was given. `not_administered` and `other` must be filtered out before exposure analyses.
 - `ADT.location_category` is a *physical* location, not a patient-status flag. ICU presence is `location_category == "icu"`.
-- `device_category == "IMV"` is invasive ventilation; `NIPPV`, `CPAP`, `High Flow NC`, `Face Mask`, `Trach Collar`, `Nasal Cannula`, `Room Air`, `Other` are non-invasive or no support. Never collapse these silently.
+- `device_category == "IMV"` is invasive ventilation; `NIPPV`, `CPAP`, `High Flow NC`, `Face Mask`, `Trach Collar`, `Nasal Cannula`, `Room Air`, `Other` are non-invasive or no support. These are CLIF 2.1 spellings; CLIF 3.0 uses lowercase snake_case (`imv`, `nippv`, `cpap`, `hfnc`, `face_mask`, `trach_collar`, `nasal_cannula`, `room_air`, `other`, plus `t_piece` and `blow_by`). Never collapse these silently, and never compare against the other family's spelling.
+- `lab_value_numeric` is optional; when it is absent or null, parse `lab_value` and report how many values were unparseable.
 
 ### R coding pitfalls
 - **`large_utf8` Arrow type breaks cross-site joins.** Some ETL implementations produce `large_utf8` instead of `utf8`. Joins between the two fail silently. Always `cast_large_utf8_to_utf8()` after `open_dataset()`.
@@ -157,7 +178,8 @@ Some consortium projects use Python for data wrangling and R for statistical mod
 - **Namespace collisions.** Arrow and dplyr both export `filter` and `select`. Declare `select <- dplyr::select` at script top.
 
 ### Python coding pitfalls
-- **Outlier handling is clifpy's job.** Use `ClifOrchestrator` — do not hardcode thresholds.
+- **Outlier handling is clifpy's job.** Use `apply_outlier_handling` on the table object before the respiratory waterfall — do not hardcode or fork thresholds.
+- **Do not reimplement clifpy.** SOFA (prefer SOFA-2), the respiratory waterfall, dose conversion, encounter stitching, wide/hourly datasets, ASE, and comorbidity indices ship in `clifpy`. Load the `method-clifpy` skill for verified signatures and pitfalls.
 - **Prefer polars for large tables.** `pl.scan_parquet()` for lazy evaluation on vitals/labs (often >50M rows). Pandas `read_parquet()` loads everything into memory.
 - **uv is the current Python default.** Newer CLIF Python projects use `uv` with `pyproject.toml` and `uv.lock` for environment management. Check for `uv.lock` before suggesting `pip install`; use `uv add` / `uv sync` when the project already uses uv.
 
@@ -188,8 +210,9 @@ Some consortium projects use Python for data wrangling and R for statistical mod
 - CLIF WORKFLOW.md: https://github.com/Common-Longitudinal-ICU-data-Format/CLIF/blob/main/WORKFLOW.md
 - mCIDE directory: https://github.com/Common-Longitudinal-ICU-data-Format/CLIF/tree/main/mCIDE
 - **clifpy** (official Python client, PyPI: `python3 -m pip install --upgrade clifpy`; uv projects: `uv add clifpy`): https://github.com/Common-Longitudinal-ICU-data-Format/clifpy — examples in `examples/`, docs at https://common-longitudinal-icu-data-format.github.io/clifpy/
-- **CLIF-Project-Template** (canonical R skeleton with `renv.lock`, `code/`, `config/`, `outlier-thresholds/`, `output/`, `utils/`): https://github.com/Common-Longitudinal-ICU-data-Format/CLIF-Project-Template
+- **CLIF-Project-Template** (Python and R skeleton with `code/`, `config/`, `guides/`, `output/`, `utils/`, and a buddy-test report template): https://github.com/Common-Longitudinal-ICU-data-Format/CLIF-Project-Template
 - CLIF-MIMIC pipeline (MIMIC -> CLIF): https://github.com/Common-Longitudinal-ICU-data-Format/CLIF-MIMIC
-- CLIF Lighthouse (validation tool, deprecated in favour of CLIF TableOne in v2.1): https://github.com/Common-Longitudinal-ICU-data-Format/CLIF-Lighthouse-Deprecated
+- CLIF Lighthouse (validation tool; the repository is now `CLIF-Lighthouse-Deprecated`, superseded by CLIF-TableOne and `clifpy` DQA even though some site pages still mention it): https://github.com/Common-Longitudinal-ICU-data-Format/CLIF-Lighthouse-Deprecated
+- CLIF consortium agent plugin (`clif-icu` skill, PHI hooks, reviewer agents; Apache-2.0): https://github.com/Common-Longitudinal-ICU-data-Format/skills. It can be installed alongside methodsmith; when both are active, follow the stricter output rule and the user's declared sensitive-data boundary.
 - Consortium site and contact channels: https://clif-icu.com/
 - CLIF GitHub organization (issues and discussions): https://github.com/Common-Longitudinal-ICU-data-Format

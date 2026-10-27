@@ -77,7 +77,7 @@ and wait. Never silently choose a family.
 > Which CLIF and mCIDE version family should this project use?
 >
 > 1. CLIF 2.1 + mCIDE 2.1 — the 2.1 structured-dictionary release family (confirm the current release at https://clif-icu.com/).
-> 2. CLIF 3.0 + mCIDE 3.0 — multimodal release family; use only when the project explicitly targets it.
+> 2. CLIF 3.0 + mCIDE 3.0 — multimodal family, still pre-release on clif-icu.com; use only when the project explicitly targets it.
 
 Reject an undeclared mixed pair such as CLIF 3.0 with mCIDE 2.1. Record a
 project-specific exception only after the user supplies its source and states
@@ -113,7 +113,7 @@ Load `references/clif-rules.md` (always), `references/mcide-vocab.md` (when the 
 
 Before reading patient-level data, code output, logs, or tracebacks, apply the
 sensitive-data boundary in `references/clif-rules.md`. CLIF's federated rules (no
-patient-level tables leave the site, `n >= 10` floor for shared outputs) apply
+patient-level tables leave the site; every shared cell has more than 10 patients) apply
 in every mode.
 
 Then ensure `__CE_LANG__` exists:
@@ -136,8 +136,6 @@ stack_profile:
     protected_paths:                    # in addition to the built-in list
       - mCIDE/**
       - ddl/**
-      - outlier-handling/**
-      - reference_ranges/**
       - WORKFLOW.md
     poc_table_path: ./CLIF_POCs.md      # optional override; defaults to references/poc-table.md
     strict: true                        # block on any rule violation rather than warn
@@ -178,11 +176,11 @@ Consumers (other `method-*` skills) parse `active=true` to switch to CLIF behavi
 
 When the user is writing CLIF analysis code, surface canonical recipes from the upstream code-of-record packages:
 
-- **Python users** (`__CE_LANG__ primary=python`): load `references/clifpy-recipes.md` — recipes drawn directly from `Common-Longitudinal-ICU-data-Format/clifpy` (`python3 -m pip install --upgrade clifpy`; uv projects use `uv add clifpy`). Covers `ClifOrchestrator` setup, schema validation, helper-based feature construction, vitals outlier handling, unit conversion for medications, and the data-quality assessment (DQA) pattern.
+- **Python users** (`__CE_LANG__ primary=python`): load `references/clifpy-recipes.md` — core recipes verified against `Common-Longitudinal-ICU-data-Format/clifpy` 2.1.0 (uv projects use `uv add clifpy`; otherwise `python3 -m pip install --upgrade clifpy`). Covers `ClifOrchestrator` setup, schema validation, wide datasets, outlier handling, stitching, medication unit conversion, SOFA, and the data-quality assessment (DQA) pattern. For any other `clifpy` call, SOFA-2, ASE, timezone handling, 3.0 migration, or a review of existing `clifpy` code, load the `method-clifpy` skill.
 - **R users** (`__CE_LANG__ primary=r`): load `references/r-template-recipes.md` — recipes drawn from `Common-Longitudinal-ICU-data-Format/CLIF-Project-Template` (R) and the canonical `code/templates/R/` layout. Covers `renv` bootstrap, `arrow::open_dataset()` reads, cohort → QC → outlier handling → analysis, and the separate intermediate/final output paths.
 - **`__CE_LANG__ primary=both`** or `unknown`: surface both files so the agent can choose.
 
-For a new consortium project or an audit of an existing template-derived repository, route to the `method-clif-template` skill. It owns template initialization and structural audit; this skill remains the CLIF version, vocabulary, and protected-path guardrail.
+For a new consortium project or a structural check of a template-derived repository, route to the `method-clif-template` skill. For a full audit of a CLIF project repository (environment pins, config, `clifpy` usage, timezone, output disclosure, reproducibility), route to the `method-clif-audit` skill. This skill remains the CLIF version, vocabulary, and protected-path guardrail.
 
 For formal site-to-lead effect pooling, model-output synthesis, or a literature
 meta-analysis, use `method-clif-meta-analysis`. A shared CLIF schema does not establish
@@ -196,5 +194,5 @@ Read each file at the step that names it (backtick paths, loaded on demand):
 - `references/version-families.md` — Selection and migration contract for CLIF/mCIDE 2.1 and 3.0. Read before selecting a version family or validating v3 categories.
 - `references/mcide-vocab.md` — Cached 2.1 allow-lists plus pointers to authoritative mCIDE CSV sources; never use it for v3.
 - `references/poc-table.md` — CLIF table / mCIDE subdirectory to responsible POC (name and GitHub handle), for the protected-path guardrail. Names and handles only; no contact addresses are cached.
-- `references/clifpy-recipes.md` — Python recipes (ClifOrchestrator, SOFA, wide dataset, validation). Load when generating Python CLIF code.
+- `references/clifpy-recipes.md` — Core Python recipes (ClifOrchestrator, wide dataset, outliers, stitching, units, SOFA, DQA). Load when generating Python CLIF code; use `method-clifpy` for the full verified API.
 - `references/r-template-recipes.md` — R recipes (arrow, cohort, QC, meta-analysis, propensity, federated). Load when generating R CLIF code.

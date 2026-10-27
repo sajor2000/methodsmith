@@ -1,12 +1,12 @@
 # CLIF Point-of-Contact Table
 
-Source: `https://github.com/Common-Longitudinal-ICU-data-Format/CLIF/blob/main/README.md` (last mirrored 2026-04). Used by the `method-clif` protected-path guardrail to identify whose authorization is required before editing a CLIF table's mCIDE / DDL / outlier-handling files.
+Source: `https://github.com/Common-Longitudinal-ICU-data-Format/CLIF/blob/main/README.md` (re-checked 2026-10-26; unchanged). Used by the `method-clif` protected-path guardrail to identify whose authorization is required before editing a CLIF table's mCIDE or DDL files.
 
 Contact details are deliberately not cached here. Names and GitHub handles are enough to identify the responsible person; reach them through the CLIF consortium channels listed on https://clif-icu.com/ or the CLIF GitHub organization rather than a stored address.
 
 ## How the guardrail uses this table
 
-When an edit is proposed against `mCIDE/<table>/**`, `ddl/<table>.sql`, `outlier-handling/<table>**`, or `reference_ranges/<table>**`, look up `<table>` in the table below. The proposed prompt must include `POC: @<github_handle> approved` (or `--poc-approved`) to proceed; otherwise the edit is blocked and the diff is staged under `analysis/clif-protected-edits/`.
+When an edit is proposed against `mCIDE/<table>/**` or `ddl/<table>.sql`, look up `<table>` in the table below. The proposed prompt must include `POC: @<github_handle> approved` (or `--poc-approved`) to proceed; otherwise the edit is blocked and the diff is staged under `analysis/clif-protected-edits/`.
 
 ## Table -> POC mapping
 
@@ -63,8 +63,37 @@ These paths affect multiple tables and require a consortium-level review:
 |-----------------------|-------------------------------------------------------------------------|
 | `WORKFLOW.md`         | Consortium leadership (see https://clif-icu.com/)                       |
 | `ddl/**` (multi-table)| Consortium leadership                                                   |
-| `outlier-handling/**` | The POC of the affected table + consortium leadership                   |
-| `reference_ranges/**` | The POC of the affected table + consortium leadership                   |
+
+The CLIF repository removed `outlier-handling/` and `reference_ranges/`; outlier
+thresholds now live in `clifpy`, so changes go through the `clifpy` repository
+and the affected table POC.
+
+## CLIF 3.0 table POCs (clif-icu.com)
+
+The GitHub README above still lists 2.1 table names. The data-dictionary page at
+https://clif-icu.com/data-dictionary#table-poc (checked 2026-10-26) lists these
+POCs for the 3.0 table set. GitHub handles are not published there; resolve them
+through the consortium channels before recording an approval.
+
+| 3.0 table | POC (names only) |
+|---|---|
+| renal_replacement_therapy (was crrt_therapy) | Jay Koyner; Shan Guleria |
+| mcs (was ecmo_mcs) | Maxwell Hockstein; Shan Guleria |
+| labs | Catherine Gao; William Parker |
+| microbiology_culture, microbiology_nonculture, microbiology_susceptibility | Kevin Buell; Aartik Sarma |
+| airway, line, drain, patient_attributes | Pat Lyons |
+| clinical_notes_facts | Peter Graffy |
+| ed_encounter | David Beiser |
+| invasive_hemodynamics | Maxwell Hockstein |
+| consult_orders, misc_icu_orders | William Parker; Bhakti Patel |
+| model_registry, scores | J.C. Rojas |
+| place_based_index | Alexander Ortiz |
+| radiology | Aartik Sarma |
+| transfusion | André Amaral |
+
+Still without a published POC: clinical_trial, hospital_diagnosis,
+patient_diagnosis, validated_diagnosis. For a 3.0 project, the clif-icu.com
+list wins where it differs from the README.
 
 ## Refresh policy
 

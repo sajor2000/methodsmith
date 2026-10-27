@@ -21,7 +21,7 @@
       "files": [],
       "expectations": [
         "Does not modify any file in the project during the audit",
-        "Reports each audit item (README version/objective/tables/cohort/outputs/run instructions, gitignored config without secrets, PHI vs final output paths, cohort->QC->outlier->analysis order with Parquet and UTC, aggregate-only with min cell 10, POC approval for protected paths, buddy test) as pass, warning, or block",
+        "Reports each audit item (README version/objective/tables/cohort/outputs/run instructions, gitignored config without secrets, PHI vs final output paths, cohort->QC->outlier->analysis order with Parquet and UTC, aggregate-only with every reported cell above 10, POC approval for protected paths, buddy test) as pass, warning, or block",
         "Marks a missing or non-passing BUDDY_TEST_REPORT.md as a block for distribution readiness",
         "States the audit does not certify data quality, cohort validity, disclosure safety, or consortium approval, and routes those to method-data-qa, the SAP, method-signoff, and the CLIF POC"
       ]

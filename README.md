@@ -25,7 +25,7 @@ papers, and meta-analysis; R or Python.
 approve the plan and judge the findings. Methodsmith does the drafting, running
 and checking that make the work reproducible and grounded: pre-specified SAPs,
 reviewed code, reporting checklists and numbers traced to the analysis.
-**68 skills, 55 specialist agents, and 49 reporting standards.**
+**70 skills, 55 specialist agents, and 49 reporting standards.**
 
 ```bash
 # Install in Claude Code (2.1.292 or later), then set up a project
@@ -235,8 +235,10 @@ new names.
 | `/ce-checklist-match` | `/method-checklist` |
 | `/ce-clean-gone-branches` | `/method-clean-branches` |
 | `/ce-clif` | `/method-clif` |
+| `/ce-clif-audit` | `/method-clif-audit` |
 | `/ce-clif-meta-analysis` | `/method-clif-meta-analysis` |
 | `/ce-clif-project-template` | `/method-clif-template` |
+| `/ce-clifpy` | `/method-clifpy` |
 | `/ce-clinical-research-voice` | `/method-voice` |
 | `/ce-code-review` | `/method-review` |
 | `/ce-cohort-build` | `/method-cohort` |

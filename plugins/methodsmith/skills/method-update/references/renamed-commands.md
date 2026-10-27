@@ -13,8 +13,10 @@ Methodsmith 5.0 renamed every command and agent from the `method-` prefix to
 | `/ce-checklist-match` | `/method-checklist` |
 | `/ce-clean-gone-branches` | `/method-clean-branches` |
 | `/ce-clif` | `/method-clif` |
+| `/ce-clif-audit` | `/method-clif-audit` |
 | `/ce-clif-meta-analysis` | `/method-clif-meta-analysis` |
 | `/ce-clif-project-template` | `/method-clif-template` |
+| `/ce-clifpy` | `/method-clifpy` |
 | `/ce-clinical-research-voice` | `/method-voice` |
 | `/ce-code-review` | `/method-review` |
 | `/ce-cohort-build` | `/method-cohort` |

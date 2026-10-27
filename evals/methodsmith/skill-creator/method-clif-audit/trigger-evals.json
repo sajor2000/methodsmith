@@ -1,0 +1,22 @@
+[
+  {"query": "Run a full audit of our CLIF project repo: pins, config, clifpy usage, outputs, and reproducibility.", "should_trigger": true},
+  {"query": "Before releasing our CLIF delirium project to the consortium, audit the code for anything that would leak small cells or break at another site.", "should_trigger": true},
+  {"query": "We inherited a CLIF sepsis repo from a fellow who left. Audit it and tell me what's broken.", "should_trigger": true},
+  {"query": "Check whether this CLIF repo reimplements SOFA, outlier handling, or stitching that clifpy already provides.", "should_trigger": true},
+  {"query": "Audit our CLIF repo after upgrading clifpy to 2.1.0; are any calls or pins now wrong?", "should_trigger": true},
+  {"query": "clif audit on ./ with file:line evidence, block vs warning, before the buddy test", "should_trigger": true},
+  {"query": "Is our CLIF project safe to send to sites? Check timezone handling, export suppression, committed data, and lockfiles.", "should_trigger": true},
+  {"query": "Review the CLIF-Project-Template-derived repo for coding best practices across all scripts and notebooks.", "should_trigger": true},
+  {"query": "Our CLIF repo targets 3.0 now; audit it for 2.1 category spellings and version mismatches.", "should_trigger": true},
+  {"query": "Do a consortium-readiness audit of this CLIF analysis repository and give me a prioritized fix list.", "should_trigger": true},
+  {"query": "Initialize a new CLIF project from the official template in ~/clif/new-study.", "should_trigger": false},
+  {"query": "Write the clifpy call to convert vasopressor doses to mcg/kg/min.", "should_trigger": false},
+  {"query": "Run data quality checks on our real CLIF labs table: missingness, ranges, duplicates.", "should_trigger": false},
+  {"query": "Which CLIF and mCIDE version family should this project use?", "should_trigger": false},
+  {"query": "Review this pull request diff for bugs; it's a generic Flask app.", "should_trigger": false},
+  {"query": "Check the manuscript against the STROBE and RECORD checklists.", "should_trigger": false},
+  {"query": "Pool the CLIF site estimates with a random-effects model.", "should_trigger": false},
+  {"query": "Audit our OMOP CDM ETL for vocabulary mapping errors.", "should_trigger": false},
+  {"query": "Edit mCIDE/labs/clif_lab_categories.csv to add a new lab category.", "should_trigger": false},
+  {"query": "Prepare the signoff ledger for the PI before we share aggregate outputs.", "should_trigger": false}
+]

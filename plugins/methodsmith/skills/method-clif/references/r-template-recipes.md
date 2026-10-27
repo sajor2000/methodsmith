@@ -1,13 +1,13 @@
 # CLIF Project-Template Recipes (R)
 
-Canonical R patterns for working with CLIF data, drawn directly from `Common-Longitudinal-ICU-data-Format/CLIF-Project-Template` (`code/templates/R/`, `config/`, `utils/`, `outlier-thresholds/`, `output/`) and current mixed R/Python CLIF project repos. New CLIF analyses in R should start by cloning this template — never roll your own folder structure. The template enforces the federated-portability rules from `WORKFLOW.md`: site-specific paths only in `config/config.json`, package versions pinned with `renv`, scripts numbered for execution order.
+Canonical R patterns for working with CLIF data, drawn directly from `Common-Longitudinal-ICU-data-Format/CLIF-Project-Template` (`code/templates/R/`, `config/`, `guides/`, `utils/`, `output/`; checked 2026-10-26) and current mixed R/Python CLIF project repos. New CLIF analyses in R should start by cloning this template — never roll your own folder structure. The template enforces the federated-portability rules from `WORKFLOW.md`: site-specific paths only in `config/config.json`, package versions pinned with `renv`, scripts numbered for execution order.
 
 ## Table of contents
 
 1. Repository layout (canonical R structure).
 2. `renv` bootstrap (`00_renv_restore.R`).
-3. `config/config.json` shape (site_name, tables_path, file_type).
-4. `utils/config.R` and `utils/outlier_handler.R` pattern.
+3. `config/config.json` shape (site_name, data_directory, filetype, timezone, output_directory).
+4. `utils/config.R` and the project-owned outlier handler pattern.
 5. Cohort identification (`01_cohort_identification_template.R`).
 6. Quality checks (`02_project_quality_checks_template.R`).
 7. Outlier handling (`03_outlier_handling_template.R`).
@@ -30,14 +30,14 @@ project-root/
   config/
     config_template.json # commit this (no PHI)
     config.json          # do NOT commit (gitignored)
-  outlier-thresholds/    # consortium-agreed clinical thresholds (CSV)
   output/
     intermediate_phi/    # gitignored patient-level working data; never shared
     final_no_phi/        # aggregate, shareable outputs only
   utils/
     config.R
     config.py            # Python sibling (kept for federated parity)
-    outlier_handler.R
+    outlier_handler.R    # project-owned; the template does not ship one
+  guides/                # creator guide, primer, buddy-testing guide, report template
   renv.lock              # pinned package versions
   renv/
   README.md
@@ -70,15 +70,18 @@ Source: `config/config_template.json`. Commit `config_template.json`, copy it to
 ```json
 {
     "site_name": "Your_Site_Name",
-    "tables_path": "/path/to/tables/",
-    "file_type": "csv/parquet/fst"
+    "data_directory": "./clif_demo",
+    "filetype": "parquet",
+    "timezone": "US/Eastern",
+    "output_directory": "./output"
 }
 ```
 
 Rules:
 - `site_name` is used in output filenames (federated runs ship results back as `<site>_<artifact>.parquet`).
-- `tables_path` is the absolute path to CLIF Parquet files at this site.
-- `file_type` is `parquet` for production CLIF (CLIF-safe rules forbid `csv`/`fst` for the official tables; the template keeps `csv` only for legacy compatibility).
+- `data_directory` is the path to CLIF Parquet files at this site; the template defaults it to the bundled `clif_demo` so a first run needs no site data.
+- `filetype` is `parquet` for production CLIF (CLIF-safe rules forbid `csv`/`fst` for the official tables).
+- `timezone` is the site zone. These keys match `clifpy`'s config schema, so the same file works for Python steps (`ClifOrchestrator(config_path="config/config.json")`). Older projects used `tables_path`/`file_type`; migrate them when touching the config.
 
 ## 4. `utils/config.R`
 
@@ -107,10 +110,10 @@ Then in any analysis script:
 ```r
 source("utils/config.R")
 site_name <- config$site_name
-tables_path <- config$tables_path
+data_directory <- config$data_directory
 ```
 
-`utils/outlier_handler.R` provides `apply_outlier_thresholds(df, table_name)` which reads the matching CSV from `outlier-thresholds/` and sets out-of-range values to `NA` (never silently clipped).
+The template's `03_outlier_handling_template.R` is a skeleton. Projects supply their own `utils/outlier_handler.R` exposing `apply_outlier_thresholds(df, table_name)`, with ranges taken from `clifpy`'s consortium `outlier_config.yaml` (cite the `clifpy` version), and set out-of-range values to `NA` (never silently clipped). Do not fork thresholds without recording why.
 
 ## 5. Cohort identification
 
@@ -143,9 +146,9 @@ true_tables <- c("patient", "hospitalization", "adt", "vitals", "labs",
                  "microbiology_culture")
 table_flags <- setNames(tables %in% true_tables, tables)
 
-# Load each TRUE-flagged table from tables_path
+# Load each TRUE-flagged table from data_directory
 load_clif_table <- function(name) {
-  arrow::open_dataset(file.path(config$tables_path, paste0("clif_", name, ".parquet")))
+  arrow::open_dataset(file.path(config$data_directory, paste0("clif_", name, ".parquet")))
 }
 
 clif <- lapply(tables[table_flags], load_clif_table)
@@ -170,7 +173,7 @@ cast_large_utf8_to_utf8 <- function(dataset) {
 }
 
 # Apply to EVERY open_dataset() call before filtering or joining:
-table_data <- open_dataset(file.path(config$tables_path, "clif_table_name")) |>
+table_data <- open_dataset(file.path(config$data_directory, "clif_table_name")) |>
   cast_large_utf8_to_utf8() |>
   left_join(cohort_ids, by = "hospitalization_id") |>
   filter(in_cohort == 1) |>
@@ -222,7 +225,7 @@ Source: `code/templates/R/02_project_quality_checks_template.R`. Mirrors clifpy'
 source("utils/config.R")
 library(arrow); library(dplyr); library(janitor)
 
-vitals <- arrow::open_dataset(file.path(config$tables_path, "clif_vitals.parquet")) |>
+vitals <- arrow::open_dataset(file.path(config$data_directory, "clif_vitals.parquet")) |>
   collect()
 
 # 1. mCIDE check: vital_category must be in the allow list
@@ -235,7 +238,7 @@ mcide_violations <- vitals |>
 # 2. Datetime timezone: every datetime must be UTC tz-aware
 stopifnot(attr(vitals$recorded_dttm, "tzone") == "UTC")
 
-# 3. Range check via outlier-thresholds/vitals.csv
+# 3. Range check with the project's outlier handler (clifpy outlier_config.yaml ranges)
 source("utils/outlier_handler.R")
 vitals_clean <- apply_outlier_thresholds(vitals, "vitals")
 ```
@@ -244,7 +247,7 @@ Write a disclosure-reviewed QC summary to `output/final_no_phi/qc/`; retain any 
 
 ## 7. Outlier handling
 
-Outlier thresholds are managed by the project template's `utils/outlier_handler.R` (R) or by clifpy (Python). Do not hardcode thresholds in analysis scripts — call the shared handler:
+Outlier thresholds come from `clifpy`'s `outlier_config.yaml`: Python calls `apply_outlier_handling`, and R projects apply the same ranges through a project-owned `utils/outlier_handler.R`. Do not hardcode thresholds in analysis scripts — call the shared handler:
 
 ```r
 source("utils/outlier_handler.R")
@@ -311,7 +314,7 @@ flow$adult <- nrow(cohort)
 cohort <- cohort |> filter(icu_los_hours >= 24)
 flow$icu_24h <- nrow(cohort)
 
-# Save as CSV alongside the analysis; suppress any step count below the CLIF floor (n >= 10) before sharing
+# Save as CSV alongside the analysis; suppress any step count of 10 or fewer (CLIF floor: n >= 11) before sharing
 flow_df <- tibble(step = names(flow), n = unlist(flow))
 write_csv(flow_df, file.path("output", "final_no_phi", "cohort_flow.csv"))
 ```
@@ -348,7 +351,7 @@ Always prefer `arrow::open_dataset()` over `arrow::read_parquet()` for CLIF tabl
 
 ```r
 library(arrow); library(dplyr)
-ds <- arrow::open_dataset(file.path(config$tables_path, "clif_vitals.parquet"))
+ds <- arrow::open_dataset(file.path(config$data_directory, "clif_vitals.parquet"))
 
 vitals_2021 <- ds |>
   filter(recorded_dttm >= as.POSIXct("2021-01-01", tz = "UTC"),
