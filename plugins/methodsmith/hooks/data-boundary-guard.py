@@ -54,6 +54,7 @@ denies only calls that mention a data-like path or an upload; anything else is
 allowed with a one-line stderr warning. Stdlib only; silent on allow.
 """
 
+import fnmatch
 import json
 import os
 import re
@@ -674,10 +675,15 @@ def _segment_anchors(seg, cur, anchors, depth):
             if not chunk or chunk.startswith("-"):
                 continue
             pathish = "/" in chunk or DATA_REF.search(chunk)
+            globbed = isinstance(token, GlobToken) and any(ch in chunk for ch in "*?[")
             for base in bases:
                 path = _resolve(chunk, base)
                 if pathish or os.path.lexists(path):
                     _add_anchor(anchors, path)
+                if globbed:  # the files an unquoted wildcard expands to (cached for classify)
+                    for variant in expand_braces(chunk)[:8]:
+                        for match in glob_matches(variant, base)[0]:
+                            _add_anchor(anchors, match)
     if cmd and program(cmd[0]) in ("cd", "pushd"):
         target = next((t for t in cmd[1:] if not t.startswith("-")), None)
         if target:
@@ -769,10 +775,94 @@ def notebook_has_outputs(path):
         return True  # cannot verify the outputs are empty
 
 
-def is_data_path(raw, cwd, mode):
-    """True when a path names a data file: extension, data_root, symlink target, or a notebook with outputs."""
+GLOB_CAP = 256          # matches checked per wildcard, like a shell expansion cut short
+GLOB_SCAN_BUDGET = 300000  # directory entries examined per wildcard before it counts as over the cap
+_GLOB_CACHE: dict = {}
+
+
+def glob_matches(pattern, cwd):
+    """(up to GLOB_CAP absolute matches, over_cap) for an unquoted shell wildcard, resolved against cwd.
+
+    Hidden names match only a component that starts with `.`, as in the shell. Examining more than
+    GLOB_SCAN_BUDGET directory entries also counts as over the cap, so a huge tree cannot stall the hook.
+    """
+    key = (pattern, cwd)
+    if key in _GLOB_CACHE:
+        return _GLOB_CACHE[key]
+    path = os.path.expanduser(pattern)
+    current = [os.sep if os.path.isabs(path) else cwd]
+    parts = [p for p in path.split("/") if p]
+    budget, over = GLOB_SCAN_BUDGET, False
+    for index, part in enumerate(parts):
+        last = index == len(parts) - 1
+        found = []
+        if not any(ch in part for ch in "*?["):
+            for base in current:
+                candidate = os.path.join(base, part)
+                if os.path.lexists(candidate) if last else os.path.isdir(candidate):
+                    found.append(candidate)
+        else:
+            match = re.compile(fnmatch.translate(part)).match
+            for base in current:
+                try:
+                    with os.scandir(base) as entries:
+                        for entry in entries:
+                            budget -= 1
+                            if budget < 0:
+                                over = True
+                                break
+                            if entry.name.startswith(".") and not part.startswith("."):
+                                continue
+                            if not match(entry.name):
+                                continue
+                            if not last:
+                                try:
+                                    if not entry.is_dir():
+                                        continue
+                                except OSError:
+                                    continue
+                            found.append(os.path.join(base, entry.name))
+                            if last and len(found) > GLOB_CAP:
+                                over = True
+                                break
+                except OSError:
+                    continue
+                if over:
+                    break
+        current = found
+        if over or not current:
+            break
+    result = ([os.path.normpath(m) for m in current[:GLOB_CAP]], over)
+    _GLOB_CACHE[key] = result
+    return result
+
+
+def _glob_data(raw, cwd, mode, over_cap_is_data):
+    """An unquoted wildcard names data when a match does, or (schema-only access) when it is over the cap."""
+    memo = mode.setdefault("_glob_refs", {})
+    key = (raw, cwd, over_cap_is_data)
+    if key not in memo:
+        memo[key] = False
+        for variant in expand_braces(raw):
+            if not any(ch in variant for ch in "*?["):
+                continue
+            matches, over = glob_matches(variant, cwd)
+            if (over and over_cap_is_data) or any(is_data_path(m, cwd, mode) for m in matches):
+                memo[key] = True
+                break
+    return memo[key]
+
+
+def is_data_path(raw, cwd, mode, over_cap_is_data=False):
+    """True when a path names a data file: extension, data_root, symlink target, or a notebook with outputs.
+
+    An unquoted shell wildcard (GlobToken) is expanded and its matches are checked; quoted wildcards and
+    literals from code keep the DATAISH_DIRS heuristic below.
+    """
     if not raw:
         return False
+    if isinstance(raw, GlobToken) and _glob_data(raw, cwd, mode, over_cap_is_data):
+        return True
     for variant in expand_braces(raw):
         if DATA_REF.search(variant):
             return True
@@ -803,15 +893,19 @@ def _chunks(token):
             yield chunk
 
 
-def token_ref(token, cwd, mode, tainted):
+def token_ref(token, cwd, mode, tainted, access=True):
+    """A shell word that references data. access=False (egress checks) never fails closed on an over-cap wildcard."""
     if tainted and re.search(r"\$\{?(" + "|".join(map(re.escape, tainted)) + r")\b", token):
         return True
+    over_cap_is_data = access and mode["mode"] == "schema-only"
     for chunk in _chunks(token):
         if not chunk or chunk.startswith("-") and "=" not in chunk:
             continue
-        has_path_shape = "/" in chunk or "." in chunk or "*" in chunk
+        if isinstance(token, GlobToken) and chunk is not token and any(ch in chunk for ch in "*?["):
+            chunk = GlobToken(chunk)
+        has_path_shape = "/" in chunk or "." in chunk or any(ch in chunk for ch in "*?[")
         if has_path_shape or os.path.lexists(_resolve(chunk, cwd)):
-            if is_data_path(chunk, cwd, mode):
+            if is_data_path(chunk, cwd, mode, over_cap_is_data):
                 return True
     return False
 
@@ -906,13 +1000,48 @@ def scan_shell(command):
     return "".join(out), bodies
 
 
+class GlobToken(str):
+    """A shell word with an unquoted `*`, `?`, or `[`: the shell expands it against the filesystem."""
+
+
+GLOB_MARKS = {"*": "\ue000", "?": "\ue001", "[": "\ue002"}
+GLOB_UNMARK = str.maketrans({mark: ch for ch, mark in GLOB_MARKS.items()})
+
+
+def _mark_globs(text):
+    """Replace unquoted, unescaped glob characters with private marks, so quoting survives shlex."""
+    out, quote, i, n = [], None, 0, len(text)
+    while i < n:
+        ch = text[i]
+        if ch == "\\" and quote != "'" and i + 1 < n:
+            out.append(text[i:i + 2])
+            i += 2
+            continue
+        if quote:
+            quote = None if ch == quote else quote
+        elif ch in ("'", '"'):
+            quote = ch
+        elif ch in GLOB_MARKS:
+            ch = GLOB_MARKS[ch]
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def _unmark(token):
+    restored = token.translate(GLOB_UNMARK)
+    return GlobToken(restored) if restored != token else restored
+
+
 def tokenize(text):
+    """Shell words; a word with an unquoted glob character comes back as a GlobToken."""
+    marked = _mark_globs(text)
     try:
-        lexer = shlex.shlex(text, posix=True, punctuation_chars=";&|<>()")
+        lexer = shlex.shlex(marked, posix=True, punctuation_chars=";&|<>()")
         lexer.whitespace_split = True
-        return list(lexer), True
+        return [_unmark(t) for t in lexer], True
     except ValueError:
-        return text.split(), False
+        return [_unmark(t) for t in marked.split()], False
 
 
 def substitutions(text):
@@ -1009,7 +1138,7 @@ def input_refs(seg, cwd, mode, tainted):
         if token in (">", ">>", ">|", "&>", "&>>"):
             skip = True
             continue
-        if token_ref(token, cwd, mode, tainted):
+        if token_ref(token, cwd, mode, tainted, access=False):
             return True
     return False
 
@@ -1018,7 +1147,7 @@ def stdin_upload(seg, cmd, piped, cwd, mode, tainted):
     """A network tool whose stdin is a data file (`< file`) or a pipe fed by a command that read one."""
     if not cmd or program(cmd[0]) not in NETWORK_VERBS:
         return None
-    redirected = any(t == "<" and i + 1 < len(seg) and token_ref(seg[i + 1], cwd, mode, tainted)
+    redirected = any(t == "<" and i + 1 < len(seg) and token_ref(seg[i + 1], cwd, mode, tainted, access=False)
                      for i, t in enumerate(seg))
     if redirected or piped:
         return f"`{program(cmd[0])}` would send a data file from its standard input"
@@ -1524,15 +1653,42 @@ def workflow_reason(name):
             f"`method-safe-run -- {name} ...` so its output stays in the run log")
 
 
-def find_exec_violation(args):
+FIND_PATTERN_OPTS = ("-name", "-iname", "-path", "-ipath", "-wholename", "-iwholename")
+
+
+def find_pattern_data(args, cwd, mode):
+    """A find name/path pattern (quoted or not; never expanded) that can match a data file or data_root.
+
+    Case-insensitive fnmatch: the pattern's last component against sample data file names, and a path
+    pattern also against the data_root paths as find would print them.
+    """
+    names = ["x." + ext for ext in DATA_EXTS]
+    for i, token in enumerate(args[:-1]):
+        if token not in FIND_PATTERN_OPTS:
+            continue
+        pattern = args[i + 1].lower()
+        candidates = [os.path.basename(r).lower() for r in mode["data_roots"]] + names
+        if any(fnmatch.fnmatchcase(name, pattern.rsplit("/", 1)[-1]) for name in candidates):
+            return True
+        if "name" not in token or "wholename" in token:
+            for root in mode["data_roots"]:
+                rel = os.path.relpath(root, cwd)
+                if any(fnmatch.fnmatchcase(c.lower(), pattern) for c in (root + "/x", rel + "/x", "./" + rel + "/x")):
+                    return True
+    return False
+
+
+def find_exec_violation(args, cwd, mode):
     """(reason, unrestricted) for find: -exec of a content reader over files not limited to code is denied.
 
     unrestricted is True when the files find lists are not limited to code or directories, so a
     command that consumes the list (xargs cat, while read) is treated as reading listed data files.
+    A name or path pattern that can match a data file lifts the limit (find_pattern_data).
     """
     names = [args[i + 1] for i, t in enumerate(args[:-1]) if t in ("-name", "-iname")]
     types = [args[i + 1] for i, t in enumerate(args[:-1]) if t == "-type"]
-    limited = (names and all(_is_code_glob(n) for n in names)) or (types and all(t == "d" for t in types))
+    limited = ((names and all(_is_code_glob(n) for n in names)) or (types and all(t == "d" for t in types))) \
+        and not find_pattern_data(args, cwd, mode)
     if limited:
         return None, False
     for index, token in enumerate(args[:-1]):
@@ -1593,7 +1749,7 @@ def judge(cmd, cwd, mode, tainted, written, fed=(), env=()):
         if not token_ref(shown, cwd, mode, tainted) and script_reads_data(path, cwd, mode, kind):
             return f"the script `{shown}` reads data and can print its values", False
     if verb == "find":
-        reason, unrestricted = find_exec_violation(args)
+        reason, unrestricted = find_exec_violation(args, cwd, mode)
         if reason or not refs:
             return reason, unrestricted
     if not refs:

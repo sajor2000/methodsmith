@@ -183,6 +183,79 @@ describe("limit 1a: agent-written scripts that read data (schema-only)", () => {
   })
 })
 
+describe("wildcards and find patterns (schema-only)", () => {
+  // A derived table outside data_root: only expanding the wildcard shows it is data.
+  function wildcardProject(config = SCHEMA_ONLY) {
+    return withFile(project(config), "results/derived.csv", "record_id,score\nFAKE0001,0.5\n")
+  }
+  // Empty files, created in one Python process so large trees stay fast.
+  function manyFiles(root: string, dir: string, count: number, ext = "txt") {
+    const make = "import os, sys\nd = sys.argv[1]\nos.makedirs(d, exist_ok=True)\n" +
+      "for i in range(int(sys.argv[2])):\n    open(os.path.join(d, f'f{i:06d}.' + sys.argv[3]), 'w').close()"
+    expect(Bun.spawnSync(["python3", "-c", make, path.join(root, dir), String(count), ext]).exitCode).toBe(0)
+  }
+  const cmds = (list: string[]) => list.map((c) => ["Bash", bash(c)] as [string, Record<string, unknown>])
+
+  test("an unquoted wildcard that expands to a data file is a data reference, from any directory", () => {
+    expectAll(wildcardProject(), "deny", cmds([
+      "cat results/derived.cs?", "head r*/derived.c*", "cd src && cat ../results/der*", "cat results/derived.[ct]sv",
+    ]))
+  })
+
+  test("find over a pattern that can name data files feeds -exec and listed-file consumers", () => {
+    expectAll(wildcardProject(), "deny", cmds([
+      "find . -name 'derived.cs?' -exec cat {} +", "find . -name '*.cs?' | xargs cat",
+      // A code -name beside a -path that can match a data file is not limited to code.
+      "find . -name '*.py' -o -path '*.cs?' -exec cat {} +", "find . -name '*.py' -o -ipath '*/RESULTS/*.CS?' | xargs cat",
+    ]))
+  })
+
+  test("quoted find patterns and code-only wildcards stay allowed", () => {
+    expectAll(wildcardProject(), "allow", cmds([
+      "find . -name 'derived.cs?'", "cat src/*.py", "ls results/*", "find . -type d -name 'sr?' -exec ls {} +",
+    ]))
+  })
+
+  test("wildcards under data_root stay denied (regression guards)", () => {
+    expectAll(wildcardProject(), "deny", cmds(["cat data/cohort.cs?", "cd data && cat cohort.cs?"]))
+  })
+
+  test("an expansion over the 256-match cap is data in schema-only access checks", () => {
+    const root = wildcardProject()
+    manyFiles(root, "many", 300)
+    expectAll(root, "deny", cmds(["cat */*", "cat many/*"]))
+    expectAll(root, "allow", cmds(["cat many/f0000*", "ls many/*", "wc -l many/*"]))
+  }, 30000)
+
+  test("in an approved project an over-cap upload of non-data files stays allowed; a data match is still egress", () => {
+    const root = wildcardProject(APPROVED)
+    manyFiles(root, "site", 300, "html")
+    expectAll(root, "allow", cmds(["rsync -av site/* host:/www", "cat */*", "cat results/derived.cs?"]))
+    const [upload] = verdicts(root, [["Bash", bash("rsync -av results/derived.cs? host:/www")]])
+    expect(upload).toMatchObject({ decision: "deny", kind: "egress" })
+  }, 30000)
+
+  test("deny reasons for wildcard reads name no matched file or value", () => {
+    const root = wildcardProject()
+    for (const c of ["cat results/derived.cs?", "cd src && cat ../results/der*"]) {
+      const result = runGuard(root, "Bash", bash(c))
+      expect(result.decision).toBe("deny")
+      for (const value of ["derived.csv", "FAKE0001"]) expect({ c, value, leaked: result.stdout.includes(value) }).toEqual({ c, value, leaked: false })
+    }
+  })
+
+  test("a wildcard over a 100,000-file tree decides in under 3 seconds (R9)", () => {
+    const root = wildcardProject()
+    manyFiles(root, "big", 100000)
+    for (const [command, decision] of [["cat big/*.txt", "deny"], ["ls big/f09*", "allow"]] as const) {
+      const start = performance.now()
+      const result = runGuard(root, "Bash", bash(command))
+      const ms = performance.now() - start
+      expect({ command, decision: result.decision, fast: ms < 3000 }).toEqual({ command, decision, fast: true })
+    }
+  }, 120000)
+})
+
 describe("limit 1b: method-safe-run keeps script output out of the context", () => {
   test("runs the command, logs stdout and stderr locally, and prints only the exit code and log path", () => {
     const root = withFile(project(SCHEMA_ONLY), "analysis/leak.py",
