@@ -186,6 +186,282 @@ async function scoreCode(source: string, language: "python" | "r" = "python") {
 }
 
 describe("behavioral evaluation contract", () => {
+  test.each([["source", false], ["target", false], ["rebound-source", true]] as const)(
+    "tracks tuple label sharing through a %s mutation",
+    async (mutation, expected) => {
+      const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    labels = frame.iloc[train]["outcome"]
+    X, y = frame.iloc[train][["feature"]], labels
+    ${mutation === "rebound-source" ? 'labels = frame.iloc[test]["outcome"]' : "pass"}
+    ${mutation === "target" ? "y" : "labels"}.iloc[0] = frame.iloc[test]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+      expect(report.pass).toBe(expected)
+    },
+  )
+
+  test("bare partial writes do not launder the remaining held-out labels", async () => {
+    const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    local = frame.iloc[train].reset_index(drop=True)
+    X = local[["feature"]]
+    y = frame.iloc[test]["outcome"].reset_index(drop=True)
+    y[0] = frame.iloc[train]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+    expect(report.pass).toBe(false)
+  })
+
+  test.each([["alias.iloc[0]", false], ["alias[0]", false], ["alias.loc[0]", true]] as const)(
+    "tracks mutation through %s while respecting an unconditional alias rebind=%s",
+    async (accessor, rebind) => {
+      const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    X, y = frame.iloc[train][["feature"]], frame.iloc[train]["outcome"]
+    alias = y
+    ${rebind ? 'alias = frame.iloc[test]["outcome"]' : "pass"}
+    ${accessor} = frame.iloc[test]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+      expect(report.pass).toBe(rebind)
+    },
+  )
+
+  test("does not discard alias taint after a conditional rebind", async () => {
+    const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    X, y = frame.iloc[train][["feature"]], frame.iloc[train]["outcome"]
+    alias = y
+    if condition:
+        alias = frame.iloc[test]["outcome"]
+    alias.iloc[0] = frame.iloc[test]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+    expect(report.pass).toBe(false)
+  })
+
+  test.each([
+    "alias, other = y, 0", "(alias, other) = y, 0",
+    "alias, other = (y, 0)", "(alias, other) = (y, 0)",
+    "other, alias = 0, y", "(other, alias) = 0, y",
+    "other, alias = (0, y)", "(other, alias) = (0, y)",
+  ])("tracks pairwise tuple aliases from %s", async (assignment) => {
+    for (const rows of ["train", "test"]) {
+      const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    X, y = frame.iloc[train][["feature"]], frame.iloc[train]["outcome"]
+    ${assignment}
+    alias.iloc[0] = frame.iloc[${rows}]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed, rows).toBe(rows === "train")
+      expect(report.pass, rows).toBe(rows === "train")
+    }
+  })
+
+  test.each([
+    'alias, other = y, frame.iloc[test]["outcome"]',
+    '(alias, other) = (y, frame.iloc[test]["outcome"])',
+  ])("keeps unrelated tuple targets separate in %s", async (assignment) => {
+    const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    X, y = frame.iloc[train][["feature"]], frame.iloc[train]["outcome"]
+    ${assignment}
+    other.iloc[0] = frame.iloc[test]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+    expect(report.pass).toBe(true)
+  })
+
+  test.each([
+    'alias, other = frame.iloc[test]["outcome"], 0',
+    '(alias, other) = frame.iloc[test]["outcome"], 0',
+    'alias, other = (frame.iloc[test]["outcome"], 0)',
+    '(other, alias) = (0, frame.iloc[test]["outcome"])',
+  ])("preserves tuple alias rebind semantics for %s", async (assignment) => {
+    for (const conditional of [false, true]) {
+      const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    X, y = frame.iloc[train][["feature"]], frame.iloc[train]["outcome"]
+    alias, other = y, 0
+    ${conditional ? `if condition:\n        ${assignment}` : assignment}
+    alias.iloc[0] = frame.iloc[test]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+      expect(report.pass, String(conditional)).toBe(!conditional)
+    }
+  })
+
+  test.each([
+    'for unused in items:\n        alias, other = frame.iloc[test]["outcome"], 0',
+    'while condition:\n        alias, other = frame.iloc[test]["outcome"], 0',
+    'try:\n        alias, other = frame.iloc[test]["outcome"], 0\n    except Exception:\n        pass',
+  ])("retains tuple aliases across a potentially skipped rebind: %s", async (rebind) => {
+    const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    X, y = frame.iloc[train][["feature"]], frame.iloc[train]["outcome"]
+    alias, other = y, 0
+    ${rebind}
+    alias.iloc[0] = frame.iloc[test]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+    expect(report.pass).toBe(false)
+  })
+
+  test.each([["alias", true], ["other", false]] as const)(
+    "uses pre-assignment aliases for simultaneous tuple rebinding before a %s write",
+    async (target, expected) => {
+      const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    X, y = frame.iloc[train][["feature"]], frame.iloc[train]["outcome"]
+    alias = y
+    other = frame.iloc[test]["outcome"]
+    alias, other = other, alias
+    ${target}.iloc[0] = frame.iloc[test]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+      expect(report.pass).toBe(expected)
+    },
+  )
+
+  test.each([
+    "[]", "{}", "np.empty(len(train))", "np.zeros(len(train))",
+    "np.full(len(train), 0)", "np.full(len(train), 0.5)",
+    "np.full(len(train), True)", "np.full(len(train), False)",
+    "np.full(len(train), None)", "np.full(len(train), np.nan)",
+    "np.full(len(train), np.inf)", "np.full(len(train), fill_value=0)",
+  ])("tracks fresh label allocation %s through training and held-out writes", async (allocation) => {
+    for (const rows of ["train", "test"]) {
+      const report = await scoreCode(`
+import numpy as np
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    X = frame.iloc[train][["feature"]]
+    y = ${allocation}
+    y[0] = frame.iloc[${rows}]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed, rows).toBe(rows === "train")
+      expect(report.pass, rows).toBe(rows === "train")
+    }
+  })
+
+  test.each([
+    'np.full(len(train), frame.iloc[test]["outcome"].iloc[0])',
+    'np.full(len(train), fill_value=frame.iloc[test]["outcome"].iloc[0])',
+  ])("does not erase a nonliteral held-out allocation fill from %s", async (allocation) => {
+    const report = await scoreCode(`
+import numpy as np
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    X = frame.iloc[train][["feature"]]
+    y = ${allocation}
+    y[0] = frame.iloc[train]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+    expect(report.pass).toBe(false)
+  })
+
+  test.each(["holder.labels[0]", "holder.labels.iloc[0]", "holder.labels.loc[0]"])(
+    "tracks the written root of %s through training and held-out writes",
+    async (target) => {
+      for (const rows of ["train", "test"]) {
+        const report = await scoreCode(`
+from dataclasses import dataclass
+from sklearn.model_selection import GridSearchCV
+@dataclass
+class Holder:
+    labels: object
+for train, test in outer.split(frame):
+    X = frame.iloc[train][["feature"]]
+    holder = Holder(frame.iloc[train]["outcome"])
+    ${target} = frame.iloc[${rows}]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, holder.labels)
+`)
+        expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed, rows).toBe(rows === "train")
+        expect(report.pass, rows).toBe(rows === "train")
+      }
+    },
+  )
+
+  test.each(["iloc[:]", "loc[:]", "iloc[0]", "loc[0]", "iloc[0:1]"])(
+    "rejects held-out labels written through %s after a training-only tuple assignment",
+    async (accessor) => {
+      const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    X, y = frame.iloc[train][["feature"]], frame.iloc[train]["outcome"]
+    y.${accessor} = frame.iloc[test]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+      expect(report.pass).toBe(false)
+    },
+  )
+
+  test.each([["full", "train", false], ["train", "train", true], ["train", "test", false]] as const)(
+    "preserves original %s provenance when a %s value partially replaces it",
+    async (original, replacement, expected) => {
+      const originalRows = original === "full" ? "frame" : "frame.iloc[train]"
+      const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+for train, test in outer.split(frame):
+    X = frame.iloc[train][["feature"]]
+    y = ${originalRows}["outcome"]
+    y.iloc[0] = frame.iloc[${replacement}]["outcome"].iloc[0]
+    selected = GridSearchCV(model, grid).fit(X, y)
+`)
+      expect(report.pass).toBe(expected)
+    },
+  )
+
+  test.each([["train", true], ["test", false], ["full", false]] as const)(
+    "keeps destructured feature/label assignments confined to %s labels",
+    async (labels, expected) => {
+      const labelInput = labels === "full" ? 'frame["outcome"]' : `frame.iloc[${labels}]["outcome"]`
+      const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+def choose(frame, labels):
+    frame = frame.reset_index(drop=True)
+    X, y = frame[["feature"]], labels.to_numpy()
+    search = GridSearchCV(model, grid)
+    return search.fit(X, y)
+for fold, (train, test) in enumerate(outer.split(frame), start=1):
+    selected = choose(frame.iloc[train], ${labelInput})
+`)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(expected)
+      expect(report.pass).toBe(expected)
+    },
+  )
+
+  test.each([["train", "reset_index", true], ["test", "reset_index", false],
+    ["full", "reset_index", false], ["train", "reindex", false]] as const)(
+    "tracks %s rows through %s without admitting held-out or full-data tuning",
+    async (rows, method, expected) => {
+      const input = rows === "full" ? "frame" : `frame.iloc[${rows}]`
+      const report = await scoreCode(`
+from sklearn.model_selection import GridSearchCV
+def choose(frame):
+    frame = frame.${method}(drop=True)
+    search = GridSearchCV(model, grid)
+    return search.fit(frame[["feature"]], frame["outcome"])
+for fold, (train, test) in enumerate(outer.split(frame), start=1):
+    selected = choose(${input})
+`)
+      expect(report.criteria.find((criterion) => criterion.id === "nested-tuning")?.passed).toBe(expected)
+      expect(report.pass).toBe(expected)
+    },
+  )
+
   test("does not manufacture a training alias from a dead branch or another helper's scope", async () => {
     for (const source of [
       `from sklearn.model_selection import GridSearchCV
@@ -1354,6 +1630,66 @@ for train, test in splitter.split(X, y):
         ],
       })
       await expect(loadAndValidateCase(root, invalidCasePath)).rejects.toThrow(message)
+    }
+  })
+
+  test("AUPRC claim checks accept explicit refusals and reject primary declarations", async () => {
+    const original = await loadAndValidateCase(process.cwd(), path.join(process.cwd(),
+      "evals/methodsmith/cases/method-model-choice-ml-prediction/case.yaml"))
+    const ids = ["auprc-supplementary-only", "no-primary-auprc-declaration"]
+    const criteria = original.criteria.filter((item) => ids.includes(item.id))
+      .map((item) => ({ ...item, path: "response.md" }))
+    const root = await makeRepo()
+    const casePath = await writeCase(root, sampleCase({
+      criteria, required_behaviors: [ids[0]!], prohibited_behaviors: [ids[1]!], fixtures: [], threshold: 1,
+    }))
+    const definition = await loadAndValidateCase(root, casePath)
+    const runDir = await writeRun(root)
+    const examples: Array<[string, boolean]> = [
+      ["AUPRC is the primary metric.", false],
+      ["Our primary metric is AUPRC.", false],
+      ["Primary metric: AUPRC", false],
+      ["We use average precision as the primary objective.", false],
+      ["Do not use AUPRC as the primary metric merely because outcomes are rare.", true],
+      ["Do not declare AUPRC the primary measure because prevalence is 6%.", true],
+      ["We are not using AUPRC as the primary metric.", true],
+      ["AUPRC is not the primary metric.", true],
+      ["Do not claim that AUPRC is the primary metric.", true],
+      ["This evidence does not establish AUPRC superiority as a primary objective.", true],
+      ["AUPRC is not primary but is the primary metric.", false],
+      ["Do not use an unvalidated score; AUPRC is primary.", false],
+      ["Do not use AUPRC as primary; the primary metric is AUPRC.", false],
+      ["The primary metric is not AUPRC.", true],
+      ["Log loss is primary. Average precision is supplementary.", true],
+      ["Do not only use AUPRC as primary.", false],
+    ]
+    for (const [text, expected] of examples) {
+      await writeFile(path.join(runDir, "response.md"), `${text}\n`)
+      const report = await scoreEvaluationRun({ repoRoot: root, casePath, definition, runDir })
+      expect({ text, pass: report.pass }).toEqual({ text, pass: expected })
+    }
+  })
+
+  test("sample-size evidence can span a detailed rationale without losing its required inputs", async () => {
+    const original = await loadAndValidateCase(process.cwd(), path.join(process.cwd(),
+      "evals/methodsmith/cases/method-model-choice-ml-prediction/case.yaml"))
+    const criterion = { ...original.criteria.find((item) => item.id === "sample-size-checked")!, path: "response.md" }
+    const root = await makeRepo()
+    const casePath = await writeCase(root, sampleCase({
+      criteria: [criterion, sampleCase().criteria.find((item) => item.id === "no-secret")!],
+      required_behaviors: [criterion.id], prohibited_behaviors: ["no-secret"], fixtures: [], threshold: 1,
+    }))
+    const definition = await loadAndValidateCase(root, casePath)
+    const runDir = await writeRun(root)
+    for (const [text, expected] of [
+      ["Use Riley criteria. " + "Count nonlinear terms and categorical contrasts before fitting. ".repeat(20) + "Declare the anticipated Nagelkerke R-squared and shrinkage target.", true],
+      ["Use Riley criteria with an anticipated R-squared and shrinkage target.", true],
+      ["Use Riley criteria.", false],
+      ["Report the shrinkage target without naming a sizing method.", false],
+    ] as const) {
+      await writeFile(path.join(runDir, "response.md"), `${text}\n`)
+      const report = await scoreEvaluationRun({ repoRoot: root, casePath, definition, runDir })
+      expect({ text, pass: report.pass }).toEqual({ text, pass: expected })
     }
   })
 

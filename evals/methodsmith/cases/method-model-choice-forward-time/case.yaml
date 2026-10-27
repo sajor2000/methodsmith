@@ -1,0 +1,168 @@
+{
+  "schema_version": "1.0",
+  "id": "method-model-choice-forward-time",
+  "target": {
+    "kind": "skill",
+    "name": "method-model-choice",
+    "source": "plugins/methodsmith/skills/method-model-choice/SKILL.md"
+  },
+  "mode": "forward",
+  "prompt_path": "evals/methodsmith/cases/method-model-choice-forward-time/prompt.md",
+  "fixtures": [],
+  "required_behaviors": [
+    "period-transport-is-forward-validation",
+    "review-outcome-maturation-gap",
+    "group-patient-encounters",
+    "single-later-cohort-valid",
+    "written-response",
+    "response-agrees-uses-future-training",
+    "response-agrees-period-transport-is-forward-validation",
+    "response-agrees-review-outcome-maturation-gap",
+    "response-agrees-group-patient-encounters",
+    "response-agrees-single-later-cohort-valid",
+    "explains-forward-split"
+  ],
+  "prohibited_behaviors": [
+    "uses-future-training",
+    "no-random-deployment-split"
+  ],
+  "criteria": [
+    {
+      "id": "uses-future-training",
+      "description": "uses future training",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "uses_future_training",
+      "expected": false,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "period-transport-is-forward-validation",
+      "description": "period transport is forward validation",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "period_transport_is_forward_validation",
+      "expected": false,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "review-outcome-maturation-gap",
+      "description": "review outcome maturation gap",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "review_outcome_maturation_gap",
+      "expected": true,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "group-patient-encounters",
+      "description": "group patient encounters",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "group_patient_encounters",
+      "expected": true,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "single-later-cohort-valid",
+      "description": "A frozen model can use one independent later validation cohort.",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "single_later_cohort_valid",
+      "expected": true,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "written-response",
+      "description": "The requested explanation exists.",
+      "type": "file_exists",
+      "path": "response.md",
+      "weight": 2,
+      "hard_gate": true,
+      "expected": true
+    },
+    {
+      "id": "response-agrees-uses-future-training",
+      "description": "The unique written decision agrees with the sidecar: uses_future_training",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "uses_future_training",
+      "text_path": "response.md",
+      "pattern": "^uses_future_training:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-period-transport-is-forward-validation",
+      "description": "The unique written decision agrees with the sidecar: period_transport_is_forward_validation",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "period_transport_is_forward_validation",
+      "text_path": "response.md",
+      "pattern": "^period_transport_is_forward_validation:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-review-outcome-maturation-gap",
+      "description": "The unique written decision agrees with the sidecar: review_outcome_maturation_gap",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "review_outcome_maturation_gap",
+      "text_path": "response.md",
+      "pattern": "^review_outcome_maturation_gap:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-group-patient-encounters",
+      "description": "The unique written decision agrees with the sidecar: group_patient_encounters",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "group_patient_encounters",
+      "text_path": "response.md",
+      "pattern": "^group_patient_encounters:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-single-later-cohort-valid",
+      "description": "The unique written decision agrees with the sidecar: single_later_cohort_valid",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "single_later_cohort_valid",
+      "text_path": "response.md",
+      "pattern": "^single_later_cohort_valid:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "explains-forward-split",
+      "description": "Recommends earlier development and later assessment.",
+      "type": "regex",
+      "path": "response.md",
+      "weight": 2,
+      "hard_gate": true,
+      "pattern": "(?:earlier|prior|past)[^.!?\\n]{0,180}(?:later|subsequent|future)"
+    },
+    {
+      "id": "no-random-deployment-split",
+      "description": "Reject an affirmative random-split recommendation for future deployment.",
+      "type": "regex_not",
+      "path": "response.md",
+      "weight": 2,
+      "hard_gate": true,
+      "pattern": "(?:^|[.!?;\\n])\\s*(?:we\\s+)?(?:recommend|use|choose|adopt)\\s+(?:a\\s+)?(?:random|shuffled)\\s+(?:split|cross[- ]validation)"
+    }
+  ],
+  "threshold": 1,
+  "limitations": [
+    "Synthetic advisory behavior checks bounded scientific decisions, not clinical validity or comprehensive statistical reliability. Numeric helper behavior is checked separately by executable regression tests.",
+    "Written decisions are bound to the JSON sidecar; prose gates cover bounded terms and explicit prohibited recommendations, not arbitrary semantic contradictions."
+  ]
+}

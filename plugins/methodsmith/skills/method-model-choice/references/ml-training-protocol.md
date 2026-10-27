@@ -1,6 +1,6 @@
 # ML Prediction Training Protocol
 
-Apply after `model-routing.md` fixes the prediction aim and the model family is chosen. This file covers the Python supervised-training loop for risk models: validation design, fold structure, sample size and stability, metrics, imbalance, tuning, candidate learners, device strategy, calibration, thresholds, uncertainty, explainability, and reporting. Route experiment logging to `method-ml-track`, iterative metric optimization loops to `method-optimize`, figure production to `method-figure`, and final documentation to `method-model-card`. Nothing here licenses package installation or touching a locked test set.
+Use after `model-routing.md` establishes the prediction aim and family. Route logging to `method-ml-track`, optimization to `method-optimize`, figures to `method-figure`, and documentation to `method-model-card`. Authorize package installation and test-data access first.
 
 ## Contents
 
@@ -59,12 +59,13 @@ State one design in the memo before any fitting:
 |---|---|---|
 | Bootstrap optimism correction of the whole pipeline | Single-source data; default for small or moderate event counts | Optimism-corrected calibration and discrimination |
 | Nested CV (tuning inner, performance outer) | Heavy tuning; no spare events | Outer-fold estimate of the whole procedure |
-| Internal-external CV (leave one site or period out) | Data from several sites, regions, or calendar periods | Per-cluster performance, pooled, with between-cluster heterogeneity |
+| Internal-external CV | Site generalization or justified historical period transport | Per-cluster performance and heterogeneity; not forward prediction |
+| Forward temporal validation | Future deployment | Earlier-only training; later assessment after outcome maturation |
 | Locked held-out test set | Large data where one split leaves enough events for a stable estimate | One test score after model lock |
 
 - A random split-sample test set wastes events and gives an unstable estimate in small or moderate data; prefer resampling there and develop on all data (Collins et al., BMJ 2024, PMID 38191193).
-- With clustered data (sites, hospitals, practices, periods), use internal-external CV to examine generalizability and heterogeneity across clusters; report pooled performance and its spread, not only an average (Takada et al. 2021, PMID 33836256; de Jong et al. 2021, PMID 33948970). Leave-one-site-out also exposes site-specific calibration drift that random folds hide.
-- When a held-out set exists: split once by the independent unit, stratify on outcome, lock it, record when it was unlocked, and score it only after the final model is locked (REFORMS, PMID 38691601; TRIPOD+AI, PMID 38626948).
+- For site generalization, report internal-external CV performance and heterogeneity (Takada et al. 2021, PMID 33836256; de Jong et al. 2021, PMID 33948970). Calendar validation must distinguish forward deployment from historical period transport; read `references/forward-temporal-validation.md` for ordering, grouping, gaps, and splitter assumptions.
+- When a held-out set exists: split once by independent unit and deployment time (stratify only when compatible), lock it, record when it was unlocked, and score it only after the final model is locked (REFORMS, PMID 38691601; TRIPOD+AI, PMID 38626948).
 - Tuning, thresholding, calibration, and model selection belong to development data.
 - Record the number of configurations evaluated. The best CV score is optimistic by selection; the reported estimate comes from nested CV, internal-external CV, the locked test set, or bootstrap correction, never from the tuning leaderboard.
 - An "internal only" study states that external validation is still required and, when planning it, sizes it with the Riley external-validation criteria (PMID 38253388).
@@ -76,7 +77,9 @@ State one design in the memo before any fitting:
 | Default development and tuning | 5-fold CV, outcome-stratified |
 | Small sample, final internal estimate | Repeated CV (for example 5x5) or bootstrap |
 | Multiple rows per patient | `StratifiedGroupKFold` on patient |
-| Several sites or periods | `LeaveOneGroupOut` on site or period for the outer loop |
+| Several sites | `LeaveOneGroupOut` on site for the outer loop |
+| Forward calendar validation | Rolling/expanding calendar split; no future training observations or immature outcomes |
+| Historical period transport | `LeaveOneGroupOut` on period only when explicitly justified and labeled as transport |
 | Any model comparison | Identical fold assignments across every candidate |
 
 - Fit every learning step inside the folds through a `Pipeline`: imputation, scaling, encoding, spline bases, and feature selection all leak when fitted before the split (Kapoor & Narayanan, Patterns 2023, PMID 37720327).
@@ -252,7 +255,7 @@ Tuning, calibration, decision curves, stability bootstrap, and explanations wrap
 
 ## Completion gates
 
-The protocol is complete when: the Riley sample-size check is reported; the validation design is named and locked, with internal-external CV when sites or periods exist; folds are grouped by the independent unit and stratified; no imbalance correction is applied (or it is justified and recalibrated); the penalized baseline is fit; tuning uses a proper scoring rule with declared space, budget, and seeds; the device is chosen and verified; calibration is assessed with a named method; AUROC, calibration, net benefit, and risk distributions are reported, with AUPRC beside prevalence when used; instability is assessed by bootstrap; subgroup performance is reported; explanations exist on a declared split with figures routed to `method-figure`; and the locked test set, if any, was scored exactly once.
+The protocol is complete when: the Riley sample-size check is reported; the validation target/design is locked, respecting sites, patients, and time; distinguish forward validation from period transport; stratify only when compatible; no imbalance correction is applied (or it is justified and recalibrated); the penalized baseline is fit; tuning uses a proper scoring rule with declared space, budget, and seeds; the device is chosen and verified; calibration is assessed with a named method; AUROC, calibration, net benefit, and risk distributions are reported, with AUPRC beside prevalence when used; instability is assessed by bootstrap; subgroup performance is reported; explanations exist on a declared split with figures routed to `method-figure`; and the locked test set, if any, was scored exactly once.
 
 ## Evidence seeds
 

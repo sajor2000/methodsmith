@@ -1,0 +1,227 @@
+{
+  "schema_version": "1.0",
+  "id": "method-meta-uncertainty-contract",
+  "target": {
+    "kind": "skill",
+    "name": "method-meta-analysis",
+    "source": "plugins/methodsmith/skills/method-meta-analysis/SKILL.md"
+  },
+  "mode": "forward",
+  "prompt_path": "evals/methodsmith/cases/method-meta-uncertainty-contract/prompt.md",
+  "fixtures": [],
+  "required_behaviors": [
+    "normal90-eligible",
+    "t9-eligible",
+    "profile-eligible",
+    "reported-log-se-eligible",
+    "invent-symmetric-interval",
+    "ratio-ci-se-scale",
+    "normal-wald-requires-df",
+    "written-response",
+    "response-agrees-normal90-eligible",
+    "response-agrees-t9-eligible",
+    "response-agrees-unknown-eligible",
+    "response-agrees-profile-eligible",
+    "response-agrees-reported-log-se-eligible",
+    "response-agrees-invent-symmetric-interval",
+    "response-agrees-ratio-ci-se-scale",
+    "response-agrees-normal-wald-requires-df",
+    "explains-evidence"
+  ],
+  "prohibited_behaviors": [
+    "unknown-eligible"
+  ],
+  "criteria": [
+    {
+      "id": "normal90-eligible",
+      "description": "normal90 eligible",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "normal90_eligible",
+      "expected": true,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "t9-eligible",
+      "description": "t9 eligible",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "t9_eligible",
+      "expected": true,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "unknown-eligible",
+      "description": "unknown eligible",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "unknown_eligible",
+      "expected": false,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "profile-eligible",
+      "description": "profile eligible",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "profile_eligible",
+      "expected": false,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "reported-log-se-eligible",
+      "description": "reported log se eligible",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "reported_log_se_eligible",
+      "expected": true,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "invent-symmetric-interval",
+      "description": "invent symmetric interval",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "invent_symmetric_interval",
+      "expected": false,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "ratio-ci-se-scale",
+      "description": " For a ratio metric, identify the scale used for CI midpoint tolerance and CI-to-SE reconstruction",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "ratio_ci_se_scale",
+      "expected": "log",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "normal-wald-requires-df",
+      "description": " For a ratio metric, identify the scale used for CI midpoint tolerance and CI-to-SE reconstruction",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "normal_wald_requires_df",
+      "expected": false,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "written-response",
+      "description": "The requested explanation exists.",
+      "type": "file_exists",
+      "path": "response.md",
+      "expected": true,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-normal90-eligible",
+      "description": "The unique written decision agrees with the sidecar: normal90_eligible",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "normal90_eligible",
+      "text_path": "response.md",
+      "pattern": "^normal90_eligible:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-t9-eligible",
+      "description": "The unique written decision agrees with the sidecar: t9_eligible",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "t9_eligible",
+      "text_path": "response.md",
+      "pattern": "^t9_eligible:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-unknown-eligible",
+      "description": "The unique written decision agrees with the sidecar: unknown_eligible",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "unknown_eligible",
+      "text_path": "response.md",
+      "pattern": "^unknown_eligible:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-profile-eligible",
+      "description": "The unique written decision agrees with the sidecar: profile_eligible",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "profile_eligible",
+      "text_path": "response.md",
+      "pattern": "^profile_eligible:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-reported-log-se-eligible",
+      "description": "The unique written decision agrees with the sidecar: reported_log_se_eligible",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "reported_log_se_eligible",
+      "text_path": "response.md",
+      "pattern": "^reported_log_se_eligible:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-invent-symmetric-interval",
+      "description": "The unique written decision agrees with the sidecar: invent_symmetric_interval",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "invent_symmetric_interval",
+      "text_path": "response.md",
+      "pattern": "^invent_symmetric_interval:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-ratio-ci-se-scale",
+      "description": "The unique written decision agrees with the sidecar: ratio_ci_se_scale",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "ratio_ci_se_scale",
+      "text_path": "response.md",
+      "pattern": "^ratio_ci_se_scale:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-normal-wald-requires-df",
+      "description": "The unique written decision agrees with the sidecar: normal_wald_requires_df",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "normal_wald_requires_df",
+      "text_path": "response.md",
+      "pattern": "^normal_wald_requires_df:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "explains-evidence",
+      "description": "Includes the requested scientific explanation, beyond decision rows.",
+      "type": "regex",
+      "path": "response.md",
+      "pattern": "\\b(?:source|table|confidence|Wald)\\b",
+      "weight": 2,
+      "hard_gate": true
+    }
+  ],
+  "threshold": 1,
+  "limitations": [
+    "Synthetic advisory behavior checks bounded scientific decisions, not clinical validity or comprehensive statistical reliability. Numeric helper behavior is checked separately by executable regression tests.",
+    "Canonical written decisions are bound to the sidecar; bounded explanation terms are not a general semantic contradiction detector."
+  ]
+}

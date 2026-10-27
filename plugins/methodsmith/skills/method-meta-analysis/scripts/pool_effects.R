@@ -18,7 +18,7 @@
 #     [--min-n 0]
 #
 # Input CSV must have at minimum: pmid, year, first_author, sample_size,
-# metric, effect (point), effect_lo, effect_hi, and reviewed compatibility
+# metric, effect (point), reviewed uncertainty (reported SE or declared Wald CI), and compatibility
 # declarations (population, comparator, estimand, outcome, time_horizon, adjustment_specification,
 # adjusted, analysis_scale, unit, study_design, independent_unit_id).
 # The method-extract table
@@ -26,8 +26,8 @@
 # references/effect-parser.md) and pass the parsed CSV here.
 #
 # Filters applied here, each count printed: metric equals --metric exactly
-# (normalise aHR -> HR before calling); point and CI present and, for ratio
-# metrics, positive, with effect_lo <= effect <= effect_hi; sample_size >=
+# (normalise aHR -> HR before calling); finite point, positive for ratio
+# metrics; sample_size >=
 # --min-n (default 0 = no size filter; inverse-variance weights already
 # down-weight small studies, so a size cutoff is a sensitivity analysis only).
 
@@ -39,6 +39,8 @@ for (pkg in c("meta", "ggplot2")) {
   }
 }
 suppressPackageStartupMessages(library(meta))
+script_path <- sub("^--file=", "", commandArgs()[grepl("^--file=", commandArgs())][1])
+source(file.path(dirname(normalizePath(script_path)), "effect_uncertainty.R"))
 
 parse_args <- function(args) {
   out <- list()
@@ -60,7 +62,7 @@ stopifnot(!is.null(a$`in`), !is.null(a$metric), !is.null(a$out))
 dat <- read.csv(a$`in`, stringsAsFactors = FALSE)
 compatibility_fields <- c("population", "comparator", "estimand", "outcome", "time_horizon", "adjustment_specification",
                           "adjusted", "analysis_scale", "unit", "study_design")
-needed  <- c("pmid", "year", "first_author", "sample_size", "metric", "effect", "effect_lo", "effect_hi",
+needed  <- c("pmid", "year", "first_author", "sample_size", "metric", "effect",
              compatibility_fields, "independent_unit_id")
 missing <- setdiff(needed, names(dat))
 if (length(missing) > 0) {
@@ -79,9 +81,8 @@ is_ratio <- a$metric %in% c("HR", "OR", "RR", "aOR", "aHR", "aRR", "IRR", "SMR",
 dat <- dat[!is.na(dat$metric) & dat$metric == a$metric, , drop = FALSE]
 n_metric_drop <- n_input - nrow(dat)
 
-ok_ci <- !is.na(dat$effect) & !is.na(dat$effect_lo) & !is.na(dat$effect_hi) &
-         dat$effect_lo <= dat$effect & dat$effect <= dat$effect_hi
-if (is_ratio) ok_ci <- ok_ci & dat$effect > 0 & dat$effect_lo > 0 & dat$effect_hi > 0
+ok_ci <- is.finite(dat$effect)
+if (is_ratio) ok_ci <- ok_ci & dat$effect > 0
 n_ci_drop <- sum(!ok_ci)
 dat <- dat[ok_ci, , drop = FALSE]
 
@@ -90,7 +91,7 @@ ok_n <- if (min_n > 0) !is.na(dat$sample_size) & dat$sample_size >= min_n else r
 n_small_drop <- sum(!ok_n)
 dat <- dat[ok_n, , drop = FALSE]
 
-cat(sprintf("Input rows: %d; dropped %d (metric != %s), %d (missing, non-positive, or inconsistent point/CI), %s; %d studies enter pooling.\n",
+cat(sprintf("Input rows: %d; dropped %d (metric != %s), %d (invalid point), %s; %d studies enter pooling.\n",
             n_input, n_metric_drop, a$metric, n_ci_drop,
             if (min_n > 0) sprintf("%d (sample_size missing or < %g)", n_small_drop, min_n) else "no size filter",
             nrow(dat)))
@@ -129,20 +130,23 @@ if (nrow(dat) > 0) {
   }
 }
 if (!grepl("\\.md$", a$out)) stop("pool_effects.R: --out must end in .md", call. = FALSE)
+dat <- effect_uncertainty(dat, is_ratio)
 contract_path <- sub("\\.md$", "-contract.csv", a$out)
 write_contract <- function() {
-  write.csv(dat[, c("pmid", "independent_unit_id", compatibility_fields), drop = FALSE],
+  uncertainty_fields <- intersect(c("uncertainty_source", "uncertainty_method", "standard_error", "standard_error_scale",
+                                    "ci_method", "ci_level", "ci_df", "ci_rounding_tolerance", "se_te"), names(dat))
+  write.csv(dat[, c("pmid", "independent_unit_id", compatibility_fields, uncertainty_fields), drop = FALSE],
             contract_path, row.names = FALSE, na = "")
 }
 
 if (nrow(dat) < 3) {
-  cat(sprintf("Only %d studies with metric=%s and complete CI; pooling not meaningful.\n",
+  cat(sprintf("Only %d studies with metric=%s and validated uncertainty; pooling not meaningful.\n",
               nrow(dat), a$metric))
   cat("Reporting narrative range instead.\n")
   if (nrow(dat) == 0) {
     out_md <- c(
       sprintf("# Effect-size narrative (k = 0, %s)", a$metric),
-      "No study in the input has this metric with a complete, positive CI.",
+      "No study in the input has this metric with a valid point.",
       "Check the metric label (case-sensitive) or widen the search."
     )
   } else {
@@ -170,8 +174,6 @@ if (nrow(dat) < 3) {
 # For ratio metrics: pool on log scale.
 ratio_metric <- a$metric %in% c("HR", "OR", "RR", "aOR", "aHR", "aRR", "IRR", "SMR", "HRR")
 if (ratio_metric) {
-  dat$te    <- log(dat$effect)
-  dat$se_te <- (log(dat$effect_hi) - log(dat$effect_lo)) / (2 * 1.96)
   # meta only back-transforms summary measures it recognises (OR, RR, HR, IRR);
   # adjusted or study-specific labels must map to one, or the forest plot and
   # printed summary stay on the log scale.
@@ -179,8 +181,6 @@ if (ratio_metric) {
                aOR = "OR", aRR = "RR", aHR = "HR", HRR = "HR", SMR = "RR",
                a$metric)
 } else {
-  dat$te    <- dat$effect
-  dat$se_te <- (dat$effect_hi - dat$effect_lo) / (2 * 1.96)
   sm        <- a$metric  # MD or SMD
 }
 

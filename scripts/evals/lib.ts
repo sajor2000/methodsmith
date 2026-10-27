@@ -814,7 +814,7 @@ function findAffirmativeClaim(
       "say|says|said|saying|conclud(?:e|es|ed|ing)|represent(?:s|ed|ing)?|" +
       "describ(?:e|es|ed|ing)|consider(?:s|ed|ing)?|call(?:s|ed|ing)?|" +
       "believ(?:e|es|ed|ing)|find|finds|found|finding|deem(?:s|ed|ing)?|" +
-      "treat(?:s|ed|ing)?)\\b(?:\\s+that)?\\s*$",
+      "treat(?:s|ed|ing)?|us(?:e[sd]?|ing)|establish(?:es|ed|ing)?|declar(?:e[sd]?|ing))\\b(?:\\s+that)?\\s*$",
     negationFlags,
   )
 
@@ -858,7 +858,8 @@ function findAffirmativeClaim(
         ) ||
         qualifiedClaimFrame.test(predicateBeforeClaim) ||
         temporalOrConditionalFrame.test(prefixBeforeSubject.trimStart()) ||
-        negatedReportingFrame.test(prefixBeforeSubject)
+        (negatedReportingFrame.test(prefixBeforeSubject) &&
+          hasOrdinaryNegation(prefixBeforeSubject, criterion.negation_pattern!, criterion.case_sensitive))
       ) {
         continue
       }

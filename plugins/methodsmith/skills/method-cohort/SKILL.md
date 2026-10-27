@@ -68,7 +68,7 @@ Ask the user (or parse from `args`):
 4. **Index event** -- the moment time-zero is defined (first diagnosis date, first prescription date, hospital admission, randomization)
 5. **Inclusion criteria** -- positive criteria (must have)
 6. **Exclusion criteria** -- negative criteria (must not have); each with a window (e.g., "no statin in prior 365 days")
-7. **Eligibility window** -- continuous enrollment / observation window (e.g., 180 days prior, 365 days follow-up)
+7. **Eligibility window** -- baseline enrollment / observation assessable at index (e.g., 365 days prior); post-index loss belongs in follow-up censoring rules, not baseline eligibility
 8. **Wash-out / look-back** -- explicit prior-period requirements
 9. **Comparator** -- for a comparative claim, an active comparator of new users of an alternative with the same wash-out and enrollment rules, or sequential trial emulation for initiators versus non-initiators (Lund, Richardson & Stürmer, Curr Epidemiol Rep 2015, PMID 26954351); `none` only for descriptive cohorts
 

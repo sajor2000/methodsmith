@@ -1,5 +1,5 @@
 [
-  {"query": "We just got 96 FASTQ pairs back from the core for the ATAC-seq project (/data/atac/run_0915). Run FastQC/MultiQC and flag outlier samples before anyone starts peak calling.", "should_trigger": true},
+  {"query": "We just got 96 FASTQ pairs back from the core for the ATAC-seq project (/data/atac/run_0915). Run FastQC/MultiQC and flag outlier samples before anyone starts peak calling. Should design rank be checked when PC1/PC2 show unrelated variation, and can deleting a batch rescue complete aliasing?", "should_trigger": true},
   {"query": "Before DESeq2, check whether plate is confounded with treatment arm in our RNA-seq counts (counts/salmon_merged.tsv, sample sheet meta/samples.csv has condition and batch columns).", "should_trigger": true},
   {"query": "EPIC methylation IDATs from two array batches in /data/methyl/idat. Need bisulfite conversion, detection p-values, and sex-prediction discordance checked before the EWAS.", "should_trigger": true},
   {"query": "pls do a sample swap check on the WGS crams, sheet has declared sex + family IDs. somalier if you can", "should_trigger": true},

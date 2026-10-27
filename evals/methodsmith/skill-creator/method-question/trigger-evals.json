@@ -1,5 +1,5 @@
 [
-  {"query": "Turn this into a proper PICO with FINER scores: 'early mobilization in mechanically ventilated adults and ICU-acquired weakness'. I need the YAML so we can search PubMed next.", "should_trigger": true},
+  {"query": "Turn this into a proper PICO with FINER scores: 'early mobilization in mechanically ventilated adults and ICU-acquired weakness'. I need the YAML so we can search PubMed next. How should conditional fluid/pressor indications and post-discharge vital status affect a sepsis-bundle exposure and mortality endpoint?", "should_trigger": true},
   {"query": "my question is kinda vague - 'do sepsis bundles help?' - can you tighten it up into population/exposure/comparator/outcome and suggest a design before i do the lit search", "should_trigger": true},
   {"query": "Harden the survivor idea from docs/ideation/2026-09-12-ideation-doc.md (#2: deprescribing in SNF residents) into a structured research question with a suggested PubMed query.", "should_trigger": true},
   {"query": "method-pubmed returned 4,800 hits with no MeSH alignment for 'AI sepsis outcomes'. Help me narrow the actual research question first.", "should_trigger": true},

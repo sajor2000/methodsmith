@@ -15,15 +15,15 @@ The numeric cutoffs here (Cramér's V > 0.5, 0.3-0.5, PC1 > 30% variance, > 90% 
 ## Heuristic warnings (P1)
 
 1. **Batch and condition associated (Cramér's V 0.3-0.5).** Partial confound; model batch in the DE design, at a cost in power.
-2. **Some batches have very few samples.** Batch with N=1 or N=2 cannot be used for batch correction.
+2. **Some batches have very few samples.** Inspect replication, residual degrees of freedom and contrast support; N=1 or N=2 is a warning, not a universal impossibility rule for every model.
 3. **Batch correction applied without inspection.** ComBat / RUV / SVA called blindly; the analyst should look at PCA before and after.
 
 ## What to recommend when confounded
 
 - **Re-block the experiment.** Often impossible after the fact, but should be the first option.
-- **Acknowledge as a limitation; report sensitivity analysis.** Show results with and without one batch; if conclusions stable, OK to publish with caveat.
+- **Separate aliasing from partial confounding.** Always check the design matrix and intended contrast independently of PC1/PC2. If a partially confounded contrast remains identifiable, prespecified with/without-batch sensitivity analyses may describe robustness. Stability alone does not establish validity or publication readiness, and cannot rescue full aliasing.
 - **Use within-batch comparisons only.** If each batch contains both arms, restrict to within-batch contrasts.
-- **Adopt a paired / matched design retrospectively.** Match cases and controls within batch.
+- **Paired / matched comparisons require support.** Matching within batch is possible only where both conditions are observed and must preserve the intended estimand; it cannot create missing condition-by-batch combinations.
 
 ## What NOT to recommend
 

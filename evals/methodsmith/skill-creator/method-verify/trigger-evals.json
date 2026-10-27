@@ -1,5 +1,5 @@
 [
-  {"query": "Verify a survival analysis with 80 of 300 required events and a prediction pipeline that imputes validation predictors without validation outcomes.", "should_trigger": true},
+  {"query": "Verify a survival analysis with 80 of 300 required events and a prediction pipeline that imputes validation predictors without validation outcomes. Check negative t statistics, one-sided non-inferiority at alpha .025, and sequential or unknown-sidedness P values against their declared methods.", "should_trigger": true},
   {"query": "verify output/ before I mark this task complete: leakage, seeds, renv.lock, figures", "should_trigger": true},
   {"query": "Can you run the mid-workflow verification gate on analysis/output/models/a3/? Expected N comes from the data-QA report", "should_trigger": true},
   {"query": "sanity check pls -- my OR came out 0.6 but hypothesis said harmful exposure, plus I want to make sure no PHI slipped into outputs", "should_trigger": true},

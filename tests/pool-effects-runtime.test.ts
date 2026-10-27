@@ -4,8 +4,8 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 
-// Runs pool_effects.R on synthetic rows when Rscript and the meta package are
-// available locally; CI has no R, so r-script-guards.test.ts pins the same fixes.
+// Base-R uncertainty tests run in CI. Full pooling integration additionally
+// requires the optional meta and ggplot2 packages.
 const script = path.join(process.cwd(), "plugins", "methodsmith", "skills", "method-meta-analysis", "scripts", "pool_effects.R")
 const hasR =
   spawnSync("Rscript", ["-e", "quit(status = !(requireNamespace('meta', quietly = TRUE) && requireNamespace('ggplot2', quietly = TRUE)))"]).status === 0
@@ -16,13 +16,77 @@ const contract = {
   population: "adult ICU patients", comparator: "standard care", estimand: "marginal mortality HR", outcome: "mortality", time_horizon: "90 days",
   adjustment_specification: "none", adjusted: "false", analysis_scale: "ratio", unit: "dimensionless",
   study_design: "randomized", independent_unit_id: "",
+  ci_method: "wald_normal", ci_level: "0.95", ci_rounding_tolerance: "0.01", uncertainty_source: "synthetic source table",
 }
+
+describe.skipIf(spawnSync("Rscript", ["--version"]).status !== 0)("effect uncertainty extraction with base R", () => {
+  test("accepts symmetric Wald intervals with zero source-rounding tolerance despite machine roundoff", () => {
+    const helper = path.join(path.dirname(script), "effect_uncertainty.R")
+    const proc = spawnSync("Rscript", ["-e", `
+source(${JSON.stringify(helper)})
+for (ratio in c(FALSE, TRUE)) {
+  center <- if (ratio) log(1.01) else .1
+  bounds <- center + c(-1,1) * qnorm(.975) * .1
+  dat <- data.frame(effect=if (ratio) exp(center) else center,
+    effect_lo=if (ratio) exp(bounds[1]) else bounds[1], effect_hi=if (ratio) exp(bounds[2]) else bounds[2],
+    ci_method="wald_normal", ci_level=.95, ci_rounding_tolerance=0, uncertainty_source="synthetic exact Wald interval")
+  stopifnot(abs(effect_uncertainty(dat, ratio)$se_te - .1) < 1e-14)
+}
+`], { encoding: "utf8" })
+    expect(proc.status, proc.stderr).toBe(0)
+  })
+
+  test("machine roundoff allowance does not admit substantive asymmetry on a small identity scale", () => {
+    const helper = path.join(path.dirname(script), "effect_uncertainty.R")
+    const proc = spawnSync("Rscript", ["-e", `
+source(${JSON.stringify(helper)})
+dat <- data.frame(effect=0, effect_lo=-1e-20, effect_hi=5e-20, ci_method="wald_normal", ci_level=.95,
+  ci_rounding_tolerance=0, uncertainty_source="synthetic asymmetric interval")
+rejected <- tryCatch({effect_uncertainty(dat, FALSE); FALSE}, error=function(e) TRUE)
+stopifnot(rejected)
+`], { encoding: "utf8" })
+    expect(proc.status, proc.stderr).toBe(0)
+  })
+
+
+  test("uses declared confidence level and t df, preserves reported SEs, and rejects unresolved intervals", () => {
+    const helper = path.join(path.dirname(script), "effect_uncertainty.R")
+    const code = `
+source(${JSON.stringify(helper)})
+row <- function(method="wald_normal", level=.95, df=NA) data.frame(
+  effect=2, effect_lo=2-qnorm(.975), effect_hi=2+qnorm(.975),
+  ci_method=method, ci_level=level, ci_df=df, ci_rounding_tolerance=1e-10,
+  uncertainty_source="synthetic source table")
+normal <- row(); stopifnot(abs(effect_uncertainty(normal, FALSE)$se_te - 1) < 1e-10)
+ninety <- row(level=.90); ninety$effect_lo <- 2-qnorm(.95); ninety$effect_hi <- 2+qnorm(.95)
+stopifnot(abs(effect_uncertainty(ninety, FALSE)$se_te - 1) < 1e-10)
+small <- row("wald_t", .95, 9); small$effect_lo <- 2-qt(.975,9); small$effect_hi <- 2+qt(.975,9)
+stopifnot(abs(effect_uncertainty(small, FALSE)$se_te - 1) < 1e-10)
+ratio <- normal; ratio$effect <- exp(2); ratio$effect_lo <- exp(normal$effect_lo); ratio$effect_hi <- exp(normal$effect_hi)
+stopifnot(abs(effect_uncertainty(ratio, TRUE)$se_te - 1) < 1e-10)
+reported <- data.frame(effect=.8, standard_error=.12, standard_error_scale="log", uncertainty_source="source SE")
+stopifnot(effect_uncertainty(reported, TRUE)$se_te == .12)
+bad <- list(row("profile"), row("unknown"), row(level=NA), row("wald_t",.95,NA))
+asym <- row(); asym$effect_hi <- asym$effect_hi+1; bad[[length(bad)+1]] <- asym
+missing <- row(); missing$uncertainty_source <- ""; bad[[length(bad)+1]] <- missing
+wrong <- reported; wrong$standard_error_scale <- "ratio"; bad[[length(bad)+1]] <- wrong
+for (i in seq_along(bad)) {
+  rejected <- tryCatch({effect_uncertainty(bad[[i]], i==length(bad)); FALSE}, error=function(e) TRUE)
+  stopifnot(rejected)
+}
+cat("validated normal95, normal90, t9, log scale, reported SE and 7 rejection cases\\n")
+`
+    const proc = spawnSync("Rscript", ["-e", code], { encoding: "utf8" })
+    expect(proc.status, proc.stderr).toBe(0)
+    expect(proc.stdout).toContain("7 rejection cases")
+  })
+})
 
 function run(rows: string[], overrides: Record<string, string[]> = {}, extraArgs: string[] = []) {
   const dir = mkdtempSync(path.join(tmpdir(), "pool-effects-"))
   const input = path.join(dir, "in.csv")
   const out = path.join(dir, "out.md")
-  const keys = Object.keys(contract)
+  const keys = [...new Set([...Object.keys(contract), ...Object.keys(overrides)])]
   const inputRows = rows.map((row, i) => row + "," + keys.map((key) =>
     overrides[key]?.[i] ?? (key === "independent_unit_id" ? `trial-${i}` : contract[key as keyof typeof contract])
   ).join(","))
@@ -81,6 +145,21 @@ describe.skipIf(!hasR)("pool_effects.R on synthetic rows", () => {
     expect(r.code).toBe(0)
     expect(r.stdout).toContain("contract=")
     expect(readFileSync(r.out.replace(/\.md$/, "-contract.csv"), "utf8")).toContain("marginal mortality HR")
+  })
+
+  test("pools source-reported log SEs without CI bounds and agrees with metafor REML", () => {
+    const r = run([
+      "1001,2020,A,300,HR,0.80,,,RCT",
+      "1002,2021,B,400,HR,0.75,,,RCT",
+      "1003,2022,C,500,HR,0.85,,,RCT",
+    ], { standard_error: ["0.3", "0.2", "0.1"], standard_error_scale: ["log", "log", "log"] })
+    expect(r.code, r.stderr).toBe(0)
+    const reference = spawnSync("Rscript", ["-e",
+      'm <- metafor::rma.uni(yi=log(c(.80,.75,.85)), sei=c(.3,.2,.1), method="REML"); cat(sprintf("point=%.3f", exp(coef(m)[[1]])))',
+    ], { encoding: "utf8" })
+    expect(reference.status, reference.stderr).toBe(0)
+    expect(r.stdout).toContain(reference.stdout)
+    expect(readFileSync(r.out.replace(/\.md$/, "-contract.csv"), "utf8")).toContain("reported_SE")
   })
 
   test("keeps studies with a missing sample size when no size filter is set", () => {

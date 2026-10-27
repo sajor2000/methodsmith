@@ -1,5 +1,5 @@
 [
-  {"query": "Our HR CSV mixes adjusted conditional and unadjusted marginal effects from overlapping cohorts. Can it give the power anchor?", "should_trigger": true},
+  {"query": "Our HR CSV mixes adjusted conditional and unadjusted marginal effects from overlapping cohorts. Can it give the power anchor? Some intervals are 90%, t-based or profile-likelihood, while others report a log SE. Which uncertainty inputs support pooling? On which scale should I reconstruct a hazard-ratio SE from a declared Wald interval?", "should_trigger": true},
   {"query": "I keep picking the most optimistic OR from the lit for my sample size. Can you take the extracted methods table and give me a defensible pooled estimate with I^2?", "should_trigger": true},
   {"query": "method-extract just finished (__CE_METHOD_EXTRACT__ csv=analysis/pubmed/aki-methods.csv n=11). next step: combine the effect estimates for the SAP effect-size assumption", "should_trigger": true},
   {"query": "need a forest plot + pooled SMD (hedges g) from the 8 pilot/feasibility studies in analysis/pubmed/cbt-insomnia-methods.csv to justify the detectable difference in my R21", "should_trigger": true},

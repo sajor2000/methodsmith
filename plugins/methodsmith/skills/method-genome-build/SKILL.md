@@ -35,7 +35,7 @@ Pins the reference genome and annotation versions used in a bioinformatics study
 
 ### Step 1: Declare the build (`--ref-fasta` / `--annotation-gtf`)
 
-Hash the reference FASTA, parse its first contig name, look up the build:
+Hash the reference FASTA and establish the assembly from source provenance, diagnostic contig lengths and available sequence checksums. A first contig name or `chr` prefix does not identify a genome build.
 
 The values below are an illustrative example (GENCODE 44, equivalent to Ensembl release 110); resolve the current release, URLs, md5s, and counts for the build you actually declare rather than copying these.
 
@@ -63,7 +63,7 @@ Write to `analysis/genome-build/manifest.yaml`. Commit this; it is the build-tru
 
 ### Step 2: Audit mode (--check)
 
-Walk the project for build artifacts. When a build or naming is not declared in a header, infer it with `references/build-detection-rules.md` (contig lengths, naming, annotation file names).
+Walk the project for build artifacts. Compare available provenance, diagnostic contig lengths and checksums with the manifest using `references/build-detection-rules.md`; naming supports consistency checks but cannot identify a build alone.
 
 | Artifact | Inspect | Expect |
 |----------|---------|--------|
@@ -75,7 +75,7 @@ Walk the project for build artifacts. When a build or naming is not declared in 
 | Counts matrix (RNA-seq) | rownames or `gene_id` column format | Match annotation gene_ids (e.g., ENSG00000... if Ensembl) |
 | Variant call output | `INFO/CSQ` annotation source if VEP | VEP cache version matches manifest |
 
-For each file, determine its build (often inferable from contig naming + checksums). Flag mismatches:
+For each file, record whether its build evidence is compatible, incompatible, unknown or uninspected. Flag mismatches:
 
 - **P0:** Different build between BAM and VCF (alignment in GRCh38, called against GRCh37 reference)
 - **P0:** Annotation version drift (Counts matrix uses GENCODE 36 but manifest says GENCODE 44)
@@ -96,7 +96,7 @@ This table goes into the manuscript as a supplementary file -- it answers "what 
 
 ### Step 4: Surface mismatches
 
-If `--check` found any P0 → exit non-zero, print a clear report. The user resolves before proceeding.
+If `--check` found any issue, exit non-zero and print a clear report. Resolve every issue before declaring the audit complete.
 
 ## What this skill does NOT do
 
@@ -106,7 +106,7 @@ If `--check` found any P0 → exit non-zero, print a clear report. The user reso
 
 ## References
 
-`scripts/audit_build.py` — supports Step 2 by walking a directory for BAM/CRAM, VCF, and GTF/GFF3 files, flagging differing contig MD5s, mixed `chr1`/`1` naming, and a chromosome-1 MD5 that does not match `--declared` (`GRCh37`, `GRCh38`, or `T2T`). It writes its findings as YAML to `--manifest` and a Markdown report to `--report`, prints `__CE_GENOME_BUILD__ declared=<build> files=<n> issues=<n> manifest=<path> report=<path>`, and exits 2 on any issue, including P1 naming mismatches; classify each issue by the Step 2 severities before gating. `--manifest` is overwritten, so never point it at `analysis/genome-build/manifest.yaml`:
+`scripts/audit_build.py` supports Step 2 with build declarations, diagnostic chromosome-1/8 lengths, available chromosome-1 MD5s, and naming consistency. `--declared` accepts `GRCh37`, `GRCh38` and `T2T` (requires an explicit CHM13/T2T v2.0 declaration; diagnostic lengths support that version only). Each file is `verified` for compatible header evidence, `incompatible`, `unknown`, or `uninspected`; this does not establish complete sequence identity or annotation-release parity. Missing tools, absent evidence, unsupported T2T versions, or no inspected files block a clean result. It writes YAML (JSON for a `.json` destination), a Markdown report, and `__CE_GENOME_BUILD__ declared=<build> files=<n> issues=<n> manifest=<path> report=<path>`. Exit 2 requires resolution, including P1 naming issues; a prefix difference alone is not a build mismatch. Complete the other Step 2 manual checks before declaring the audit complete. `--manifest` is overwritten, so never point it at `analysis/genome-build/manifest.yaml`:
 
 ```bash
 SKILL_DIR="<absolute path of the directory containing this SKILL.md>";

@@ -1,0 +1,174 @@
+{
+  "schema_version": "1.0",
+  "id": "method-question-indicated-bundle",
+  "target": {
+    "kind": "skill",
+    "name": "method-question",
+    "source": "plugins/methodsmith/skills/method-question/SKILL.md"
+  },
+  "mode": "forward",
+  "prompt_path": "evals/methodsmith/cases/method-question-indicated-bundle/prompt.md",
+  "fixtures": [],
+  "required_behaviors": [
+    "requires-all-five-completed-one-hour",
+    "mortality-endpoint",
+    "post-discharge-ascertainment",
+    "written-response",
+    "response-agrees-unindicated-pressors-fail-adherence",
+    "response-agrees-requires-all-five-completed-one-hour",
+    "response-agrees-mortality-ascertainment-includes-post-discharge",
+    "response-agrees-mortality-endpoint",
+    "written-pico",
+    "written-indications",
+    "written-ascertainment",
+    "written-mortality-endpoint"
+  ],
+  "prohibited_behaviors": [
+    "unindicated-pressors-fail-adherence",
+    "no-all-five-completion"
+  ],
+  "criteria": [
+    {
+      "id": "unindicated-pressors-fail-adherence",
+      "description": "unindicated pressors fail adherence",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "unindicated_pressors_fail_adherence",
+      "expected": false,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "requires-all-five-completed-one-hour",
+      "description": "requires all five completed one hour",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "requires_all_five_completed_one_hour",
+      "expected": false,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "mortality-endpoint",
+      "description": "Names 30-day all-cause mortality, allowing source/ascertainment qualifiers.",
+      "type": "regex",
+      "path": "workspace/advice.json",
+      "weight": 2,
+      "hard_gate": true,
+      "pattern": "\"mortality_endpoint\"\\s*:\\s*\"30-day all-cause mortality(?:[^\"\\\\]|\\\\.)*\""
+    },
+    {
+      "id": "post-discharge-ascertainment",
+      "description": "Includes confirmed vital-status ascertainment after discharge.",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "mortality_ascertainment_includes_post_discharge",
+      "expected": true,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "written-response",
+      "description": "The requested explanation exists.",
+      "type": "file_exists",
+      "path": "response.md",
+      "weight": 2,
+      "hard_gate": true,
+      "expected": true
+    },
+    {
+      "id": "response-agrees-unindicated-pressors-fail-adherence",
+      "description": "The unique written decision agrees with the sidecar: unindicated_pressors_fail_adherence",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "unindicated_pressors_fail_adherence",
+      "text_path": "response.md",
+      "pattern": "^unindicated_pressors_fail_adherence:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-requires-all-five-completed-one-hour",
+      "description": "The unique written decision agrees with the sidecar: requires_all_five_completed_one_hour",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "requires_all_five_completed_one_hour",
+      "text_path": "response.md",
+      "pattern": "^requires_all_five_completed_one_hour:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-mortality-ascertainment-includes-post-discharge",
+      "description": "The unique written decision agrees with the sidecar: mortality_ascertainment_includes_post_discharge",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "mortality_ascertainment_includes_post_discharge",
+      "text_path": "response.md",
+      "pattern": "^mortality_ascertainment_includes_post_discharge:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "response-agrees-mortality-endpoint",
+      "description": "The written endpoint agrees with the sidecar.",
+      "type": "json_text_equals",
+      "path": "workspace/advice.json",
+      "json_path": "mortality_endpoint",
+      "text_path": "response.md",
+      "pattern": "^mortality_endpoint:[ \\t]*([^\\r\\n]*)\\r?$",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "written-pico",
+      "description": "Includes the revised population, exposure, comparator and outcome.",
+      "type": "regex",
+      "path": "response.md",
+      "weight": 2,
+      "hard_gate": true,
+      "pattern": "(?=[\\s\\S]*\\bpopulation\\s*:)(?=[\\s\\S]*\\b(?:exposure|intervention)\\s*:)(?=[\\s\\S]*\\bcomparator\\s*:)(?=[\\s\\S]*\\boutcome\\s*:)"
+    },
+    {
+      "id": "written-indications",
+      "description": "Explains conditional indications and initiation.",
+      "type": "regex",
+      "path": "response.md",
+      "weight": 2,
+      "hard_gate": true,
+      "pattern": "(?=[\\s\\S]*\\b(?:initiat\\w*|start\\w*)\\b)(?=[\\s\\S]*\\b(?:hypotens\\w*|lactate)\\b)(?=[\\s\\S]*\\b(?:vasopressor\\w*|pressor\\w*)\\b)"
+    },
+    {
+      "id": "written-ascertainment",
+      "description": "Names post-discharge vital-status ascertainment.",
+      "type": "regex",
+      "path": "response.md",
+      "weight": 2,
+      "hard_gate": true,
+      "pattern": "(?=[\\s\\S]*\\b30[- ]day\\s+all[- ]cause\\s+mortality\\b)(?=[\\s\\S]*\\b(?:post[- ](?:hospital[- ])?discharge|(?:after|following)\\s+(?:hospital\\s+)?discharge)\\b)(?=[\\s\\S]*\\b(?:linked|vital[- ]status|ascertain\\w*)\\b)"
+    },
+    {
+      "id": "no-all-five-completion",
+      "description": "Reject a blanket one-hour completion requirement.",
+      "type": "regex_not",
+      "path": "response.md",
+      "weight": 2,
+      "hard_gate": true,
+      "pattern": "(?:^|[.!?;\\n])\\s*all\\s+five\\s+(?:actions|components|interventions)\\s+(?:must|are required to)\\s+be\\s+completed\\s+(?:within|in)\\s+(?:one|1)\\s+hour"
+    },
+    {
+      "id": "written-mortality-endpoint",
+      "description": "The PICO outcome names 30-day all-cause mortality.",
+      "type": "regex",
+      "path": "response.md",
+      "pattern": "\\bOutcome(?:\\*\\*)?\\s*:(?:\\*\\*)?[^\\n]{0,100}(?:\\b30[- ]day\\s+all[- ]cause\\s+(?:mortality|death)\\b|\\ball[- ]cause\\s+(?:death|mortality)\\s+(?:within|by|at)\\s+(?:30\\s+days|day\\s+30)\\b)",
+      "weight": 2,
+      "hard_gate": true
+    }
+  ],
+  "threshold": 1,
+  "limitations": [
+    "Synthetic advisory behavior checks bounded scientific decisions, not clinical validity or comprehensive statistical reliability. Numeric helper behavior is checked separately by executable regression tests.",
+    "Written decisions are bound to the JSON sidecar; prose gates cover bounded terms and explicit prohibited recommendations, not arbitrary semantic contradictions."
+  ]
+}

@@ -423,6 +423,16 @@ universal NI convention. Phenotype validation rejects duplicate patient keys.
 Tracking preserves the chosen validation design and keeps full sensitive logs
 restricted; only reviewed, disclosure-safe aggregate summaries enter Git.
 
+Printed-statistic checks preserve rounding and declared t/z sidedness; unsupported
+P-value constructions stay unchecked. Power anchors require source-reported SEs
+or declared Wald interval methods and confidence levels, with degrees of freedom
+required for t intervals only.
+Genome audits distinguish compatible header evidence from unknown or uninspected
+files. Prediction validation separates forward time from period transport, and
+omics identifiability is checked independently of PCA displays. Cohort eligibility
+uses baseline observability; later loss is handled in follow-up rather than by
+requiring future enrollment.
+
 ### Numbers locked to raw data
 
 Clinical journals, reviewers, and data-sharing audits ask where each number in a

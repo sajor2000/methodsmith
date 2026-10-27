@@ -14,7 +14,7 @@ For formal site-to-lead synthesis or a systematic review, use `method-clif-meta-
 
 For each study `i`:
 - `theta_i` = effect size on the analytic scale (log(HR), log(OR), MD, SMD)
-- `v_i = se_i^2`, with `se_i = (hi - lo) / (2 * 1.96)` from a 95% CI (on the log scale for ratio metrics)
+- `v_i = se_i^2`, from a source-reported SE or a validated symmetric Wald interval with its actual confidence level and, for t intervals, df. Use the log scale for ratio metrics. `scripts/effect_uncertainty.R` enforces the contract in `effect-parser.md`; division by 3.92 is limited to a normal 95% interval.
 - `w_i = 1 / (v_i + tau^2)` = random-effects inverse-variance weight
 
 ## tau^2 by REML
