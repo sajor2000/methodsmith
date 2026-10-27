@@ -1,4 +1,4 @@
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs"
+import { chmodSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "fs"
 import { execFileSync } from "child_process"
 import { tmpdir } from "os"
 import path from "path"
@@ -237,6 +237,23 @@ describe("method-update migration from the pre-5.0 name", () => {
       expect(out).toContain("claude plugin marketplace add sajor2000/methodsmith")
       expect(out).toContain("claude plugin install methodsmith@methodsmith")
       expect(out).toContain("| `/ce-statistical-analysis-plan` | `/method-sap` |") // rebrand:keep
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+    }
+  })
+
+  test("prints the move for an unmoved project state folder, even with no old install", () => {
+    const home = realpathSync(mkdtempSync(path.join(tmpdir(), "method-update-state-")))
+    try {
+      execFileSync("mkdir", ["-p", path.join(home, ".ce-datascience")]) // rebrand:keep
+      const run = () =>
+        execFileSync("bash", [detector], { encoding: "utf8", cwd: home, env: { PATH: process.env.PATH ?? "", HOME: home } })
+      const out = run()
+      expect(out).toContain("## Project state folder")
+      expect(out).toContain(`mv "${home}/.ce-datascience" "${home}/.methodsmith"`) // rebrand:keep
+      expect(out).not.toContain("Nothing to migrate")
+      execFileSync("mkdir", ["-p", path.join(home, ".methodsmith")])
+      expect(run()).toContain("Only .methodsmith/ is read")
     } finally {
       rmSync(home, { recursive: true, force: true })
     }

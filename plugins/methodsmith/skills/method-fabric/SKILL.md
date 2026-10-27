@@ -39,7 +39,7 @@ If the route is unclear, follow the Skill Value interaction rule. Because there 
 
 ## Shared research workflow
 
-1. Inspect the existing stack profile (`.ce-datascience/config.local.yaml`). If none exists, ask the user to run the `method-setup` command — it is manual-invocation-only and cannot be loaded by the model. Record `data_layer: fabric` only when repository or user evidence supports it.
+1. Inspect the existing stack profile (`.methodsmith/config.local.yaml`). If none exists, ask the user to run the `method-setup` command — it is manual-invocation-only and cannot be loaded by the model. Record `data_layer: fabric` only when repository or user evidence supports it.
 2. State the analytical grain, source item, read/write boundary, and intended artifact before generating transformations.
 3. Load the `method-data-qa` skill at data boundaries. Reconcile source and target row counts, keys, joins, types, and missing-data handling.
 4. Load `method-plan` for the canonical study plan; add `method-sap` only when complex claims work needs the deeper claim-to-dataset schema before scope-expanding analysis code.

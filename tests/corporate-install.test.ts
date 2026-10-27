@@ -165,29 +165,18 @@ describe("corporate install artifacts", () => {
     expect(setupAlias).toContain("/methodsmith:method-setup $ARGUMENTS")
     expect(setupAlias).toContain("$ARGUMENTS")
 
-    // Deprecated ce-* aliases for one release: every pre-rebrand skill name // rebrand:keep
-    // still works and points at the renamed skill.
-    const legacyAliases = (await fs.readdir(commandsDir)).filter((file) => file.startsWith("ce-") && file.endsWith(".md")) // rebrand:keep
-    expect(legacyAliases.sort()).toEqual(
-      Object.entries(rebrandMap.skills)
-        .filter(([, newName]) => skills.includes(newName))
-        .map(([oldName]) => `${oldName}.md`)
-        .sort(),
-    )
-    const legacySap = await fs.readFile(path.join(commandsDir, "ce-statistical-analysis-plan.md"), "utf8") // rebrand:keep
-    expect(legacySap).toContain("METHODSMITH_ALIAS_MANAGED")
-    expect(legacySap).toContain("Deprecated")
-    expect(legacySap).toContain("/methodsmith:method-sap $ARGUMENTS")
+    // Deprecated ce-* aliases ended with 5.x: none are written. // rebrand:keep
+    expect((await fs.readdir(commandsDir)).filter((file) => file.startsWith("ce-"))).toEqual([]) // rebrand:keep
 
-    // Aliases written by a pre-rebrand install carry the old marker and are
-    // still ours: stale ones are removed, current ones are taken over.
+    // Managed ce-* aliases from older installs (the pre-rebrand marker, and the 5.x // rebrand:keep
+    // deprecated aliases with the current marker) are removed as stale.
     await fs.writeFile(
       path.join(commandsDir, "ce-old.md"),
       "<!-- CE_DATASCIENCE_ALIAS_MANAGED v1 plugin=ce-datascience skill=ce-old -->\nstale\n", // rebrand:keep
     )
     await fs.writeFile(
-      path.join(commandsDir, "ce-plan.md"), // rebrand:keep
-      "<!-- CE_DATASCIENCE_ALIAS_MANAGED v1 plugin=ce-datascience skill=ce-plan -->\nold\n", // rebrand:keep
+      path.join(commandsDir, "ce-statistical-analysis-plan.md"), // rebrand:keep
+      "<!-- METHODSMITH_ALIAS_MANAGED v1 plugin=methodsmith skill=method-sap legacy=ce-statistical-analysis-plan -->\nold\n", // rebrand:keep
     )
     await fs.writeFile(path.join(commandsDir, "ce-work.md"), "user-owned legacy command\n") // rebrand:keep
     await fs.writeFile(path.join(commandsDir, "method-plan.md"), "user-owned command\n")
@@ -195,16 +184,47 @@ describe("corporate install artifacts", () => {
     await run(["bash", installer, "--plugin-dir", pluginRoot, "--commands-dir", commandsDir])
 
     expect(await exists(path.join(commandsDir, "ce-old.md"))).toBe(false)
-    expect(await fs.readFile(path.join(commandsDir, "ce-plan.md"), "utf8")).toContain("/methodsmith:method-plan") // rebrand:keep
+    expect(await exists(path.join(commandsDir, "ce-statistical-analysis-plan.md"))).toBe(false) // rebrand:keep
     expect(await fs.readFile(path.join(commandsDir, "ce-work.md"), "utf8")).toBe("user-owned legacy command\n") // rebrand:keep
     expect(await fs.readFile(path.join(commandsDir, "method-plan.md"), "utf8")).toBe("user-owned command\n")
 
     await run(["bash", installer, "--commands-dir", commandsDir, "--uninstall"])
 
     expect(await exists(path.join(commandsDir, "method-setup.md"))).toBe(false)
-    expect(await exists(path.join(commandsDir, "ce-plan.md"))).toBe(false) // rebrand:keep
     expect(await fs.readFile(path.join(commandsDir, "ce-work.md"), "utf8")).toBe("user-owned legacy command\n") // rebrand:keep
     expect(await fs.readFile(path.join(commandsDir, "method-plan.md"), "utf8")).toBe("user-owned command\n")
+  }, SLOW_TEST_TIMEOUT_MS)
+
+  test("Claude alias installer rejects a prebuilt package without method-* commands before cleanup", async () => {
+    // The installer reads a prebuilt package from commands/ beside the script, so
+    // stage a copy away from the repo checkout to make it fall back to that package.
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "method-claude-aliases-old-"))
+    const packageDir = path.join(tempRoot, "a", "b", "aliases")
+    const commandsDir = path.join(tempRoot, "commands")
+    await fs.mkdir(path.join(packageDir, "commands"), { recursive: true })
+    await fs.mkdir(commandsDir, { recursive: true })
+    await fs.copyFile(
+      path.join(repoRoot, "scripts", "install", "install-claude-aliases.sh"),
+      path.join(packageDir, "install-claude-aliases.sh"),
+    )
+    // A pre-5.0 package holds only ce-* commands. // rebrand:keep
+    await fs.writeFile(
+      path.join(packageDir, "commands", "ce-plan.md"), // rebrand:keep
+      "<!-- METHODSMITH_ALIAS_MANAGED v1 plugin=methodsmith skill=ce-plan -->\nold\n", // rebrand:keep
+    )
+    const existingAlias = "<!-- METHODSMITH_ALIAS_MANAGED v1 plugin=methodsmith skill=method-plan -->\nkeep\n"
+    await fs.writeFile(path.join(commandsDir, "method-plan.md"), existingAlias)
+
+    const proc = Bun.spawn(
+      ["bash", path.join(packageDir, "install-claude-aliases.sh"), "--commands-dir", commandsDir],
+      { cwd: tempRoot, stdout: "pipe", stderr: "pipe" },
+    )
+    const exitCode = await proc.exited
+    const stderr = await new Response(proc.stderr).text()
+
+    expect(exitCode).not.toBe(0)
+    expect(stderr).toContain("method-")
+    expect(await fs.readFile(path.join(commandsDir, "method-plan.md"), "utf8")).toBe(existingAlias)
   }, SLOW_TEST_TIMEOUT_MS)
 
   test("packaging stages offline Claude, alias, and Codex artifacts without dev/cache files", async () => {

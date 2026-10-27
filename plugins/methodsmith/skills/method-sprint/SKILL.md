@@ -29,7 +29,7 @@ Wraps `method-work` in bounded sprints with explicit entry/exit criteria and hum
 
 - A locked SAP exists (`analysis/sap.md` with `sap_version` frontmatter)
 - `analysis/sap-tables/02-outputs.csv` exists (from `method-sap-workbook`)
-- A locked data wave exists in `analysis/data-waves.md` (and `.ce-datascience/data-state.yaml` when that optional state file is used)
+- A locked data wave exists in `analysis/data-waves.md` (and `.methodsmith/data-state.yaml` when that optional state file is used)
 
 ## Core workflow
 

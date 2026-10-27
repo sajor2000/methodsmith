@@ -16,7 +16,7 @@
     "should_trigger": true
   },
   {
-    "query": "Invoke the method-setup skill: infer my stack, show the detected profile card, and save .ce-datascience/config.local.yaml",
+    "query": "Invoke the method-setup skill: infer my stack, show the detected profile card, and save .methodsmith/config.local.yaml",
     "should_trigger": true
   },
   {

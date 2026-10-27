@@ -8,7 +8,7 @@ mode: forward
 prompt_path: evals/methodsmith/cases/method-work-approved-boundary-no-nag/prompt.md
 fixtures:
   - path: evals/methodsmith/cases/method-work-approved-boundary-no-nag/fixtures/config.local.yaml
-    destination: workspace/.ce-datascience/config.local.yaml
+    destination: workspace/.methodsmith/config.local.yaml
     sha256: af895ab26241e64667a839f07aa1c56d636c01df6337239938b8dc7d125066a5
   - path: evals/methodsmith/cases/method-work-approved-boundary-no-nag/fixtures/synthetic-cohort.csv
     destination: workspace/data/synthetic-cohort.csv
@@ -52,7 +52,7 @@ criteria:
   - id: config-unchanged
     description: The saved approval is reused, not re-asked or rewritten.
     type: file_unchanged
-    path: workspace/.ce-datascience/config.local.yaml
+    path: workspace/.methodsmith/config.local.yaml
     fixture_path: evals/methodsmith/cases/method-work-approved-boundary-no-nag/fixtures/config.local.yaml
     weight: 3
     hard_gate: true

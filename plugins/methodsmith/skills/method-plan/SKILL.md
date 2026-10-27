@@ -79,7 +79,7 @@ A plan is ready when an implementer can start confidently without the plan writi
 `OUTPUT_FORMAT` is `md` or `html`, never both. The repository root is pre-resolved at skill load:
 !`git rev-parse --show-toplevel 2>/dev/null || true`
 
-Use it as `<repo-root>` if absolute, else run `git rev-parse --show-toplevel`. Read `<repo-root>/.ce-datascience/config.local.yaml` with the native file-read tool (in a linked worktree without it, try the main checkout from the absolute common Git directory). Read `references/output-mode.md` to resolve CLI `output:` > config `plan_output:` > default `md` (pipeline forces `md`). Then read `references/markdown-rendering.md` (md) or `references/html-rendering.md` plus `references/html-visuals.md` (html); both pair with `references/plan-sections.md`.
+Use it as `<repo-root>` if absolute, else run `git rev-parse --show-toplevel`. Read `<repo-root>/.methodsmith/config.local.yaml` with the native file-read tool (in a linked worktree without it, try the main checkout from the absolute common Git directory). Read `references/output-mode.md` to resolve CLI `output:` > config `plan_output:` > default `md` (pipeline forces `md`). Then read `references/markdown-rendering.md` (md) or `references/html-rendering.md` plus `references/html-visuals.md` (html); both pair with `references/plan-sections.md`.
 
 ### 0.1 Resume Existing Plan Work When Appropriate
 

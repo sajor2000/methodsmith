@@ -61,7 +61,7 @@ criteria:
   - id: no-config-before-answer
     description: The skill does not save a boundary the user never chose.
     type: file_exists
-    path: workspace/.ce-datascience/config.local.yaml
+    path: workspace/.methodsmith/config.local.yaml
     expected: false
     weight: 3
     hard_gate: true

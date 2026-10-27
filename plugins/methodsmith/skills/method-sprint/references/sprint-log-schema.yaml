@@ -23,7 +23,7 @@ sprints:
 
     entry_criteria:
       sap_version: string         # from analysis/sap.md frontmatter
-      data_wave_id: string        # from analysis/data-waves.md (or .ce-datascience/data-state.yaml); must be 'locked'
+      data_wave_id: string        # from analysis/data-waves.md (or .methodsmith/data-state.yaml); must be 'locked'
       prior_sprint: string        # name of prior sprint, or 'n/a' for first
 
     audit_reviewer_findings:      # populated on close

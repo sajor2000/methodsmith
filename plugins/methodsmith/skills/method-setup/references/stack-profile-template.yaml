@@ -1,5 +1,5 @@
 # Stack Profile Template
-# Schema for .ce-datascience/config.local.yaml
+# Schema for .methodsmith/config.local.yaml
 #
 # This file defines the available options for each stack profile field.
 # The method-setup skill uses this as a reference when prompting users
@@ -12,7 +12,7 @@
 #
 # Other combinations work but may lack optimized templates.
 
-# .ce-datascience/config.local.yaml
+# .methodsmith/config.local.yaml
 stack_profile:
   # Optional profile specialization.
   # clif - Common Longitudinal ICU data Format projects; activates CLIF-aware

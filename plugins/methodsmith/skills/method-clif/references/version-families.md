@@ -14,7 +14,7 @@ review needs a data-dictionary or mCIDE version.
    `--version 3.0.0` as the explicit CLIF 3.0 + mCIDE 3.0 call. Record
    `selection=explicit`; do not require a separate mCIDE argument.
 2. Honor a matching `data_dictionary_version` + `mcide_version` pair in
-   `.ce-datascience/config.local.yaml`.
+   `.methodsmith/config.local.yaml`.
 3. Honor a matching pair stated in the repository data dictionary or source
    manifest.
 4. Otherwise ask the user to choose one of the two supported families.

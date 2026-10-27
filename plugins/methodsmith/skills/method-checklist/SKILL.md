@@ -93,7 +93,7 @@ If the answers don't fit a branch, ask a clarifying question rather than guessin
 
 ### Step 3: Write the selection to stack profile
 
-Resolve the repository root with `git rev-parse --show-toplevel` and update `<repo-root>/.ce-datascience/config.local.yaml`; never write relative to the current subdirectory. The shape that `method-review` and `method-plan` read is the canonical surface — keep these field names exact:
+Resolve the repository root with `git rev-parse --show-toplevel` and update `<repo-root>/.methodsmith/config.local.yaml`; never write relative to the current subdirectory. The shape that `method-review` and `method-plan` read is the canonical surface — keep these field names exact:
 
 ```yaml
 stack_profile:

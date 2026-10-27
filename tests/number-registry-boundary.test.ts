@@ -35,7 +35,7 @@ describe("number registry in schema-only mode", () => {
     const run = Bun.spawnSync([safeRun, "--", "python3", "analysis/cohort.py"], { cwd: root })
     expect(run.exitCode).toBe(0)
     expect(existsSync(path.join(root, "analysis", "numbers", "registry.json"))).toBe(true)
-    expect(readFileSync(path.join(root, ".ce-datascience", "runs", "outputs.txt"), "utf8")).toContain("analysis/numbers/registry.json")
+    expect(readFileSync(path.join(root, ".methodsmith", "runs", "outputs.txt"), "utf8")).toContain("analysis/numbers/registry.json")
 
     expectAll(root, "deny", [["Bash", bash("cat analysis/numbers/registry.json")]])
     expectAll(root, "allow", [
@@ -90,7 +90,7 @@ describe("the gate is not a way around the boundary", () => {
     expect(result.out).not.toContain("64.2")
 
     withFile(root, "output/summary.md", "Mean lactate was 3.87 in the run output.\n")
-    withFile(root, ".ce-datascience/runs/outputs.txt", "output/summary.md\n")
+    withFile(root, ".methodsmith/runs/outputs.txt", "output/summary.md\n")
     const written = gate(root, "check", "output/summary.md")
     expect(written.out).toContain("output/summary.md:1: untraced number: value hidden (run output)")
     expect(written.out).not.toContain("3.87")

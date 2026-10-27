@@ -3,7 +3,7 @@
 
 Usage: method-identifier-index [--data-root PATH]
 
-Scans data files under data_root (from .ce-datascience/config.local.yaml, or
+Scans data files under data_root (from .methodsmith/config.local.yaml, or
 --data-root): CSV/TSV/PSV with the standard library, Parquet/Feather/Arrow when
 pyarrow is installed. Only identifier-like columns are read, chosen by header:
 names, MRN/medical record, patient/member/subscriber/record IDs, claim numbers,
@@ -14,7 +14,7 @@ alphanumeric tokens): the full value; first+last bigrams for name columns; and,
 for ID columns only, single tokens with a digit and at least 4 characters. A
 single word is never stored, so common words and surnames alone cannot match.
 
-Output: .ce-datascience/identifier-index.local.json with a fresh random salt
+Output: .methodsmith/identifier-index.local.json with a fresh random salt
 and truncated SHA-256 hashes (gitignored, mode 0600). Prints counts only.
 """
 
@@ -145,8 +145,8 @@ def index_hit(text, index):
     return any(_indexed(index, gram) for gram in grams)
 # --- end identifier index ---
 
-INDEX_REL = os.path.join(".ce-datascience", "identifier-index.local.json")
-CONFIG_REL = os.path.join(".ce-datascience", "config.local.yaml")
+INDEX_REL = os.path.join(".methodsmith", "identifier-index.local.json")
+CONFIG_REL = os.path.join(".methodsmith", "config.local.yaml")
 DELIMITED = {".csv": ",", ".tsv": "\t", ".tab": "\t", ".psv": "|"}
 ARROW = (".parquet", ".feather", ".arrow")
 def entries_for(kind, value):
@@ -230,7 +230,7 @@ def git_main(top):
 def project_root(start):
     probe = os.path.abspath(start)
     while True:
-        if os.path.isdir(os.path.join(probe, ".ce-datascience")) or os.path.exists(os.path.join(probe, ".git")):
+        if os.path.isdir(os.path.join(probe, ".methodsmith")) or os.path.exists(os.path.join(probe, ".git")):
             return probe
         parent = os.path.dirname(probe)
         if parent == probe:
@@ -275,10 +275,42 @@ def ensure_ignored(root, pattern, probe):
         fh.write(("" if not current or current.endswith("\n") else "\n") + pattern + "\n")
 
 
+LEGACY_STATE_DIR = ".ce-datascience"  # rebrand:keep
+
+
+def legacy_state_root(start):
+    """The nearest project folder holding only the pre-rename state folder, or None."""
+    probe = os.path.abspath(start)
+    while True:
+        if os.path.isdir(os.path.join(probe, ".methodsmith")):
+            return None
+        if os.path.isdir(os.path.join(probe, LEGACY_STATE_DIR)):
+            return probe
+        if os.path.exists(os.path.join(probe, ".git")):
+            return None
+        parent = os.path.dirname(probe)
+        if parent == probe:
+            return None
+        probe = parent
+
+
+def legacy_refusal(tool, start):
+    """Refuse (exit 2) instead of running without the project's boundary settings."""
+    legacy = legacy_state_root(start)
+    if not legacy:
+        return None
+    print(f"{tool}: {legacy} still uses the pre-rename state folder {LEGACY_STATE_DIR}/, which is no longer "
+          f"read. Move it with `mv {LEGACY_STATE_DIR} .methodsmith` (or run method-update), then retry.")
+    return 2
+
+
 def main(argv):
     if any(a in ("-h", "--help") for a in argv):
         print(__doc__.strip())
         return 0
+    refused = legacy_refusal("method-identifier-index", os.getcwd())
+    if refused:
+        return refused
     root = project_root(os.getcwd())
     data_root = None
     if "--data-root" in argv and argv.index("--data-root") + 1 < len(argv):
@@ -321,7 +353,7 @@ def main(argv):
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
         json.dump(index, fh)
     os.replace(tmp, out_path)
-    ensure_ignored(root, ".ce-datascience/identifier-index.local.json", ".ce-datascience/identifier-index.local.json")
+    ensure_ignored(root, ".methodsmith/identifier-index.local.json", ".methodsmith/identifier-index.local.json")
     note = f"; {skipped} files skipped (unreadable, or Parquet/Feather without pyarrow)" if skipped else ""
     print(f"method-identifier-index: {files} files, {columns} identifier columns, {index['count']} entries"
           f" -> {INDEX_REL}{note}")

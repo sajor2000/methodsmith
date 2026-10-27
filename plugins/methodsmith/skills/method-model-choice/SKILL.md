@@ -33,7 +33,7 @@ __CE_MODEL_STRATEGY__
 __CE_LANG__
 ```
 
-Also inspect a supplied SAP, data dictionary, QA report, and `.ce-datascience/config.local.yaml` when present. For omics work, inspect `reports/bioinfo-qa/*.md` for the canonical pass/fail signal or sign-off blocker count. A `__CE_BIOINFO_QC_FAIL__` signal or confirmed blockers make the strategy `blocked`; do not select or scaffold an omics model until they are resolved. Never inspect patient-level or row-level files merely to avoid asking for an already-missing design decision. Use aggregate QA outputs and authorized schema information whenever they are sufficient.
+Also inspect a supplied SAP, data dictionary, QA report, and `.methodsmith/config.local.yaml` when present. For omics work, inspect `reports/bioinfo-qa/*.md` for the canonical pass/fail signal or sign-off blocker count. A `__CE_BIOINFO_QC_FAIL__` signal or confirmed blockers make the strategy `blocked`; do not select or scaffold an omics model until they are resolved. Never inspect patient-level or row-level files merely to avoid asking for an already-missing design decision. Use aggregate QA outputs and authorized schema information whenever they are sufficient.
 
 Create one decision per outcome-estimand pair. Before selecting a model, establish:
 

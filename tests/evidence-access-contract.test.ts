@@ -5,7 +5,8 @@ import path from "path"
 // Scientific skills ground claims in literature through the connected PubMed and
 // Paperclip MCP servers. Every such skill carries the same evidence-access block
 // (skills cannot share files), names the connector's real tools, and uses one
-// evidence-label vocabulary.
+// evidence-label vocabulary. Byte identity of that block is enforced by the prefix test
+// in tests/duplicated-skill-files.test.ts; the checks here pin the content it must carry.
 
 const skillsRoot = path.join(process.cwd(), "plugins", "methodsmith", "skills")
 

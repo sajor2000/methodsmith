@@ -155,8 +155,8 @@ def index_hit(text, index):
     return any(_indexed(index, gram) for gram in grams)
 # --- end identifier index ---
 
-INDEX_REL = os.path.join(".ce-datascience", "identifier-index.local.json")
-CONFIG_REL = os.path.join(".ce-datascience", "config.local.yaml")
+INDEX_REL = os.path.join(".methodsmith", "identifier-index.local.json")
+CONFIG_REL = os.path.join(".methodsmith", "config.local.yaml")
 THRESHOLD = 11
 MISSING = {"", "na", "n/a", "nan", "null", "none", ".", "nat", "#n/a"}
 INT_RE = re.compile(r"^[+-]?\d+$")
@@ -168,7 +168,7 @@ ID_LIKE = re.compile(r"^[A-Za-z]{0,6}[-_]?\d{3,}$")
 HEADER_SCAN_ROWS = 1000
 
 # --- locale packs: opt-in per-project identifier shapes, data in hooks/locales/<locale>.json ---
-# A locale is set as `phi_environment.locale` in .ce-datascience/config.local.yaml (worktree
+# A locale is set as `phi_environment.locale` in .methodsmith/config.local.yaml (worktree
 # first, then the main checkout), mirroring hooks/data-boundary-guard.py. Headings matching
 # the active locale's column patterns are masked like any other identifier heading, so a
 # locale-flagged column never appears by name in the peek. A malformed or unknown pack fails
@@ -505,6 +505,35 @@ def peek_xlsx(path):
     book.close()
 
 
+LEGACY_STATE_DIR = ".ce-datascience"  # rebrand:keep
+
+
+def legacy_state_root(start):
+    """The nearest project folder holding only the pre-rename state folder, or None."""
+    probe = os.path.abspath(start)
+    while True:
+        if os.path.isdir(os.path.join(probe, ".methodsmith")):
+            return None
+        if os.path.isdir(os.path.join(probe, LEGACY_STATE_DIR)):
+            return probe
+        if os.path.exists(os.path.join(probe, ".git")):
+            return None
+        parent = os.path.dirname(probe)
+        if parent == probe:
+            return None
+        probe = parent
+
+
+def legacy_refusal(tool, start):
+    """Refuse (exit 2) instead of running without the project's boundary settings."""
+    legacy = legacy_state_root(start)
+    if not legacy:
+        return None
+    print(f"{tool}: {legacy} still uses the pre-rename state folder {LEGACY_STATE_DIR}/, which is no longer "
+          f"read. Move it with `mv {LEGACY_STATE_DIR} .methodsmith` (or run method-update), then retry.")
+    return 2
+
+
 def main(argv):
     delimiter, max_rows, paths = None, 0, []
     args = iter(argv)
@@ -518,6 +547,10 @@ def main(argv):
     if not paths:
         print(__doc__.strip())
         return 2
+    for start in dict.fromkeys([os.getcwd()] + [os.path.dirname(os.path.abspath(p)) for p in paths]):
+        refused = legacy_refusal("schema-peek", start)
+        if refused:
+            return refused
     status = 0
     for path in paths:
         lower = path.lower()

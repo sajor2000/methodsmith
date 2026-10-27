@@ -1,5 +1,5 @@
 # Methodsmith -- local config
-# Copy to .ce-datascience/config.local.yaml in your project root.
+# Copy to .methodsmith/config.local.yaml in your project root.
 # All settings are optional. Invalid values fall through to defaults.
 
 # --- Work delegation (Codex) ---

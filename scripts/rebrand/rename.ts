@@ -11,8 +11,8 @@
  *   extend a mapped name (eval case ids such as ce-plan-rct-estimand-sap).
  * - ce-datascience / CE DataScience / CE_DATASCIENCE / CeDatascience -> methodsmith forms.
  * - The GitHub repo slug and Pages URL move to the renamed repo (old URLs redirect).
- * - Kept on purpose: old release tags (ce-datascience-v*), the per-project state folder
- *   (.ce-datascience/), upstream Compound Engineering names, legacy names in
+ * - The per-project state folder .ce-datascience/ -> .methodsmith/ (6.0 hard rename).
+ * - Kept on purpose: old release tags (ce-datascience-v*), upstream Compound Engineering names, legacy names in
  *   mapping.json "keep", lines containing `rebrand:keep`, and regions between
  *   `rebrand:keep-start` and `rebrand:keep-end`.
  * - Files in EXCLUDED_PATHS (history, the rename tooling itself) keep their content;
@@ -47,7 +47,6 @@ function escapeRegExp(value: string): string {
 
 const PROTECTED: RegExp[] = [
   /ce-datascience-v\d[\w.]*/g,
-  /(?<![A-Za-z0-9_-])\.ce-datascience(?![A-Za-z0-9_-])/g,
 ]
 
 const IDENTITY: Array<[RegExp, string]> = [

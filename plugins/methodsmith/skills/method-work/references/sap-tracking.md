@@ -134,19 +134,19 @@ These are informational, not blockers. Never stop task execution based on missin
 
 ## Metadata Completeness Check
 
-After computing the SAP coverage summary, check for `.ce-datascience/study-metadata.yaml` in the project root. If the file exists, read it. If the SAP frontmatter has `ai_involvement` set to any value other than `none`, check for the following and emit warnings as additional rows in the coverage summary table:
+After computing the SAP coverage summary, check for `.methodsmith/study-metadata.yaml` in the project root. If the file exists, read it. If the SAP frontmatter has `ai_involvement` set to any value other than `none`, check for the following and emit warnings as additional rows in the coverage summary table:
 
 | Condition | Warning |
 |-----------|---------|
 | `ai_involvement` is `ai-primary` or `ai-assisted` and `dataset_split` is empty or missing | WARN: dataset_split not documented (recommended for ML studies) |
 | `ai_involvement` is `llm-based` and `llm_provenance` is empty or missing | WARN: llm_provenance not documented (required for LLM studies) |
 | `ai_involvement` is not `none` and `software_provenance.random_seeds` is empty or missing | WARN: random_seeds not documented (recommended for reproducibility) |
-| `ai_involvement` is not `none` and `.ce-datascience/study-metadata.yaml` does not exist | WARN: study-metadata.yaml not found (recommended when ai_involvement is not none) |
+| `ai_involvement` is not `none` and `.methodsmith/study-metadata.yaml` does not exist | WARN: study-metadata.yaml not found (recommended when ai_involvement is not none) |
 
 Display these warnings below the SAP coverage table under a `Metadata Completeness` heading. Example:
 
 ```
-Metadata Completeness (from: .ce-datascience/study-metadata.yaml)
+Metadata Completeness (from: .methodsmith/study-metadata.yaml)
 
 | Check | Status |
 |-------|--------|
@@ -161,17 +161,17 @@ If the SAP has `ai_involvement: none` or the field is omitted, skip the metadata
 
 ## Compliance Report Integration
 
-After the Metadata Completeness check, check for `.ce-datascience/compliance-report.md`. If it exists, read the header summary and display it alongside the SAP coverage table:
+After the Metadata Completeness check, check for `.methodsmith/compliance-report.md`. If it exists, read the header summary and display it alongside the SAP coverage table:
 
 ```
-Reporting Compliance (from: .ce-datascience/compliance-report.md)
+Reporting Compliance (from: .methodsmith/compliance-report.md)
 
 | Guideline | Complete | Incomplete | Waived | Last updated |
 |-----------|----------|------------|--------|--------------|
 | STROBE    | 18/22    | 3          | 1      | 2026-04-28   |
 ```
 
-If no compliance report exists and `stack_profile.reporting_checklist` is set to a non-null guideline string in `.ce-datascience/config.local.yaml`, add this note below the coverage summary: "No compliance report found. Load the `method-review` skill with reporting checklist enabled to generate the initial report."
+If no compliance report exists and `stack_profile.reporting_checklist` is set to a non-null guideline string in `.methodsmith/config.local.yaml`, add this note below the coverage summary: "No compliance report found. Load the `method-review` skill with reporting checklist enabled to generate the initial report."
 
 See `references/compliance-report.md` for the full report format and update instructions.
 

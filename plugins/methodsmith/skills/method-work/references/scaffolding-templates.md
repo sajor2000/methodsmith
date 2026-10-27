@@ -17,7 +17,7 @@ This reference defines how `method-work` generates analysis code scaffolding ada
 
 ## Stack Profile Resolution
 
-The stack profile is read from `.ce-datascience/config.local.yaml` after resolving the repository root. The relevant fields are:
+The stack profile is read from `.methodsmith/config.local.yaml` after resolving the repository root. The relevant fields are:
 
 ```yaml
 language: R | python          # Primary analysis language
@@ -226,7 +226,7 @@ project-root/
 │   ├── tables/.gitkeep
 │   └── figures/.gitkeep
 ├── .gitignore            # R-specific entries
-└── .ce-datascience/
+└── .methodsmith/
     └── config.local.yaml
 ```
 

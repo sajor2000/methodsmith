@@ -51,9 +51,17 @@ Methodsmith is the same plugin as ce-datascience, renamed in 5.0. Every
 command and agent now starts with `method-` instead of `ce-`. A few names are
 also shorter, for example `/ce-statistical-analysis-plan` is now `/method-sap`.
 
-**What stays the same:** your own skills, your project's `.ce-datascience/`
-folder (including the PHI-boundary settings in `config.local.yaml`), and the
-plan -> work -> review -> compound loop.
+**What stays the same:** your own skills and the plan -> work -> review ->
+compound loop.
+
+**Move each project's state folder:** the per-project folder is now
+`.methodsmith/`. In every project that has a `.ce-datascience/` folder, run
+`mv .ce-datascience .methodsmith` (`/method-update` prints this command
+for the current project). The folder holds the PHI-boundary settings in `config.local.yaml`, so
+until it is moved the boundary guard treats the project as schema-only and
+says why. It never takes the mode from the old folder; it reads that folder
+only for settings that tighten the boundary (data root, identifier index, run
+outputs).
 
 **What the switch does:** the first Methodsmith install moves the old plugin's
 files to a `backups/` folder next to the new install. Nothing is deleted, and
@@ -72,9 +80,9 @@ each harness it finds.
 | Gemini CLI, Kiro | `bunx github:sajor2000/methodsmith install methodsmith --to gemini --output .` (or `--to kiro`) in each workspace |
 | Qwen Code | `qwen extensions uninstall ce-datascience`, then `qwen extensions install sajor2000/methodsmith:methodsmith` |
 
-On Claude Code with `--aliases`, the old `/ce-*` commands keep working for one
-release as deprecated aliases that point at the new skills. Elsewhere, use the
-new names.
+The old `/ce-*` commands no longer work; use the new names. The deprecated
+`/ce-*` aliases that 5.x wrote with `--aliases` are removed the next time you
+run `bash install.sh claude --aliases`.
 
 <details>
 <summary>Every renamed command</summary>
@@ -476,7 +484,7 @@ configuration examples and selection guidance are in
 
 Before setup looks at any data, `method-setup` asks one question and saves the
 answer as `phi_environment.mode` in the gitignored, machine-local
-`.ce-datascience/config.local.yaml`:
+`.methodsmith/config.local.yaml`:
 
 | Answer | Saved as | What happens |
 |---|---|---|
@@ -490,7 +498,7 @@ Older configs keep working: `compliant: true` reads as `approved`,
 
 **What enforces it.** In Claude Code, a plugin `PreToolUse` hook
 (`hooks/data-boundary-guard.py`) runs only inside projects that have a
-`.ce-datascience/` directory, in the working tree or the main checkout of a
+`.methodsmith/` directory, in the working tree or the main checkout of a
 linked worktree. It is silent unless it blocks a call. In schema-only mode it
 denies:
 
@@ -507,21 +515,42 @@ denies:
   data or globs a data directory, writing a script and running it in the same
   command, copying a data file to a non-data name, and recursive `grep`/`rg`
   without an `--include`/`-g`/`-t` limited to code are denied too.
-- Running a script file (`python`, `Rscript`, `bash`/`sh`, `quarto render`,
-  `jupyter nbconvert --execute`) whose code names a data path or `data_root`,
-  or calls a reader (`read_csv`, `read_parquet`, `read_excel`, `read_sas`,
+- Running a script file whose code names a data path or `data_root`, or calls
+  a reader (`read_csv`, `read_parquet`, `read_excel`, `read_sas`,
   `read_stata`, `fread`, `readRDS`, `arrow::`, DuckDB, SQLite) on a path held
-  in a variable, unless the command runs through the safe runner. The hook
-  reads the script itself, up to 1 MB. Scripts that do not touch data, or that
-  only read aggregate tables that pass the check below, run as before.
+  in a variable, unless the command runs through the safe runner. This covers
+  every common way to start it: `python`, `Rscript`, `bash`/`sh`, `quarto
+  render`, and `jupyter nbconvert --execute`; run wrappers such as `uv run`
+  and `pdm run`; a direct path with a script extension or interpreter
+  shebang; a script fed on stdin; `source`; `python -m` for a project module;
+  `Rscript -e "source(...)"`; and code inside `sh -c`, `bash -c`, or `eval`.
+  The hook reads the script itself, up to 1 MB. Scripts that do not touch
+  data, or that only read aggregate tables that pass the check below, run as
+  before.
+- Workflow runners (`make`, `snakemake`, `nextflow`, `dvc repro`, `pytest`,
+  `tox`, `nox`, `just`, `papermill`, `dbt run`, package scripts such as `npm
+  run`, `targets::tar_make()`, `rmarkdown::render()`, and similar), unless they
+  run through the safe runner, because the hook cannot see what their targets
+  read. `find -exec` and `xargs` over files the hook cannot rule out as data
+  are denied too.
+
+A command, `Read`, or `Grep` that reaches into a project from outside it (a
+relative path, `cd`, `git -C`, `make -C`, a symlink, or a path inside inline
+code) gets that project's boundary, and when several projects are named the
+strictest wins. Unquoted shell wildcards are expanded (up to 256 matches) and
+checked like the files they name; in schema-only mode a wildcard that matches
+more than that is treated as data.
 
 **Safe runner.** `scripts/method-safe-run -- <command>` runs the command and writes
-its full stdout and stderr to `.ce-datascience/runs/<UTC-timestamp>-<pid>.log`
+its full stdout and stderr to `.methodsmith/runs/<UTC-timestamp>-<pid>.log`
 (gitignored). It prints only the exit code, the duration, the files created or
-modified under the project (path, size, and row count for tabular files), and
-the last 30 lines of stderr with quoted literals, digit runs of 4 or more,
-emails, phone numbers, SSNs, and identifier-index values masked. Traceback file
-and line frames stay readable. It never prints stdout: open the log yourself.
+modified under the project (path, size, and row count for tabular files,
+including in projects too large to snapshot and files copied with their old
+timestamps), and a stderr summary that keeps only traceback file and line
+frames and exception type names, plus a count of withheld lines; identifier
+values in file names are masked. It never prints stdout or other stderr text:
+open the log yourself. It refuses to run when no `.methodsmith/` or `.git` is
+found above the working directory.
 The hook's deny message gives the runner's full path. It accepts only the
 plugin's own runner (or a byte-identical copy) and still checks uploads inside
 it.
@@ -581,7 +610,7 @@ builds and `method-data-qa` refreshes the identifier index with
 `scripts/method-identifier-index`. It reads identifier-like columns under
 `data_root` (names; MRN, patient, member, subscriber, and record IDs; claim
 numbers; SSN; date of birth; address; phone; email) and stores only salted
-hashes in `.ce-datascience/identifier-index.local.json`: local, gitignored,
+hashes in `.methodsmith/identifier-index.local.json`: local, gitignored,
 with a random per-project salt and no plaintext. It prints counts only. Each
 full value is stored, plus first+last name pairs, plus single tokens that
 contain a digit for ID columns only, so a lone surname or common word never
@@ -606,7 +635,7 @@ calls that mention a data file or an upload; anything else is allowed with a
 one-line warning, so a hook bug never blocks unrelated work.
 
 **Changing the answer.** Re-run `method-setup`, or edit or delete the
-`phi_environment` block in `.ce-datascience/config.local.yaml`.
+`phi_environment` block in `.methodsmith/config.local.yaml`.
 
 ## Components
 

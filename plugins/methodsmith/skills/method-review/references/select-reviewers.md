@@ -20,7 +20,7 @@
 | `method-kieran-python-reviewer` | `.py` files in diff |
 | `method-methods-reviewer` | inferential/model-fitting code, or `analysis/model-strategy/*-model-strategy.md` / its `.R` or `.py` scaffold in diff |
 | `method-multiplicity-reviewer` | multiple comparisons, subgroup, or repeated-testing code in diff |
-| `method-reproducibility-reviewer` | analysis scripts, notebooks, or env lock files in diff. Pass the resolved skill-local path for `references/study-metadata-schema.md` so the reviewer can check `.ce-datascience/study-metadata.yaml` completeness. |
+| `method-reproducibility-reviewer` | analysis scripts, notebooks, or env lock files in diff. Pass the resolved skill-local path for `references/study-metadata-schema.md` so the reviewer can check `.methodsmith/study-metadata.yaml` completeness. |
 | `method-sap-drift-detector` | `analysis/sap.md` (or any markdown with `sap_version` frontmatter) exists in project |
 | `method-data-mapping-reviewer` | codebook, SAP variable list, or `analysis/sap-tables/03-variables.csv` in diff |
 | `method-phi-leak-reviewer` | data files, codebooks, notebooks, manuscripts, or figure files in diff, OR `stack_profile.data_root` is inside the repo |

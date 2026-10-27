@@ -25,6 +25,7 @@ $GitHubRepo = "sajor2000/methodsmith"
 $AliasMarker = "<!-- METHODSMITH_ALIAS_MANAGED v1 "
 # Aliases written before the rename to Methodsmith carry the old marker and are still ours.
 $LegacyAliasMarker = "<!-- CE_DATASCIENCE_ALIAS_MANAGED v1 "  # rebrand:keep
+# Deprecated /ce-* aliases from 5.x installs are no longer written; managed ones are removed as stale. # rebrand:keep
 $LegacyAliasPrefix = "ce-"  # rebrand:keep
 $ManagedStart = "# BEGIN Methodsmith plugin MCP -- do not edit this block"
 $ManagedEnd = "# END Methodsmith plugin MCP"
@@ -159,33 +160,6 @@ function Test-AliasFileName([string]$Name) {
   return $Name.EndsWith(".md") -and ($Name.StartsWith("method-") -or $Name.StartsWith($LegacyAliasPrefix))
 }
 
-function New-LegacyAliasContent([string]$OldName, [string]$SkillName) {
-  $template = @'
----
-description: "Deprecated: /__OLD__ is now /__PLUGIN__:__SKILL__ (Methodsmith)."
----
-<!-- METHODSMITH_ALIAS_MANAGED v1 plugin=__PLUGIN__ skill=__SKILL__ legacy=__OLD__ -->
-Deprecated alias. `/__OLD__` was renamed to `/__PLUGIN__:__SKILL__` when the plugin
-was renamed to Methodsmith. This alias will be removed in the next major release.
-
-Tell the user about the new name once, then delegate to the renamed skill and pass
-the arguments through exactly:
-
-`/__PLUGIN__:__SKILL__ $ARGUMENTS`
-
-$ARGUMENTS
-'@
-  return $template.Replace("__OLD__", $OldName).Replace("__PLUGIN__", $PluginName).Replace("__SKILL__", $SkillName)
-}
-
-# Old -> new skill names from the rebrand mapping, for deprecated aliases.
-function Get-LegacySkillPairs([string]$PluginDir) {
-  $mapping = Join-Path (Split-Path (Split-Path $PluginDir -Parent) -Parent) "scripts/rebrand/mapping.json"
-  if (-not (Test-Path $mapping)) { return @() }
-  $skills = (Get-Content $mapping -Raw | ConvertFrom-Json).skills
-  return $skills.PSObject.Properties | Where-Object { Test-Path (Join-Path $PluginDir "skills/$($_.Value)/SKILL.md") }
-}
-
 function New-AliasContent([string]$SkillName) {
   $template = @'
 ---
@@ -213,7 +187,12 @@ function Install-ClaudeAliases([string]$PluginDir, [string]$PrebuiltCommandsDir 
 
   $sources = @()
   if (-not [string]::IsNullOrWhiteSpace($PrebuiltCommandsDir) -and (Test-Path $PrebuiltCommandsDir)) {
-    $sources = Get-ChildItem $PrebuiltCommandsDir -Filter "*.md" -File | Where-Object { Test-AliasFileName $_.Name }
+    $sources = @(Get-ChildItem $PrebuiltCommandsDir -Filter "method-*.md" -File)
+    if ($sources.Count -eq 0) {
+      # Stale-alias removal would delete every managed alias, so refuse a package made before 5.0.
+      Write-Error "No method-*.md commands in $PrebuiltCommandsDir; this alias package is too old for this installer. Nothing was changed."
+      return
+    }
   } elseif (Test-Path (Join-Path $PluginDir "skills")) {
     $sources = Get-ChildItem (Join-Path $PluginDir "skills") -Directory -Filter "method-*" |
       Where-Object { Test-Path (Join-Path $_.FullName "SKILL.md") }
@@ -240,24 +219,6 @@ function Install-ClaudeAliases([string]$PluginDir, [string]$PrebuiltCommandsDir 
       New-AliasContent $skillName | Set-Content -Path $target -Encoding UTF8
     }
     Write-Output "installed $fileName"
-  }
-
-  if ([string]::IsNullOrWhiteSpace($PrebuiltCommandsDir)) {
-    foreach ($pair in Get-LegacySkillPairs $PluginDir) {
-      $fileName = "$($pair.Name).md"
-      $target = Join-Path $CommandsDir $fileName
-      [void]$managedNames.Add($fileName)
-      if ((Test-Path $target) -and -not (Test-ManagedAlias $target)) {
-        Write-Output "skipped user-owned $fileName"
-        continue
-      }
-      if ($DryRun) {
-        Write-Output "[dry-run] install $fileName"
-      } else {
-        New-LegacyAliasContent $pair.Name $pair.Value | Set-Content -Path $target -Encoding UTF8
-      }
-      Write-Output "installed $fileName (deprecated)"
-    }
   }
 
   if (Test-Path $CommandsDir) {

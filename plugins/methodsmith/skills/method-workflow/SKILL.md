@@ -22,7 +22,7 @@ Shows the ordered skill sequence for a science project, detects progress, and re
 The repository root is pre-resolved at skill load:
 !`git rev-parse --show-toplevel 2>/dev/null || true`
 
-Use the resolved absolute path or resolve it at runtime, then read `.ce-datascience/config.local.yaml` with the native file-read tool. In a linked worktree, fall back to the main checkout when the machine-local file is absent. Parse these `stack_profile` keys: `language`, `ide`, `reporting`, `data_layer`, `clif.data_dictionary_version`, `clif.mcide_version`, and the optional `inference` map; if no config can be read, infer them from project files.
+Use the resolved absolute path or resolve it at runtime, then read `.methodsmith/config.local.yaml` with the native file-read tool. In a linked worktree, fall back to the main checkout when the machine-local file is absent. Parse these `stack_profile` keys: `language`, `ide`, `reporting`, `data_layer`, `clif.data_dictionary_version`, `clif.mcide_version`, and the optional `inference` map; if no config can be read, infer them from project files.
 
 Treat a saved inference value with its `confidence` and `evidence` as a reusable
 setup handoff. Do not re-ask a setup question when a high-confidence value is

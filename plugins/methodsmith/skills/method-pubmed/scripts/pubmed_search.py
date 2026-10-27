@@ -69,7 +69,7 @@ HUMAN_FILTER = "NOT (animals[mh] NOT humans[mh])"
 
 
 def build_query(term: str, years: int | None, study_type: str | None,
-                english_only: bool = False) -> str:
+                english_only: bool = False, include_animal: bool = False) -> str:
     parts = [f"({term})"]
     if study_type:
         f = STUDY_TYPE_FILTERS.get(study_type)
@@ -81,7 +81,8 @@ def build_query(term: str, years: int | None, study_type: str | None,
         parts.append(f'("last {years} years"[PDat])')
     if english_only:
         parts.append("English[lang]")
-    return f"({' AND '.join(parts)}) {HUMAN_FILTER}"
+    query = f"({' AND '.join(parts)})"
+    return query if include_animal else f"{query} {HUMAN_FILTER}"
 
 
 def first_text(elt, default: str = "") -> str:
@@ -145,12 +146,13 @@ def parse_record(rec: dict) -> dict:
 
 
 def search(term: str, years: int | None, study_type: str | None,
-           max_results: int, email: str, english_only: bool = False) -> list[dict]:
+           max_results: int, email: str, english_only: bool = False,
+           include_animal: bool = False) -> list[dict]:
     Entrez.email = email
     if api_key := os.environ.get("NCBI_API_KEY"):
         Entrez.api_key = api_key
 
-    query = build_query(term, years, study_type, english_only)
+    query = build_query(term, years, study_type, english_only, include_animal)
     print(f"[query] {query}", file=sys.stderr)
 
     with Entrez.esearch(db="pubmed", term=query, retmax=max_results,
@@ -203,6 +205,8 @@ def main() -> None:
     p.add_argument("--max", type=int, default=50, dest="max_results")
     p.add_argument("--english-only", action="store_true",
                    help="add English[lang]; off by default to avoid language bias")
+    p.add_argument("--include-animal", action="store_true",
+                   help="omit the human filter; for preclinical/animal questions only")
     p.add_argument("--out", type=Path, required=True,
                    help="output CSV path; parent dirs created")
     p.add_argument("--email", default=os.environ.get("NCBI_EMAIL", "anonymous@example.com"),
@@ -210,7 +214,8 @@ def main() -> None:
     args = p.parse_args()
 
     rows = search(args.query, args.years, args.study_type,
-                  args.max_results, args.email, args.english_only)
+                  args.max_results, args.email, args.english_only,
+                  args.include_animal)
     write_csv(rows, args.out)
     pmc_pct = sum(1 for r in rows if r["pmcid"]) / max(1, len(rows)) * 100
     print(f"__CE_PUBMED_RESULTS__ csv={args.out} n={len(rows)} "

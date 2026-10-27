@@ -38,6 +38,10 @@ bash "$SKILL_DIR/scripts/detect-pre-rename-install.sh"
   install moves the old plugin's files to a backups folder instead of deleting
   them, and that the user's own skills stay where they are.
   Do not run these commands for the user.
+- If it reports a **Project state folder**, show its `mv` command as printed
+  and say why: the folder holds the PHI-boundary settings, and until it is
+  moved the boundary guard treats the project as schema-only. Do not run the
+  move for the user.
 - If it reports nothing to migrate, continue without mentioning it.
 - If the script is missing or `bash` is unavailable, check by hand for the
   folders it looks for and point the user to `references/renamed-commands.md`

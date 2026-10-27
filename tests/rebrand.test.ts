@@ -115,9 +115,9 @@ describe("rewriteText", () => {
     )
   })
 
-  test("keeps old release tags and the project state folder", () => {
-    const kept = ["tag ce-datascience-v4.1.0", "read .ce-datascience/config.local.yaml"]
-    for (const line of kept) expect(rewriteText(line)).toBe(line)
+  test("keeps old release tags and renames the project state folder", () => {
+    expect(rewriteText("tag ce-datascience-v4.1.0")).toBe("tag ce-datascience-v4.1.0")
+    expect(rewriteText("read .ce-datascience/config.local.yaml")).toBe("read .methodsmith/config.local.yaml")
   })
 
   test("leaves lines and regions marked rebrand:keep untouched", () => {

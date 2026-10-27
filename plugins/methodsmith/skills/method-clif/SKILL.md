@@ -97,7 +97,7 @@ When `--off` is passed, emit `__CE_CLIF__ active=false` so downstream skills res
 None; no stack profile is required. Resolve the repository root before reading optional config:
 !`git rev-parse --show-toplevel 2>/dev/null || true`
 
-Use the resolved absolute path or resolve it at runtime, then read `<repo-root>/.ce-datascience/config.local.yaml` with the native file-read tool. In a linked worktree, fall back to the main checkout when the config is absent.
+Use the resolved absolute path or resolve it at runtime, then read `<repo-root>/.methodsmith/config.local.yaml` with the native file-read tool. In a linked worktree, fall back to the main checkout when the config is absent.
 
 ## Core workflow
 

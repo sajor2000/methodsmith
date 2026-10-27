@@ -3,21 +3,27 @@
 
 Usage: method-safe-run -- <command> [args...]
 
-Full stdout and stderr go to .ce-datascience/runs/<UTC-timestamp>-<pid>.log in
-the project; `.ce-datascience/runs/` is added to .gitignore when git does not
+Full stdout and stderr go to .methodsmith/runs/<UTC-timestamp>-<pid>.log in
+the project; `.methodsmith/runs/` is added to .gitignore when git does not
 already ignore it. The terminal gets only the exit code, the duration,
 the log path, the files created or modified under the project (path, size,
-and row count for tabular files), and the last 30 lines of stderr with values
-in the project's identifier index, quoted literals, digit runs of 4 or more,
-emails, phones, and SSNs masked. Traceback frames that name an existing file
-keep that path readable (identifier-shaped or indexed parts masked); any other
-frame-shaped line is masked like the rest. File names are masked against the
-index too. Stdout is never printed. The exit code is the
+and row count for tabular files), and a strict tail of the last 30 stderr
+lines: traceback frames that name an existing file keep their path (identifier-
+shaped or indexed parts masked) and line number, every other line is reduced to
+its leading exception type name (Python `...Error`/`...Exception`/`...Warning`,
+R `Error in`/`Warning message`) or withheld, and a count of withheld lines
+points to the log. No free-text stderr is printed. File names are masked
+against the identifier index too. Stdout is never printed. The exit code is the
 command's. Files the run created or modified (except raster images) are listed in
-.ce-datascience/runs/outputs.txt, and the boundary guard treats them as data: the
-run read data, so what it wrote may hold values. Writes outside the project, or
-under .git and dependency trees (node_modules, venvs, renv, caches), are not
-tracked. In schema-only mode the guard requires method-safe-run to run as its own
+.methodsmith/runs/outputs.txt, and the boundary guard treats them as data: the
+run read data, so what it wrote may hold values. A change in size, mtime, or
+ctime counts, so copies that preserve timestamps are caught. When the project
+has more files than the pre-run snapshot holds, a full walk after the run also
+records every file whose mtime or ctime is at or after the run start. Writes
+outside the project, or under .git and dependency trees (node_modules, venvs,
+renv, caches), are not tracked. It refuses to run (exit 2) outside a project:
+some folder at or above the working directory must hold .methodsmith/ or .git.
+In schema-only mode the guard requires method-safe-run to run as its own
 command, so nothing in the same call reads a file before it is recorded.
 """
 
@@ -147,31 +153,28 @@ def index_hit(text, index):
 # --- end identifier index ---
 
 SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", ".mypy_cache", ".pytest_cache", ".ruff_cache",
-             "renv"}  # VCS and dependency trees; .ce-datascience is walked except runs/ (data already)
+             "renv"}  # VCS and dependency trees; .methodsmith is walked except runs/ (data already)
 TABULAR = (".csv", ".tsv", ".psv", ".tab")
 RASTER = (".png", ".jpg", ".jpeg", ".gif", ".webp")
 MAX_FILES = 20000
 MAX_LISTED = 50
 TAIL_LINES = 30
+START_MARGIN_NS = 2 * 10**9  # filesystem timestamp granularity
 FRAME = re.compile(r'^(\s*File ")([^"\n]+)(", line \d+)(.*)$')
-MASKS = (
-    (re.compile(r"'[^'\n]*'"), "'…'"),
-    (re.compile(r'"[^"\n]*"'), '"…"'),
-    (re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}"), "[email]"),
-    (re.compile(r"(?<!\d)\d{3}-\d{2}-\d{4}(?!\d)"), "[ssn]"),
-    (re.compile(r"(?:\+?1[-. ]?)?(?:\(\d{3}\)\s?|\d{3}[-. ])\d{3}[-. ]\d{4}(?!\d)"), "[phone]"),
-    (re.compile(r"\d{4,}"), "####"),
-)
+FRAME_FUNC = re.compile(r"^, in (?:<[A-Za-z_]+>|[A-Za-z_][\w.]*)$")  # ", in <module>" / ", in load"
+# The leading exception type name of a stderr line; everything after it is withheld.
+EXC_TYPE = re.compile(r"^\s*((?:[A-Za-z_]\w*\.)*[A-Za-z_]\w*(?:Error|Exception|Warning))(?![\w.])")
+R_CONDITION = re.compile(r"^\s*(Error in|Error|Warning messages?|Warning in|Warning)\b(?=\s|:|$)")
 
 
 def project_root(start):
     probe = os.path.abspath(start)
     while True:
-        if os.path.isdir(os.path.join(probe, ".ce-datascience")) or os.path.exists(os.path.join(probe, ".git")):
+        if os.path.isdir(os.path.join(probe, ".methodsmith")) or os.path.exists(os.path.join(probe, ".git")):
             return probe
         parent = os.path.dirname(probe)
         if parent == probe:
-            return os.path.abspath(start)
+            return None
         probe = parent
 
 
@@ -197,22 +200,36 @@ def ensure_ignored(root, pattern, probe):
         fh.write(("" if not current or current.endswith("\n") else "\n") + pattern + "\n")
 
 
-def snapshot(root):
-    """{relative path: (mtime_ns, size)} for project files, skipping tool and VCS directories."""
+def snapshot(root, limit=MAX_FILES):
+    """({relative path: (mtime_ns, size, ctime_ns)}, capped) for project files, skipping tool and VCS
+    directories. capped is True when the walk stopped at limit files (limit None walks everything)."""
     files = {}
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS
-                       and not (d == "runs" and os.path.basename(dirpath) == ".ce-datascience")]
+                       and not (d == "runs" and os.path.basename(dirpath) == ".methodsmith")]
         for name in filenames:
             full = os.path.join(dirpath, name)
             try:
                 st = os.stat(full)
             except OSError:
                 continue
-            files[os.path.relpath(full, root)] = (st.st_mtime_ns, st.st_size)
-            if len(files) >= MAX_FILES:
-                return files
-    return files
+            files[os.path.relpath(full, root)] = (st.st_mtime_ns, st.st_size, st.st_ctime_ns)
+            if limit is not None and len(files) >= limit:
+                return files, True
+    return files, False
+
+
+def run_start_ns(runs):
+    """The run start on the filesystem clock: a sentinel file's ctime, less a granularity margin."""
+    sentinel = os.path.join(runs, f".start-{os.getpid()}")
+    try:
+        with open(sentinel, "w", encoding="utf-8"):
+            pass
+        start = os.stat(sentinel).st_ctime_ns
+        os.unlink(sentinel)
+    except OSError:
+        start = time.time_ns()
+    return start - START_MARGIN_NS
 
 
 def row_count(path):
@@ -230,8 +247,17 @@ def row_count(path):
     return None
 
 
-def changed_files(before, after):
-    return [rel for rel in sorted(after) if before.get(rel) != after[rel]]
+def changed_files(before, after, since_ns=None):
+    """Files whose (mtime, size, ctime) moved. With since_ns (the pre-run snapshot was capped), a file
+    the snapshot never saw counts when its mtime or ctime is at or after since_ns."""
+    out = []
+    for rel in sorted(after):
+        if rel in before:
+            if before[rel] != after[rel]:
+                out.append(rel)
+        elif since_ns is None or max(after[rel][0], after[rel][2]) >= since_ns:
+            out.append(rel)
+    return out
 
 
 def record_outputs(runs, changed):
@@ -248,10 +274,10 @@ def record_outputs(runs, changed):
             fh.write("".join(rel + "\n" for rel in new))
 
 
-def changes(before, after, root, index):
+def changes(changed, before, after, root, index, capped):
     lines = []
-    for rel in changed_files(before, after):
-        kind = "created " if rel not in before else "modified"
+    for rel in changed:
+        kind = "modified" if rel in before else ("written " if capped else "created ")
         rows = row_count(os.path.join(root, rel))
         line = f"  {kind} {mask_path(rel, index)}  {after[rel][1]} bytes"
         lines.append(line + (f"  {rows} rows" if rows is not None else ""))
@@ -286,23 +312,25 @@ def mask_indexed(text, index):
     return text
 
 
-def mask(text, index):
-    text = mask_indexed(text, index)
-    for pattern, replacement in MASKS:
-        text = pattern.sub(replacement, text)
-    return text
+def strict_line(line, index):
+    """A traceback frame for a real file, a bare exception type name, or None (withheld)."""
+    frame = FRAME.match(line)
+    if frame and os.path.isfile(frame.group(2)):  # a real file: keep its path readable, minus identifiers
+        func = frame.group(4) if FRAME_FUNC.match(frame.group(4)) else ""
+        return frame.group(1) + mask_path(frame.group(2), index) + frame.group(3) + mask_path(func, index)
+    if line.strip() == "Traceback (most recent call last):":
+        return line
+    found = EXC_TYPE.match(line) or R_CONDITION.match(line)
+    if found:
+        return mask_path(found.group(1), index)
+    return None
 
 
-def masked_tail(err, index):
-    lines = err.decode("utf-8", errors="replace").splitlines()[-TAIL_LINES:]
-    out = []
-    for line in lines:
-        frame = FRAME.match(line)
-        if frame and os.path.isfile(frame.group(2)):  # a real file: keep its path readable, minus identifiers
-            out.append(frame.group(1) + mask_path(frame.group(2), index) + frame.group(3) + mask(frame.group(4), index))
-        else:
-            out.append(mask(line, index))
-    return out
+def strict_tail(err, index):
+    """(shown lines, withheld count) for the last TAIL_LINES lines of stderr; earlier lines count as withheld."""
+    lines = err.decode("utf-8", errors="replace").splitlines()
+    shown = [s for s in (strict_line(line, index) for line in lines[-TAIL_LINES:]) if s is not None]
+    return shown, len(lines) - len(shown)
 
 
 def mask_path(path, index):
@@ -314,7 +342,7 @@ def mask_path(path, index):
 
 def find_index(root):
     for base in (root, git_main(root)):
-        index = read_index(os.path.join(base, ".ce-datascience", "identifier-index.local.json")) if base else None
+        index = read_index(os.path.join(base, ".methodsmith", "identifier-index.local.json")) if base else None
         if index:
             return index
     return None
@@ -330,18 +358,56 @@ def git_main(top):
     return os.path.dirname(common.rstrip(os.sep)) if out.returncode == 0 and common.endswith(".git") else None
 
 
+LEGACY_STATE_DIR = ".ce-datascience"  # rebrand:keep
+
+
+def legacy_state_root(start):
+    """The nearest project folder holding only the pre-rename state folder, or None."""
+    probe = os.path.abspath(start)
+    while True:
+        if os.path.isdir(os.path.join(probe, ".methodsmith")):
+            return None
+        if os.path.isdir(os.path.join(probe, LEGACY_STATE_DIR)):
+            return probe
+        if os.path.exists(os.path.join(probe, ".git")):
+            return None
+        parent = os.path.dirname(probe)
+        if parent == probe:
+            return None
+        probe = parent
+
+
+def legacy_refusal(tool, start):
+    """Refuse (exit 2) instead of running without the project's boundary settings."""
+    legacy = legacy_state_root(start)
+    if not legacy:
+        return None
+    print(f"{tool}: {legacy} still uses the pre-rename state folder {LEGACY_STATE_DIR}/, which is no longer "
+          f"read. Move it with `mv {LEGACY_STATE_DIR} .methodsmith` (or run method-update), then retry.")
+    return 2
+
+
 def main(argv):
     if "--" not in argv or argv.index("--") == len(argv) - 1:
         print(__doc__.strip())
         return 2
     cmd = argv[argv.index("--") + 1:]
+    refused = legacy_refusal("method-safe-run", os.getcwd())
+    if refused:
+        return refused
     root = project_root(os.getcwd())
-    runs = os.path.join(root, ".ce-datascience", "runs")
+    if root is None:
+        print(f"method-safe-run: no project found at or above {os.getcwd()} (no .methodsmith/ or .git), so "
+              "there is nowhere safe to keep the run log. Run it from inside the project, or create "
+              ".methodsmith/ in the project folder first.")
+        return 2
+    runs = os.path.join(root, ".methodsmith", "runs")
     os.makedirs(runs, exist_ok=True)
-    ensure_ignored(root, ".ce-datascience/runs/", ".ce-datascience/runs/probe.log")
+    ensure_ignored(root, ".methodsmith/runs/", ".methodsmith/runs/probe.log")
     name = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime()) + f"-{os.getpid()}.log"
     log_path = os.path.join(runs, name)
-    before = snapshot(root)
+    before, capped = snapshot(root)
+    since_ns = run_start_ns(runs) if capped else None
     start = time.monotonic()
     try:
         proc = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True)
@@ -355,9 +421,10 @@ def main(argv):
     print(f"method-safe-run: exit code: {code}, duration: {duration:.1f}s")
     print(f"Full stdout and stderr (not shown): {os.path.relpath(log_path, root)}")
     index = find_index(root)
-    after = snapshot(root)
-    record_outputs(runs, changed_files(before, after))
-    changed = changes(before, after, root, index)
+    after, _ = snapshot(root, None)  # always complete: the run may push the project past the cap
+    written = changed_files(before, after, since_ns)
+    record_outputs(runs, written)
+    changed = changes(written, before, after, root, index, capped)
     print("Files created or modified:" if changed else "Files created or modified: none")
     for line in changed[:MAX_LISTED]:
         print(line)
@@ -366,11 +433,14 @@ def main(argv):
     if index is INVALID_INDEX:
         print("The identifier index is malformed, so file names and stderr are withheld; "
               "rebuild it with method-identifier-index.")
-    tail = masked_tail(err, index)
-    if tail:
-        print(f"stderr (last {TAIL_LINES} lines, masked):")
+    tail, withheld = strict_tail(err, index)
+    if tail or withheld:
+        print(f"stderr (last {TAIL_LINES} lines; traceback frames and exception types only):")
         for line in tail:
             print("  " + line)
+        if withheld:
+            print(f"  {withheld} line{'' if withheld == 1 else 's'} withheld; full stderr in "
+                  f"{os.path.relpath(log_path, root)}")
     return code
 
 

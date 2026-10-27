@@ -7,7 +7,7 @@ Two functions carry the policy and are unit-tested in-process:
   classify(call, mode)  -> None (allow) or {"kind", "reason"} (deny)
 
 Modes come from `phi_environment.mode` in the machine-local
-`.ce-datascience/config.local.yaml` (worktree first, then the main checkout):
+`.methodsmith/config.local.yaml` (worktree first, then the main checkout):
 
   approved           endpoint approved for the data -> no access limits
   no-sensitive-data  public or synthetic data       -> no access limits
@@ -18,6 +18,9 @@ Legacy keys map onto it: compliant: true -> approved, compliant: false ->
 schema-only, sensitive_data: false -> no-sensitive-data. Any explicit
 schema-only signal wins a conflict. An unreadable or misspelled value, or no
 saved answer, also resolves to schema-only, with a deny reason that says why.
+A project that still has only the pre-rename state folder is schema-only until
+the folder is moved; that folder is read only for data_root, the identifier
+index, and run outputs, never for its mode.
 
 Egress (every mode except off): MCP tool arguments and Bash HTTP requests
 (curl/wget/httpie/xh to any host, so NCBI E-utilities by name or IP, and the
@@ -32,10 +35,19 @@ Schema-only access: Read/Grep/NotebookRead and Edit/MultiEdit/NotebookEdit
 (they return a snippet) on data files (including data_root and method-safe-run
 logs), Bash/Monitor/PowerShell commands whose text references a data path (any
 program except a metadata allowlist), inline interpreter code that opens data,
-and recursive content searches are denied. Script files run by
-python/Rscript/bash/sh/quarto render/jupyter nbconvert --execute are read
-statically (1 MB cap) and denied when they name a data path or call a reader
-on a variable path, unless the command runs through the plugin's method-safe-run.
+and recursive content searches are denied. Script files are read statically
+(1 MB cap) and denied when they name a data path or call a reader on a variable
+path, unless the command runs through the plugin's method-safe-run, however the
+script is launched: python/Rscript/bash/sh/quarto render/jupyter nbconvert
+--execute, run wrappers (uv/pdm/poetry run), a direct path with a script
+extension or interpreter shebang, stdin, source/., python -m for a project
+module, Rscript -e source(), and sh -c/bash -c/eval code. Workflow runners
+(make, snakemake, pytest, dvc, npm/pnpm/yarn/bun run scripts, targets::tar_make,
+rmarkdown::render, and similar) are denied unless run through method-safe-run.
+Relative, cd, -C, symlinked, and inline-code paths anchor the project they
+reach, so a call from outside a project gets that project's boundary (strictest
+wins). Unquoted shell wildcards are expanded (bounded) and checked match by
+match; an over-cap expansion is data in schema-only access checks.
 Inside method-safe-run only the copy rule still applies (output stays in the log),
 and files a run wrote (runs/outputs.txt) are data afterwards. Tables under
 phi_environment.aggregate_dirs print through the plugin's method-aggregate-read,
@@ -51,11 +63,13 @@ denies only calls that mention a data-like path or an upload; anything else is
 allowed with a one-line stderr warning. Stdlib only; silent on allow.
 """
 
+import fnmatch
 import json
 import os
 import re
 import shlex
 import sys
+import time
 
 # One definition of a data file. schema-peek.py embeds an identical list (tested).
 DATA_EXTS = (
@@ -90,7 +104,10 @@ CODE_TYPES = {
 SCRIPT_EXTS = {"py", "r", "sh", "bash", "zsh", "jl", "qmd", "rmd", "js", "mjs", "ts", "rb", "pl", "php", "lua", "do", "sas"}
 MODES = ("approved", "schema-only", "no-sensitive-data")
 AGGREGATE_DIRS = ("output", "results", "analysis/publication", "analysis/sap-tables")
-CONFIG_REL = os.path.join(".ce-datascience", "config.local.yaml")
+STATE_DIR = ".methodsmith"
+# The pre-rename state folder. An unmoved project fails closed (schema-only); the folder is read only to tighten.
+LEGACY_STATE_DIR = ".ce-datascience"  # rebrand:keep
+CONFIG_REL = os.path.join(STATE_DIR, "config.local.yaml")
 
 METADATA_VERBS = {
     "ls", "du", "stat", "file", "wc", "mkdir", "rmdir", "rm", "touch", "test", "[",
@@ -110,7 +127,32 @@ LISTING_FUNCS = re.compile(r"\b(?:glob|iglob|listdir|scandir|walk|iterdir|rglob|
 EXEC_CONSUMERS = {"xargs", "parallel", "sh", "bash", "zsh", "while", "until", "source", ".", "eval", "exec"}
 WRAPPERS = {"sudo", "time", "nice", "nohup", "command", "builtin", "exec", "stdbuf", "caffeinate", "env"}
 RUN_WRAPPERS = {"uv": "run", "poetry": "run", "pipenv": "run", "pixi": "run", "conda": "run",
-                "mamba": "run", "micromamba": "run", "hatch": "run", "rye": "run"}
+                "mamba": "run", "micromamba": "run", "hatch": "run", "rye": "run", "pdm": "run"}
+# Run-wrapper options that take a value, so the value is never mistaken for the program.
+RUN_VALUE_FLAGS = {"-n", "--name", "-p", "--prefix", "--with", "--python", "-e", "--env", "--directory", "--project",
+                   "--with-editable", "--with-requirements", "--package", "--extra", "--group", "--only-group",
+                   "--no-group", "--env-file", "--index", "--default-index", "--environment"}
+SHELLS = {"sh", "bash", "zsh", "dash", "ksh"}
+PY_VALUE_FLAGS = {"-X", "-W", "--check-hash-based-pycs"}
+# Workflow runners run project code that can read data; in schema-only they run under method-safe-run.
+WORKFLOW_RUNNERS = {"make", "gmake", "snakemake", "nextflow", "tox", "nox", "just", "invoke", "inv", "task",
+                    "papermill", "pytest", "py.test"}
+WORKFLOW_SUBCOMMANDS = {
+    "dvc": {"repro", "run", "exp"}, "kedro": {"run"}, "dbt": {"run", "build", "test", "show", "seed", "snapshot"},
+    "npm": {"run", "run-script", "test", "t", "start", "restart"},
+    "pnpm": {"run", "run-script", "test", "t", "start", "restart"},
+}
+YARN_BUILTINS = {"add", "install", "remove", "upgrade", "up", "init", "info", "why", "config", "cache", "list",
+                 "outdated", "audit", "set", "plugin", "dlx", "workspaces", "help", "login", "logout", "link",
+                 "unlink", "pack", "publish", "version", "global", "import", "licenses", "constraints", "explain",
+                 "npm", "patch", "rebuild", "search", "stage", "unplug"}
+PY_WORKFLOW_MODULES = {"pytest", "tox", "nox", "invoke", "papermill", "snakemake", "unittest", "kedro", "dbt"}
+R_WORKFLOW = re.compile(r"\b(?:targets::)?tar_make\w*\s*\(|\b(?:rmarkdown::)?render(?:_site)?\s*\(|"
+                        r"\bquarto::quarto_render\s*\(|\bbookdown::render_book\s*\(|\bknitr::(?:knit|purl)\s*\(")
+# Inline code that runs a script file: R source()/sys.source(), Python runpy.run_path() and exec(open(...)).
+SOURCED = re.compile(r"\b(?:sys\.)?source\s*\(\s*['\"]([^'\"]+)['\"]|\brun_path\s*\(\s*['\"]([^'\"]+)['\"]|"
+                     r"\bexec\s*\(\s*open\s*\(\s*['\"]([^'\"]+)['\"]")
+FIND_EXEC = ("-exec", "-execdir", "-ok", "-okdir")
 SEPARATORS = {";", "&", "&&", "||", "|", "|&", "(", ")", ";;"}
 REDIRECTS = {"<", ">", ">>", "<>", ">|", "&>", "&>>", ">&", "<&"}
 
@@ -245,7 +287,7 @@ def index_hit(text, index):
 # --- end identifier index ---
 
 # --- locale packs: opt-in per-project identifier shapes, data in hooks/locales/<locale>.json ---
-# A locale is set as `phi_environment.locale` in .ce-datascience/config.local.yaml. The pack is data:
+# A locale is set as `phi_environment.locale` in .methodsmith/config.local.yaml. The pack is data:
 # regexes plus (optional) named checksum validators, so new countries need no guard-code changes.
 # Checksum-valid matches are treated as identifiers; checksum-INVALID matches (synthetic/test
 # fixtures) are allowed, and a malformed or unknown pack fails closed.
@@ -321,7 +363,8 @@ def _header_patterns():
     return list(HEADER_KINDS) + extra
 
 
-INDEX_REL = os.path.join(".ce-datascience", "identifier-index.local.json")
+INDEX_REL = os.path.join(STATE_DIR, "identifier-index.local.json")
+LEGACY_INDEX_REL = os.path.join(LEGACY_STATE_DIR, "identifier-index.local.json")
 OUTPUTS = "outputs.txt"  # method-safe-run lists the files its runs wrote here, one project-relative path per line
 
 
@@ -372,8 +415,16 @@ def _git_common_dir(top):
         return None
 
 
+def _has_state(path):
+    return os.path.isdir(os.path.join(path, STATE_DIR)) or os.path.isdir(os.path.join(path, LEGACY_STATE_DIR))
+
+
 def _locate(anchor, cache):
-    """Return (ce_root, main_root) for the project containing anchor, or None."""
+    """Return (ce_root, main_root) for the project containing anchor, or None.
+
+    cache maps every directory visited on an upward walk to its result, and ("git", top) to the
+    main checkout of a linked worktree, so many anchors cost one walk and one `git rev-parse`.
+    """
     probe = anchor
     while probe and not os.path.isdir(probe):
         parent = os.path.dirname(probe)
@@ -382,11 +433,14 @@ def _locate(anchor, cache):
         probe = parent
     if probe in cache:
         return cache[probe]
-    ce_root, top, main = None, None, None
-    walk = probe
+    visited, states, top, walk, inherited = [], [], None, probe, False
     while True:
-        if ce_root is None and os.path.isdir(os.path.join(walk, ".ce-datascience")):
-            ce_root = walk
+        if walk in cache and not states:
+            inherited = True  # nothing below has state, so everything below shares this answer
+            break
+        visited.append(walk)
+        if _has_state(walk):
+            states.append(walk)
         if os.path.exists(os.path.join(walk, ".git")):
             top = walk
             break
@@ -394,15 +448,27 @@ def _locate(anchor, cache):
         if parent == walk:
             break
         walk = parent
+    if inherited:
+        result = cache[walk]
+        for path in visited:
+            cache[path] = result
+        return result
+    main = None
     if top and os.path.isfile(os.path.join(top, ".git")):
-        common = _git_common_dir(top)
-        if common and os.path.basename(common.rstrip(os.sep)) == ".git":
-            main = os.path.dirname(common.rstrip(os.sep))
-    if ce_root is None and main and os.path.isdir(os.path.join(main, ".ce-datascience")):
-        ce_root = top
-    result = (ce_root, main) if ce_root else None
-    cache[probe] = result
-    return result
+        key = ("git", top)
+        if key not in cache:
+            common = _git_common_dir(top)
+            cache[key] = (os.path.dirname(common.rstrip(os.sep))
+                          if common and os.path.basename(common.rstrip(os.sep)) == ".git" else None)
+        main = cache[key]
+    fallback = top if main and _has_state(main) else None
+    nearest = None
+    for path in reversed(visited):  # top-down, so each directory sees the nearest state at or above it
+        if path in states:
+            nearest = path
+        ce_root = nearest or fallback
+        cache[path] = (ce_root, main) if ce_root else None
+    return cache[probe]
 
 
 def _scalar(raw):
@@ -506,24 +572,40 @@ def mode_from_config(phi, error):
 
 
 def _project_mode(ce_root, main):
+    bases = [ce_root] + ([main] if main else [])
     config = os.path.join(ce_root, CONFIG_REL)
     if not os.path.isfile(config) and main and os.path.isfile(os.path.join(main, CONFIG_REL)):
         config = os.path.join(main, CONFIG_REL)
-    if os.path.isfile(config):
-        phi, data_root, error = read_config(config)
+    legacy = not any(os.path.isdir(os.path.join(base, STATE_DIR)) for base in bases)
+    # A pre-rename config is read only for what tightens the boundary, whether or not the project has
+    # been (half-)moved: its data_root always adds a data root, and its locale fills in a missing one.
+    # Its mode and aggregate_dirs are never taken.
+    legacy_config = next((c for c in (os.path.join(b, LEGACY_STATE_DIR, "config.local.yaml") for b in bases)
+                          if os.path.isfile(c)), None)
+    legacy_phi, legacy_root, _ = read_config(legacy_config) if legacy_config else (None, None, None)
+    legacy_locale = legacy_phi.get("locale") if isinstance(legacy_phi, dict) else None
+    if legacy:  # only the pre-rename folder exists: schema-only until it is moved
+        phi, data_root, mode, why, detail = None, None, "schema-only", "legacy", ""
     else:
-        phi, data_root, error = None, None, None
-    mode, why, detail = mode_from_config(phi, error)
-    runs = os.path.join(ce_root, ".ce-datascience", "runs")  # method-safe-run logs hold raw output
+        if os.path.isfile(config):
+            phi, data_root, error = read_config(config)
+        else:
+            phi, data_root, error = None, None, None
+        mode, why, detail = mode_from_config(phi, error)
+    runs = os.path.join(ce_root, STATE_DIR, "runs")  # method-safe-run logs hold raw output
     data_roots = {runs, os.path.realpath(runs)}
-    if data_root:
-        expanded = os.path.expanduser(data_root)
-        bases = [ce_root] + ([main] if main else [])
+    for base in bases:  # logs left in an unmoved pre-rename folder are still data
+        legacy_runs = os.path.join(base, LEGACY_STATE_DIR, "runs")
+        data_roots.update({legacy_runs, os.path.realpath(legacy_runs)})
+    for root in (data_root, legacy_root):
+        if not root:
+            continue
+        expanded = os.path.expanduser(root)
         for base in bases:
             path = os.path.normpath(expanded if os.path.isabs(expanded) else os.path.join(base, expanded))
             data_roots.update({path, os.path.realpath(path)})
     aggregate = set()
-    configured = (phi or {}).get("aggregate_dirs")
+    configured = None if legacy else (phi or {}).get("aggregate_dirs")  # never widen from the old folder
     inside = [ce_root, os.path.realpath(ce_root)]
     for rel in (configured if isinstance(configured, list) else AGGREGATE_DIRS):
         path = os.path.normpath(os.path.join(ce_root, os.path.expanduser(rel)))
@@ -532,15 +614,97 @@ def _project_mode(ce_root, main):
             continue  # an aggregate directory must be a subdirectory of its own project
         aggregate.update({path, real})
     aggregate = sorted(aggregate)
-    index_paths = [os.path.join(base, INDEX_REL) for base in [ce_root] + ([main] if main else [])]
-    locale_value = (phi or {}).get("locale")
-    locale = _scalar(locale_value) if isinstance(locale_value, str) and locale_value.strip() else None
+    # The pre-rename index and run outputs still count, so an unmoved or half-moved project
+    # keeps its identifier and output checks.
+    index_paths = [os.path.join(base, rel) for rel in (INDEX_REL, LEGACY_INDEX_REL) for base in bases]
+    output_lists = [os.path.join(runs, OUTPUTS)] + [os.path.join(b, LEGACY_STATE_DIR, "runs", OUTPUTS) for b in bases]
+    locale = None
+    for locale_value in ((phi or {}).get("locale"), legacy_locale):  # the current config's locale wins
+        if isinstance(locale_value, str) and _scalar(locale_value):
+            locale = _scalar(locale_value)
+            break
     return {"mode": mode, "why": why, "detail": detail, "roots": [ce_root], "data_roots": sorted(data_roots),
-            "aggregate_dirs": aggregate, "index_paths": index_paths, "output_lists": [os.path.join(runs, OUTPUTS)],
+            "aggregate_dirs": aggregate, "index_paths": index_paths, "output_lists": output_lists,
             "locale": locale or None}
 
 
 RANK = {"off": 0, "approved": 1, "no-sensitive-data": 1, "schema-only": 2}
+
+
+DIR_OPTIONS = {"-C": ("git", "make", "gmake"), "--directory": ("make", "gmake", "uv"), "--project": ("uv",)}
+
+
+def _add_anchor(anchors, path):
+    anchors.setdefault(path, None)
+    anchors.setdefault(os.path.realpath(path), None)
+
+
+def _command_anchors(command, cwd, anchors, depth=0):
+    """Add every path a shell command may touch, resolved against the directory it runs in.
+
+    Tracks cd/pushd (and subshells), git/make -C and make/uv --directory/--project; recurses into
+    inner shell code, command substitutions, and heredoc bodies. A chunk counts when it contains
+    `/`, names a data file, or exists on disk, so a bare project folder name anchors too.
+    """
+    if depth > 3:
+        return
+    shell, bodies = scan_shell(command)
+    for inner in substitutions(shell):
+        _command_anchors(inner, cwd, anchors, depth + 1)
+    for _, body in bodies:
+        _command_anchors(body, cwd, anchors, depth + 1)
+    for chunk in re.findall(r"(?:^|[\s'\"=:(<>@])((?:/|~/)[^\s'\";|&<>()`]+)", command):
+        _add_anchor(anchors, _resolve(chunk, cwd))
+    tokens, _ = tokenize(shell)
+    cur, stack, seg = cwd, [], []
+    for token in tokens + [";"]:
+        if token not in SEPARATORS:
+            seg.append(token)
+            continue
+        if seg:
+            cur = _segment_anchors(seg, cur, anchors, depth)
+        seg = []
+        if token == "(":
+            stack.append(cur)
+        elif token == ")" and stack:
+            cur = stack.pop()
+
+
+def _segment_anchors(seg, cur, anchors, depth):
+    """Anchor one simple command's paths; return the directory later commands run in."""
+    _, cmd = unwrap(seg)
+    bases, seen = [cur], set()
+    for i, token in enumerate(seg):
+        seen.add(program(token))
+        key, _, value = token.partition("=") if token.startswith("--") else (token, "", "")
+        if not value and i + 1 < len(seg):
+            value = seg[i + 1]
+        if key in DIR_OPTIONS and value and seen.intersection(DIR_OPTIONS[key]):
+            base = _resolve(value, cur)
+            _add_anchor(anchors, base)
+            bases.append(base)
+    inner = shell_code(cmd) if cmd else None
+    if inner is not None:
+        _command_anchors(inner, cur, anchors, depth + 1)
+    for token in seg:
+        for chunk in _chunks(token):
+            if not chunk or chunk.startswith("-"):
+                continue
+            pathish = "/" in chunk or DATA_REF.search(chunk)
+            globbed = isinstance(token, GlobToken) and any(ch in chunk for ch in "*?[")
+            for base in bases:
+                path = _resolve(chunk, base)
+                if pathish or os.path.lexists(path):
+                    _add_anchor(anchors, path)
+                if globbed:  # the files an unquoted wildcard expands to (cached for classify)
+                    for variant in expand_braces(chunk)[:8]:
+                        for match in glob_matches(variant, base)[0]:
+                            _add_anchor(anchors, match)
+    if cmd and program(cmd[0]) in ("cd", "pushd"):
+        target = next((t for t in cmd[1:] if not t.startswith("-")), None)
+        if target:
+            return _resolve(target, cur)
+    return cur
 
 
 def _anchors(context):
@@ -548,27 +712,35 @@ def _anchors(context):
     tool_input = context.get("tool_input") or {}
     if not isinstance(tool_input, dict):
         raise TypeError("tool_input is not an object")
-    anchors = [cwd]
+    anchors = {}
+    _add_anchor(anchors, cwd)
     for key in ("file_path", "notebook_path", "path"):
         value = tool_input.get(key)
         if isinstance(value, str) and value:
-            anchors.append(_resolve(value, cwd))
+            _add_anchor(anchors, _resolve(value, cwd))
+    glob = tool_input.get("glob")
+    if isinstance(glob, str) and glob:  # Grep searches under path; the glob's literal folder prefix names a target too
+        base = _resolve(tool_input["path"], cwd) if isinstance(tool_input.get("path"), str) and tool_input["path"] else cwd
+        literal = re.split(r"[*?\[{]", glob, 1)[0]
+        if "/" in literal:
+            _add_anchor(anchors, _resolve(literal.rsplit("/", 1)[0] or "/", base))
     command = tool_input.get("command")
     if isinstance(command, str):
-        for chunk in re.findall(r"(?:^|[\s'\"=:(<>@])((?:/|~/)[^\s'\";|&<>()`]+)", command)[:20]:
-            anchors.append(_resolve(chunk, cwd))
-    return cwd, anchors
+        _command_anchors(command, cwd, anchors)
+    return cwd, list(anchors)
 
 
 def resolve_mode(context):
     """Resolve the boundary for a tool call from cwd and the paths it targets. Strictest project wins."""
+    reset_glob_budget()  # each guard decision starts here; its wildcard work shares one budget
     cwd, anchors = _anchors(context)
-    cache, best, data_roots, roots, aggregate, index_paths, output_lists = {}, None, set(), [], set(), [], []
+    cache, projects = {}, {}
+    best, data_roots, roots, aggregate, index_paths, output_lists = None, set(), [], set(), [], []
     for anchor in anchors:
         found = _locate(anchor, cache)
-        if not found:
+        if not found or found in projects:
             continue
-        project = _project_mode(*found)
+        project = projects[found] = _project_mode(*found)
         data_roots.update(project["data_roots"])
         aggregate.update(project["aggregate_dirs"])
         index_paths.extend(p for p in project["index_paths"] if p not in index_paths)
@@ -620,10 +792,113 @@ def notebook_has_outputs(path):
         return True  # cannot verify the outputs are empty
 
 
-def is_data_path(raw, cwd, mode):
-    """True when a path names a data file: extension, data_root, symlink target, or a notebook with outputs."""
+GLOB_CAP = 256          # matches checked per wildcard, like a shell expansion cut short
+GLOB_SCAN_BUDGET = 300000  # directory entries examined per guard call, across every wildcard and variant
+GLOB_DEADLINE = 3.0        # seconds of wildcard expansion per guard call
+_GLOB_CACHE: dict = {}
+_GLOB_STATE = {"budget": GLOB_SCAN_BUDGET, "deadline": None}
+
+
+def reset_glob_budget():
+    """Start a guard call's wildcard work: a fresh shared scan budget, deadline, and match cache."""
+    _GLOB_CACHE.clear()
+    _GLOB_STATE["budget"] = GLOB_SCAN_BUDGET
+    _GLOB_STATE["deadline"] = time.monotonic() + GLOB_DEADLINE
+
+
+def glob_matches(pattern, cwd):
+    """(up to GLOB_CAP absolute matches, over_cap) for an unquoted shell wildcard, resolved against cwd.
+
+    Hidden names match only a component that starts with `.`, as in the shell. Every wildcard in one
+    guard call draws on one GLOB_SCAN_BUDGET of directory entries and one GLOB_DEADLINE; once either is
+    spent, this and every later wildcard counts as over the cap, so a huge tree cannot stall the hook.
+    """
+    key = (pattern, cwd)
+    if key in _GLOB_CACHE:
+        return _GLOB_CACHE[key]
+    if _GLOB_STATE["deadline"] is None:
+        _GLOB_STATE["deadline"] = time.monotonic() + GLOB_DEADLINE
+    deadline = _GLOB_STATE["deadline"]
+    budget = _GLOB_STATE["budget"]
+    if budget <= 0 or time.monotonic() > deadline:
+        _GLOB_STATE["budget"] = 0
+        _GLOB_CACHE[key] = ([], True)
+        return _GLOB_CACHE[key]
+    path = os.path.expanduser(pattern)
+    current = [os.sep if os.path.isabs(path) else cwd]
+    parts = [p for p in path.split("/") if p]
+    over = False
+    for index, part in enumerate(parts):
+        last = index == len(parts) - 1
+        found = []
+        if not any(ch in part for ch in "*?["):
+            for base in current:
+                candidate = os.path.join(base, part)
+                if os.path.lexists(candidate) if last else os.path.isdir(candidate):
+                    found.append(candidate)
+        else:
+            match = re.compile(fnmatch.translate(part)).match
+            for base in current:
+                try:
+                    with os.scandir(base) as entries:
+                        for entry in entries:
+                            budget -= 1
+                            if budget < 0 or (not budget & 4095 and time.monotonic() > deadline):
+                                budget, over = 0, True
+                                break
+                            if entry.name.startswith(".") and not part.startswith("."):
+                                continue
+                            if not match(entry.name):
+                                continue
+                            if not last:
+                                try:
+                                    if not entry.is_dir():
+                                        continue
+                                except OSError:
+                                    continue
+                            found.append(os.path.join(base, entry.name))
+                            if last and len(found) > GLOB_CAP:
+                                over = True
+                                break
+                except OSError:
+                    continue
+                if over:
+                    break
+        current = found
+        if over or not current:
+            break
+    _GLOB_STATE["budget"] = max(budget, 0)
+    result = ([os.path.normpath(m) for m in current[:GLOB_CAP]], over)
+    _GLOB_CACHE[key] = result
+    return result
+
+
+def _glob_data(raw, cwd, mode, over_cap_is_data):
+    """An unquoted wildcard names data when a match does, or (schema-only access) when it is over the cap."""
+    memo = mode.setdefault("_glob_refs", {})
+    key = (raw, cwd, over_cap_is_data)
+    if key not in memo:
+        memo[key] = False
+        for variant in expand_braces(raw):
+            if not any(ch in variant for ch in "*?["):
+                continue
+            matches, over = glob_matches(variant, cwd)
+            if (over and over_cap_is_data) or any(is_data_path(m, cwd, mode) for m in matches):
+                memo[key] = True
+                break
+    return memo[key]
+
+
+def is_data_path(raw, cwd, mode, over_cap_is_data=False):
+    """True when a path names a data file: extension, data_root, symlink target, or a notebook with outputs.
+
+    An unquoted shell wildcard (GlobToken) is expanded and its matches are checked; quoted wildcards and
+    literals from code keep the DATAISH_DIRS heuristic below.
+    """
     if not raw:
         return False
+    if isinstance(raw, GlobToken) and _glob_data(raw, cwd, mode, over_cap_is_data):
+        return True
     for variant in expand_braces(raw):
         if DATA_REF.search(variant):
             return True
@@ -654,15 +929,19 @@ def _chunks(token):
             yield chunk
 
 
-def token_ref(token, cwd, mode, tainted):
+def token_ref(token, cwd, mode, tainted, access=True):
+    """A shell word that references data. access=False (egress checks) never fails closed on an over-cap wildcard."""
     if tainted and re.search(r"\$\{?(" + "|".join(map(re.escape, tainted)) + r")\b", token):
         return True
+    over_cap_is_data = access and mode["mode"] == "schema-only"
     for chunk in _chunks(token):
         if not chunk or chunk.startswith("-") and "=" not in chunk:
             continue
-        has_path_shape = "/" in chunk or "." in chunk or "*" in chunk
+        if isinstance(token, GlobToken) and chunk is not token and any(ch in chunk for ch in "*?["):
+            chunk = GlobToken(chunk)
+        has_path_shape = "/" in chunk or "." in chunk or any(ch in chunk for ch in "*?[")
         if has_path_shape or os.path.lexists(_resolve(chunk, cwd)):
-            if is_data_path(chunk, cwd, mode):
+            if is_data_path(chunk, cwd, mode, over_cap_is_data):
                 return True
     return False
 
@@ -699,7 +978,7 @@ def scan_shell(command):
     Returns (shell_text, bodies) where bodies is a list of (header_line, body_text).
     """
     out, bodies, pending = [], [], []
-    i, n, quote, line_start = 0, len(command), None, 0
+    i, n, quote, line_start = 0, len(command), None, 0  # line_start: index in out where the line begins
     while i < n:
         ch = command[i]
         if quote:
@@ -736,7 +1015,7 @@ def scan_shell(command):
                 i += match.end()
                 continue
         if ch == "\n":
-            header = "".join(out)[line_start:]
+            header = "".join(out[line_start:])
             out.append(" ; ")
             i += 1
             for delim in pending:
@@ -750,20 +1029,55 @@ def scan_shell(command):
                     body.append(line)
                 bodies.append((header, "\n".join(body)))
             pending = []
-            line_start = len("".join(out))
+            line_start = len(out)
             continue
         out.append(ch)
         i += 1
     return "".join(out), bodies
 
 
+class GlobToken(str):
+    """A shell word with an unquoted `*`, `?`, or `[`: the shell expands it against the filesystem."""
+
+
+GLOB_MARKS = {"*": "\ue000", "?": "\ue001", "[": "\ue002"}
+GLOB_UNMARK = str.maketrans({mark: ch for ch, mark in GLOB_MARKS.items()})
+
+
+def _mark_globs(text):
+    """Replace unquoted, unescaped glob characters with private marks, so quoting survives shlex."""
+    out, quote, i, n = [], None, 0, len(text)
+    while i < n:
+        ch = text[i]
+        if ch == "\\" and quote != "'" and i + 1 < n:
+            out.append(text[i:i + 2])
+            i += 2
+            continue
+        if quote:
+            quote = None if ch == quote else quote
+        elif ch in ("'", '"'):
+            quote = ch
+        elif ch in GLOB_MARKS:
+            ch = GLOB_MARKS[ch]
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def _unmark(token):
+    restored = token.translate(GLOB_UNMARK)
+    return GlobToken(restored) if restored != token else restored
+
+
 def tokenize(text):
+    """Shell words; a word with an unquoted glob character comes back as a GlobToken."""
+    marked = _mark_globs(text)
     try:
-        lexer = shlex.shlex(text, posix=True, punctuation_chars=";&|<>()")
+        lexer = shlex.shlex(marked, posix=True, punctuation_chars=";&|<>()")
         lexer.whitespace_split = True
-        return list(lexer), True
+        return [_unmark(t) for t in lexer], True
     except ValueError:
-        return text.split(), False
+        return [_unmark(t) for t in marked.split()], False
 
 
 def substitutions(text):
@@ -817,7 +1131,7 @@ def unwrap(tokens):
             rest = rest[2:]
             while rest and rest[0].startswith("-"):
                 flag = rest.pop(0)
-                if flag in ("-n", "--name", "-p", "--prefix", "--with", "--python", "-e", "--env") and rest:
+                if flag in RUN_VALUE_FLAGS and rest:
                     rest.pop(0)
         elif program(head) in ("uvx", "npx", "bunx", "pipx") and len(rest) > 1:
             rest.pop(0)
@@ -860,7 +1174,7 @@ def input_refs(seg, cwd, mode, tainted):
         if token in (">", ">>", ">|", "&>", "&>>"):
             skip = True
             continue
-        if token_ref(token, cwd, mode, tainted):
+        if token_ref(token, cwd, mode, tainted, access=False):
             return True
     return False
 
@@ -869,7 +1183,7 @@ def stdin_upload(seg, cmd, piped, cwd, mode, tainted):
     """A network tool whose stdin is a data file (`< file`) or a pipe fed by a command that read one."""
     if not cmd or program(cmd[0]) not in NETWORK_VERBS:
         return None
-    redirected = any(t == "<" and i + 1 < len(seg) and token_ref(seg[i + 1], cwd, mode, tainted)
+    redirected = any(t == "<" and i + 1 < len(seg) and token_ref(seg[i + 1], cwd, mode, tainted, access=False)
                      for i, t in enumerate(seg))
     if redirected or piped:
         return f"`{program(cmd[0])}` would send a data file from its standard input"
@@ -923,7 +1237,8 @@ def grep_violation(verb, args, cwd, mode, tainted):
     value_opts = {"-e", "--regexp", "-f", "--file", "-m", "--max-count", "-A", "-B", "-C", "--context",
                   "-d", "--directories", "-D", "--devices", "--include", "--exclude", "--exclude-dir",
                   "-g", "--glob", "--iglob", "-t", "--type", "-T", "--type-not", "--color", "--colour",
-                  "-M", "--max-columns", "-j", "--threads", "--label", "--sort", "--sortr"}
+                  "-M", "--max-columns", "-j", "--threads", "--label", "--sort", "--sortr",
+                  "--type-add", "--type-clear"}
     while i < len(args):
         token = args[i]
         if token in REDIRECTS:
@@ -933,6 +1248,8 @@ def grep_violation(verb, args, cwd, mode, tainted):
             key, value = token.split("=", 1)
             if key in ("--include", "--glob", "--iglob", "--type"):
                 includes.append(value)
+            elif key in ("--type-add", "--type-clear"):
+                includes.append("!redefined-type")
             elif key in ("--file",):
                 files.append(value)
             elif key == "--directories" and value == "recurse":
@@ -949,6 +1266,8 @@ def grep_violation(verb, args, cwd, mode, tainted):
                 files.append(value)
             elif token in ("--include", "-g", "--glob", "--iglob", "-t", "--type"):
                 includes.append(value)
+            elif token in ("--type-add", "--type-clear"):
+                includes.append("!redefined-type")  # a redefined type is not limited to code
             elif token in ("-d", "--directories") and value == "recurse":
                 recursive = True
             i += 2
@@ -962,7 +1281,7 @@ def grep_violation(verb, args, cwd, mode, tainted):
                 flags = token[1:]
                 if verb not in ("rg", "ag", "ack", "git-grep") and ("r" in flags or "R" in flags):
                     recursive = True
-                if any(f in flags for f in "lLcq"):
+                if any(f in flags for f in ("lcq" if verb == "rg" else "lLcq")):  # rg -L follows symlinks
                     listing = True
             i += 1
             continue
@@ -983,7 +1302,12 @@ def grep_violation(verb, args, cwd, mode, tainted):
 
 
 def _is_code_glob(value):
+    parts = value.split()
+    if len(parts) > 1:  # several globs in one value: every one must be a code glob
+        return all(_is_code_glob(part) for part in parts)
     value = value.strip()
+    if not value or value.startswith("!"):  # a negated glob searches everything else, data included
+        return False
     if re.match(r"^[A-Za-z]+$", value):
         return value.lower() in CODE_TYPES
     for variant in expand_braces(value):
@@ -993,12 +1317,18 @@ def _is_code_glob(value):
     return True
 
 
-def git_violation(args, cwd, mode, tainted):
+def _git_sub(args):
+    """git's arguments from the subcommand on, past global options and their values (`-C dir`)."""
     rest = list(args)
     while rest and rest[0].startswith("-"):
         flag = rest.pop(0)
         if flag in ("-C", "-c", "--git-dir", "--work-tree") and rest:
             rest.pop(0)
+    return rest
+
+
+def git_violation(args, cwd, mode, tainted):
+    rest = _git_sub(args)
     if not rest:
         return None
     sub, sub_args = rest[0], rest[1:]
@@ -1069,8 +1399,12 @@ def is_plugin_script(token, cwd, script=SAFE_RUNNER):
 _SCANNING = set()
 
 
-def script_reads_data(path, cwd, mode):
-    """Static, heuristic: does the script file name a data path? Reads at most 1 MB. Plugin scripts are trusted."""
+def script_reads_data(path, cwd, mode, kind=None):
+    """Static, heuristic: does the script file name a data path? Reads at most 1 MB. Plugin scripts are trusted.
+
+    kind overrides the extension when the language comes from elsewhere ("sh" for a shell shebang or a
+    shell fed the file on standard input).
+    """
     if _under(os.path.realpath(path), [PLUGIN_ROOT]):
         return False
     try:
@@ -1078,14 +1412,14 @@ def script_reads_data(path, cwd, mode):
             text = fh.read(SCRIPT_CAP)
     except OSError:
         return False
-    ext = path.rsplit(".", 1)[-1].lower()
+    ext = kind or path.rsplit(".", 1)[-1].lower()
     if ext == "ipynb":
         try:
             cells = json.loads(text).get("cells", [])
             text = "\n".join("".join(c.get("source", "")) for c in cells if isinstance(c, dict))
         except (ValueError, AttributeError, TypeError):
             return True  # cannot verify
-    if ext in ("sh", "bash", "zsh") and path not in _SCANNING and len(_SCANNING) < 8:
+    if ext in SHELLS and path not in _SCANNING and len(_SCANNING) < 8:
         _SCANNING.add(path)
         try:
             if bash_violations(text, cwd, mode, 1)[1]:
@@ -1111,7 +1445,7 @@ COUNT_CELL = re.compile(r"^(\d+)(?:\s*\([^()]*\)|\s*/\s*\d+)?\s*%?$")
 
 def aggregate_file(raw, cwd, mode):
     """An existing .csv/.tsv/.md under an aggregate directory (and outside data_root)."""
-    ext = raw.rsplit(".", 1)[-1].lower() if "." in os.path.basename(raw) else ""
+    ext = _ext(raw)
     return ext in AGGREGATE_EXTS and in_aggregate_dir(raw, cwd, mode) and os.path.isfile(_resolve(raw, cwd))
 
 
@@ -1188,24 +1522,263 @@ def in_aggregate_dir(raw, cwd, mode):
             and not _under(path, mode["data_roots"]) and not _under(real, mode["data_roots"]))
 
 
-def script_file(verb, args):
-    """The script, Quarto document, or executed notebook a command runs, or None."""
+def _ext(token):
+    return token.rsplit(".", 1)[-1].lower() if "." in os.path.basename(token) else ""
+
+
+def shebang(path):
+    """The known interpreter a file's `#!` line names, else None. Reads 256 bytes; binaries have no `#!`."""
+    try:
+        with open(path, "rb") as fh:
+            head = fh.read(256)
+    except OSError:
+        return None
+    if not head.startswith(b"#!"):
+        return None
+    words = head[2:].split(b"\n", 1)[0].decode("utf-8", "replace").split()
+    if words and program(words[0]) == "env":
+        words = [w for w in words[1:] if not w.startswith("-") and "=" not in w]
+    name = program(words[0]) if words else ""
+    return name if INTERPRETERS.match(name) else None
+
+
+def script_kind(path, interpreter=None):
+    """How to scan a file run as code ("sh" for shell, else its extension or "code"); None when it is not a script.
+
+    A file fed to an interpreter is scanned in that interpreter's language. A file executed directly is
+    scanned only with a script extension or a `#!` line naming a known interpreter, so compiled
+    binaries are never read.
+    """
+    ext = _ext(path)
+    if interpreter:
+        return "sh" if program(interpreter) in SHELLS else (ext or "code")
+    if ext in SCRIPT_EXTS or ext == "ipynb":
+        return ext
+    found = shebang(path)
+    if found:
+        return "sh" if found in SHELLS else "code"
+    return None
+
+
+def _script_ops(verb, args):
+    """An interpreter's operands: no options, option values, or redirects and their targets."""
+    out, skip = [], False
+    values = PY_VALUE_FLAGS if re.match(r"^(?:python|pypy)", verb) else set()
+    for token in args:
+        if skip:
+            skip = False
+            continue
+        if token in REDIRECTS or token in values:
+            skip = True
+            continue
+        if token.startswith("-"):
+            continue
+        out.append(token)
+    return out
+
+
+def _module_flag(args):
+    """The module named by python's `-m MOD` (also `-Bm MOD`), else None. Stops at a script or `-c`."""
+    skip = False
+    for index, token in enumerate(args):
+        if skip:
+            skip = False
+            continue
+        if token in PY_VALUE_FLAGS:
+            skip = True
+            continue
+        if re.match(r"^-[A-Za-z]*m$", token):
+            return args[index + 1] if index + 1 < len(args) else None
+        if not token.startswith("-") or re.match(r"^-[A-Za-z]*c$", token):
+            return None
+    return None
+
+
+def module_files(module, cwd, env):
+    """Project files `python -m module` runs: pkg/mod.py, pkg/mod/__init__.py, pkg/mod/__main__.py.
+
+    Looked up under the working directory, src/, and directories in an inline PYTHONPATH= assignment.
+    An installed module (pytest, http.server) resolves to nothing and is not scanned.
+    """
+    if not re.fullmatch(r"[A-Za-z_][\w.]*", module or ""):
+        return []
+    rel = module.replace(".", os.sep)
+    dirs = [cwd, os.path.join(cwd, "src")]
+    for assignment in env:
+        name, _, value = assignment.partition("=")
+        if name == "PYTHONPATH":
+            dirs.extend(_resolve(part, cwd) for part in value.split(os.pathsep) if part)
+    found = []
+    for base in dirs:
+        for candidate in (rel + ".py", os.path.join(rel, "__init__.py"), os.path.join(rel, "__main__.py")):
+            path = os.path.join(base, candidate)
+            if os.path.isfile(path) and path not in found:
+                found.append(path)
+    return found
+
+
+def _r_file(args):
+    """The script `R -f FILE`, `R --file=FILE`, or `R --file FILE` runs, else None."""
+    for index, token in enumerate(args):
+        if token.startswith("--file="):
+            return token[len("--file="):] or None
+        if token in ("-f", "--file"):
+            return args[index + 1] if index + 1 < len(args) else None
+    return None
+
+
+def launched_scripts(cmd, cwd, fed=(), env=()):
+    """(shown name, path, scan kind) for every script file a command runs.
+
+    Covers a path-shaped program run directly, source/., interpreters given a script operand (with a
+    script extension, or any existing file, scanned in the interpreter's language), R -f/--file, a script
+    fed on standard input (`< file`, or `cat file |` passed in as fed), python -m on a project module,
+    quarto render FILE, and jupyter nbconvert --execute.
+    """
+    verb, args, head = program(cmd[0]), cmd[1:], cmd[0]
+    if "/" in head or _ext(head) in SCRIPT_EXTS:
+        path = _resolve(head, cwd)
+        kind = script_kind(path) if os.path.isfile(path) else None
+        if kind:
+            return [(head, path, kind)]
+    if verb in ("source", "."):
+        ops = operands(args)
+        return [(ops[0], _resolve(ops[0], cwd), "sh")] if ops else []
     ops = [t for t in args if not t.startswith("-")]
     if verb == "quarto":
-        return ops[1] if ops[:1] == ["render"] and len(ops) > 1 else None
+        return [(ops[1], _resolve(ops[1], cwd), None)] if ops[:1] == ["render"] and len(ops) > 1 else []
     if verb == "jupyter":
         if ops[:1] == ["nbconvert"] and "--execute" in args:
-            return next((t for t in ops[1:] if t.lower().endswith(".ipynb")), None)
-        return None
-    if not SCRIPT_RUNNERS.match(verb):
-        return None
-    script = ops[0] if ops else ""
-    ext = script.rsplit(".", 1)[-1].lower() if "." in os.path.basename(script) else ""
-    return script if ext in SCRIPT_EXTS else None
+            notebook = next((t for t in ops[1:] if t.lower().endswith(".ipynb")), None)
+            return [(notebook, _resolve(notebook, cwd), None)] if notebook else []
+        return []
+    if not INTERPRETERS.match(verb):
+        return []
+    if re.match(r"^(?:python|pypy)", verb):
+        module = _module_flag(args)
+        if module is not None:
+            return [(module, path, "py") for path in module_files(module, cwd, env)]
+    if verb == "r":
+        script = _r_file(args)
+        if script:
+            return [(script, _resolve(script, cwd), "r")]
+    ops = _script_ops(verb, args)
+    if verb in ("bun", "deno") and ops[:1] == ["run"]:
+        ops = ops[1:]
+    if ops and "-" not in args and not (verb in SHELLS and "-s" in args):
+        script = ops[0]
+        if SCRIPT_RUNNERS.match(verb) or re.match(r"^ipython\d?$", verb):  # ipython runs a script operand too
+            path = _resolve(script, cwd)
+            if _ext(script) in SCRIPT_EXTS:
+                return [(script, path, None)]
+            if os.path.isfile(path):  # `bash bin/analyze`: the interpreter decides the language, not the name
+                return [(script, path, script_kind(path, verb))]
+        return []
+    # The code comes from standard input: a `<` redirect, or the files a `cat` earlier in the pipe printed.
+    sources = [args[i + 1] for i, t in enumerate(args[:-1]) if t == "<"] or list(fed)
+    return [(s, _resolve(s, cwd), script_kind(_resolve(s, cwd), verb)) for s in sources]
 
 
-def judge(cmd, cwd, mode, tainted, written):
-    """Classify one unwrapped command. Returns (reason or None, listed_data)."""
+def workflow_runner(verb, args, cwd):
+    """The workflow runner a command starts (make, pytest, npm run, ...), as shown in a deny reason, else None."""
+    ops = [t for t in args if not t.startswith("-")]
+    if verb in WORKFLOW_RUNNERS:
+        return verb
+    if verb in WORKFLOW_SUBCOMMANDS and ops[:1] and ops[0] in WORKFLOW_SUBCOMMANDS[verb]:
+        return f"{verb} {ops[0]}"
+    if verb == "yarn" and ops and ops[0] not in YARN_BUILTINS:
+        return f"yarn {ops[0]}" if ops[0] == "run" else "yarn"
+    if verb == "bun" and ops[:1] == ["run"]:
+        target = ops[1] if len(ops) > 1 else ""
+        if not target or ("/" not in target and _ext(target) not in SCRIPT_EXTS):
+            return "bun run"
+    if verb == "quarto" and ops[:1] == ["render"] and (len(ops) == 1 or os.path.isdir(_resolve(ops[1], cwd))):
+        return "quarto render"
+    if verb == "r" and args[:2] == ["CMD", "BATCH"]:
+        return "R CMD BATCH"
+    if re.match(r"^(?:python|pypy)", verb):
+        module = _module_flag(args)
+        if module and module.split(".")[0] in PY_WORKFLOW_MODULES:
+            return f"{verb} -m {module.split('.')[0]}"
+    return None
+
+
+def workflow_reason(name):
+    return (f"`{name}` runs project code that can read data and print its values; run it as "
+            f"`method-safe-run -- {name} ...` so its output stays in the run log")
+
+
+FIND_PATTERN_OPTS = ("-name", "-iname", "-path", "-ipath", "-wholename", "-iwholename")
+FIND_NAME_ONLY_OPTS = ("-name", "-iname")
+
+
+def find_pattern_data(args, cwd, mode):
+    """A find name/path pattern (quoted or not; never expanded) that can match a data file or data_root.
+
+    Case-insensitive fnmatch: the pattern's last component against sample data file names, and a path
+    pattern also against the data_root paths as find would print them.
+    """
+    names = ["x." + ext for ext in DATA_EXTS]
+    for i, token in enumerate(args[:-1]):
+        if token not in FIND_PATTERN_OPTS:
+            continue
+        pattern = args[i + 1].lower()
+        candidates = [os.path.basename(r).lower() for r in mode["data_roots"]] + names
+        if any(fnmatch.fnmatchcase(name, pattern.rsplit("/", 1)[-1]) for name in candidates):
+            return True
+        if token not in FIND_NAME_ONLY_OPTS:  # -path/-ipath/-wholename match the full path
+            for root in mode["data_roots"]:
+                rel = os.path.relpath(root, cwd)
+                if any(fnmatch.fnmatchcase(c.lower(), pattern) for c in (root + "/x", rel + "/x", "./" + rel + "/x")):
+                    return True
+    return False
+
+
+FIND_LOGIC_OPS = ("!", "-not", "-o", "-or")
+
+
+def _find_negates_or_alternates(args):
+    """True when the find expression, outside any -exec command line, uses `!`, -not, -o, or -or.
+
+    A negated or alternated test no longer limits the listed files to what -name or -type names.
+    """
+    in_exec = False
+    for token in args:
+        if in_exec:
+            in_exec = token not in (";", "+")
+        elif token in FIND_EXEC:
+            in_exec = True
+        elif token in FIND_LOGIC_OPS:
+            return True
+    return False
+
+
+def find_exec_violation(args, cwd, mode):
+    """(reason, unrestricted) for find: -exec of a content reader over files not limited to code is denied.
+
+    unrestricted is True when the files find lists are not limited to code or directories, so a
+    command that consumes the list (xargs cat, while read) is treated as reading listed data files.
+    A name or path pattern that can match a data file lifts the limit (find_pattern_data).
+    """
+    names = [args[i + 1] for i, t in enumerate(args[:-1]) if t in ("-name", "-iname")]
+    types = [args[i + 1] for i, t in enumerate(args[:-1]) if t == "-type"]
+    limited = ((names and all(_is_code_glob(n) for n in names)) or (types and all(t == "d" for t in types))) \
+        and not _find_negates_or_alternates(args) and not find_pattern_data(args, cwd, mode)
+    if limited:
+        return None, False
+    for index, token in enumerate(args[:-1]):
+        if token in FIND_EXEC and program(args[index + 1]) not in METADATA_VERBS:
+            return (f"`find {token} {program(args[index + 1])}` over files not limited to code can print data values; "
+                    "add -name with a code pattern (for example '*.py') or run it through method-safe-run"), True
+    return None, True
+
+
+def judge(cmd, cwd, mode, tainted, written, fed=(), env=()):
+    """Classify one unwrapped command. Returns (reason or None, listed_data).
+
+    fed: files a `cat` earlier in the pipe sends to this command's standard input.
+    env: the command's inline assignments (PYTHONPATH= for python -m).
+    """
     if not cmd:
         return None, False
     verb = program(cmd[0])
@@ -1214,16 +1787,21 @@ def judge(cmd, cwd, mode, tainted, written):
         return grep_violation(verb, args, cwd, mode, tainted), False
     if verb == "git":
         refs = any(token_ref(t, cwd, mode, tainted) for t in args)
-        sub = [t for t in args if not t.startswith("-")][:1]
+        sub = _git_sub(args)[:1]
         if sub == ["grep"]:
             return git_violation(args, cwd, mode, tainted), False
         return (git_violation(args, cwd, mode, tainted) if refs else None), refs
     refs = any(token_ref(t, cwd, mode, tainted) for t in cmd)
     inline_index = next((i for i, t in enumerate(args) if INLINE_FLAG.match(t)), None)
-    if INTERPRETERS.match(verb) and inline_index is not None:
+    if INTERPRETERS.match(verb) and inline_index is not None and args[inline_index] != "-":  # `-`: code on stdin
         code = " ".join(args[inline_index + 1:inline_index + 2])
         if refs or text_ref(code, cwd, mode) or lists_dataish_dir(code, cwd, mode):
             return f"inline `{verb}` code that opens data returns its values", False
+        if verb in ("rscript", "r") and R_WORKFLOW.search(code):
+            return workflow_reason(f"{cmd[0]} -e"), False
+        for target in (a or b or c for a, b, c in SOURCED.findall(code)):
+            if script_reads_data(_resolve(target, cwd), cwd, mode):
+                return f"the script `{target}` reads data and can print its values", False
         return None, False
     runner = next((t for t in args if not t.startswith("-")), "") if re.match(r"^python", verb) else cmd[0]
     if os.path.basename(runner) == "method-aggregate-read" and is_plugin_script(runner, cwd, AGGREGATE_READER):
@@ -1239,9 +1817,16 @@ def judge(cmd, cwd, mode, tainted, written):
                 return f"`{table}` is not an aggregate table: {problem}", False
         if tables and not any(token_ref(t, cwd, mode, tainted) for t in ops if t not in tables):
             return None, False
-    script = script_file(verb, args)
-    if script and script_reads_data(_resolve(script, cwd), cwd, mode):
-        return f"the script `{script}` reads data and can print its values", False
+    workflow = workflow_runner(verb, args, cwd)
+    if workflow:
+        return workflow_reason(workflow), False
+    for shown, path, kind in launched_scripts(cmd, cwd, fed, env):
+        if not token_ref(shown, cwd, mode, tainted) and script_reads_data(path, cwd, mode, kind):
+            return f"the script `{shown}` reads data and can print its values", False
+    if verb == "find":
+        reason, unrestricted = find_exec_violation(args, cwd, mode)
+        if reason or not refs:
+            return reason, unrestricted
     if not refs:
         return None, False
     if verb in METADATA_VERBS:
@@ -1261,12 +1846,10 @@ def judge(cmd, cwd, mode, tainted, written):
         return None, False
     if verb in ("jupyter",) and args[:1] == ["nbconvert"] and "--clear-output" in args:
         return None, False
-    if verb in ("make", "quarto", "snakemake", "nextflow", "dvc", "pytest", "targets"):
-        return None, False
     if SCRIPT_RUNNERS.match(verb):
         ops = [t for t in args if not t.startswith("-")]
         script = ops[0] if ops else ""
-        ext = script.rsplit(".", 1)[-1].lower() if "." in os.path.basename(script) else ""
+        ext = _ext(script)
         if script and ext in SCRIPT_EXTS and not token_ref(script, cwd, mode, tainted):
             if _resolve(script, cwd) in written:
                 return "writing a script that opens data and running it in one command returns its values", False
@@ -1294,6 +1877,19 @@ def shell_code(cmd):
         if flags and flags[0] + 1 < len(cmd):
             return cmd[flags[0] + 1]
     return None
+
+
+def _wrapper_dir(seg, cur):
+    """The directory a run wrapper switches to (`uv run --directory D`), else cur."""
+    head = next((t for t in seg if not re.match(r"^[A-Za-z_]\w*=", t)), "")
+    if program(head) != "uv":
+        return cur
+    for index, token in enumerate(seg):
+        if token == "--directory" and index + 1 < len(seg):
+            return _resolve(seg[index + 1], cur)
+        if token.startswith("--directory="):
+            return _resolve(token.split("=", 1)[1], cur)
+    return cur
 
 
 def bash_violations(command, cwd, mode, depth=0):
@@ -1333,8 +1929,10 @@ def bash_violations(command, cwd, mode, depth=0):
     tainted, cur = set(), cwd
     for pipeline in pipelines:
         listed = piped = False
+        fed = ()
         for seg in pipeline:
             assignments, cmd = unwrap(seg)
+            run_cwd = _wrapper_dir(seg, cur)
             egress = egress or stdin_upload(seg, cmd, piped, cur, mode, tainted)
             piped = piped or input_refs(seg, cur, mode, tainted)
             for assignment in assignments:
@@ -1352,7 +1950,11 @@ def bash_violations(command, cwd, mode, depth=0):
             egress = egress or upload_violation(cmd, cur, mode) or ncbi_violation(cmd, mode)
             inner = shell_code(cmd)
             if inner is not None:
-                egress = egress or bash_violations(inner, cur, mode, depth + 1)[0]
+                e, a = bash_violations(inner, cur, mode, depth + 1)
+                egress = egress or e
+                if not safe:  # under the plugin's method-safe-run the inner code's output stays in the log
+                    access = access or a
+            feeding, fed = fed, (tuple(t for t in operands(cmd[1:]) if t != "-") if program(cmd[0]) == "cat" else ())
             if mode["mode"] != "schema-only":
                 continue
             verb = program(cmd[0])
@@ -1364,7 +1966,7 @@ def bash_violations(command, cwd, mode, depth=0):
                 sub = [t for t in cmd[1:] if not t.startswith("-")]
                 if verb != "xargs" or not sub or program(sub[0]) not in METADATA_VERBS:
                     access = access or f"`{verb}` runs a command on listed data files"
-            reason, listing = judge(cmd, cur, mode, tainted, written)
+            reason, listing = judge(cmd, run_cwd, mode, tainted, written, feeding, assignments)
             access = access or reason
             listed = listed or listing
             if verb in ("cd", "pushd") and len(cmd) > 1:
@@ -1406,7 +2008,7 @@ def identifier_reason(text, mode, key=""):
                     return f"an argument contains {label}"
     index = load_index(mode)
     if index is INVALID_INDEX:
-        return ("the project's identifier index (.ce-datascience/identifier-index.local.json) is malformed, so "
+        return ("the project's identifier index (.methodsmith/identifier-index.local.json) is malformed, so "
                 "arguments cannot be checked against it; rebuild it with method-identifier-index")
     if index and index_hit(text, index):
         return "an argument matches a value in the project's identifier index"
@@ -1421,6 +2023,33 @@ def mcp_violation(tool, tool_input, cwd, mode):
             return reason
         if uploadish and not value.startswith(("/clipboard", "http://", "https://")) and is_data_path(value.strip(), cwd, mode):
             return "the tool would send a local data file"
+    return None
+
+
+MCP_CODE_KEYS = {"code", "source", "script", "command", "cmd", "sql", "query_code", "cell", "program", "expression"}
+# Keys whose value is a path even when it contains spaces (`My Data/a.csv`); so is any key ending in "path".
+MCP_PATH_KEYS = {"path", "paths", "file_path", "filepath", "filename", "notebook_path", "uri", "file", "files",
+                 "source_path", "target"}
+
+
+def mcp_access_violation(tool_input, cwd, mode):
+    """Schema-only: an MCP tool (filesystem, IDE, notebook, database) returns what it reads into the context.
+
+    A path-keyed value is checked whole, spaces and all (a file:// URI is decoded first); any other
+    value is checked only when it is a single word, so free-text queries are not read as paths.
+    """
+    from urllib.parse import unquote
+
+    for key, value in _strings(tool_input):
+        text = value.strip()
+        pathish = key in MCP_PATH_KEYS or key.endswith("path")
+        if pathish and text.lower().startswith("file://"):
+            text = unquote(text[len("file://"):])
+        if text and (pathish or not re.search(r"\s", text)) and not text.startswith(("http://", "https://")) \
+                and is_data_path(text, cwd, mode):
+            return "an MCP tool would read a data file into the model context"
+        if key in MCP_CODE_KEYS and (text_ref(value, cwd, mode) or lists_dataish_dir(value, cwd, mode)):
+            return "an MCP tool would run code that opens data"
     return None
 
 
@@ -1471,7 +2100,12 @@ def classify(call, mode):
     command = tool_input.get("command") if tool in ("Bash", "Monitor", "PowerShell") else None
     if tool.startswith("mcp__"):
         reason = mcp_violation(tool, tool_input, cwd, mode)
-        return {"kind": "egress", "reason": reason} if reason else None
+        if reason:
+            return {"kind": "egress", "reason": reason}
+        if mode["mode"] == "schema-only":
+            reason = mcp_access_violation(tool_input, cwd, mode)
+            return {"kind": "access", "reason": reason} if reason else None
+        return None
     if tool in ("WebFetch", "WebSearch"):
         for key, value in _strings(tool_input):
             reason = identifier_reason(value, mode, key)
@@ -1530,16 +2164,21 @@ def deny_message(result, mode, helper):
     if mode.get("why") == "unset":
         return ("methodsmith: no sensitive-data boundary is recorded for this project, so data values stay out "
                 f"of the model context ({reason}). Run the method-setup skill and choose a boundary, or set "
-                "phi_environment.mode in .ce-datascience/config.local.yaml.")
+                "phi_environment.mode in .methodsmith/config.local.yaml.")
+    if mode.get("why") == "legacy":
+        return ("methodsmith: this project still uses the pre-rename state folder "
+                f"{LEGACY_STATE_DIR}/, which is no longer read, so schema-only mode applies ({reason}). "
+                f"Move it with `mv {LEGACY_STATE_DIR} {STATE_DIR}` (or run method-update) to restore the "
+                "recorded boundary.")
     if mode.get("why") == "unreadable":
-        return ("methodsmith: the phi_environment block in .ce-datascience/config.local.yaml cannot be read "
+        return ("methodsmith: the phi_environment block in .methodsmith/config.local.yaml cannot be read "
                 f"({mode.get('detail')}), so schema-only mode applies ({reason}). Set phi_environment.mode to "
                 "approved, schema-only, or no-sensitive-data, or re-run method-setup.")
     return ("methodsmith schema-only mode: the model endpoint is not approved for this project's sensitive "
             f"data ({reason}). Inspect structure with `python3 \"{helper}\" <file>` (headings, types, counts, "
             f"% missing only). Run scripts that read data through `{SAFE_RUNNER} -- <command>`: it keeps their "
-            "output in a local log and prints only the exit code, files written, and a masked stderr tail. If the endpoint is "
-            "approved, re-run method-setup or set phi_environment.mode in .ce-datascience/config.local.yaml.")
+            "output in a local log and prints only the exit code, files written, and traceback frames and error types. If the endpoint is "
+            "approved, re-run method-setup or set phi_environment.mode in .methodsmith/config.local.yaml.")
 
 
 def emit(message):

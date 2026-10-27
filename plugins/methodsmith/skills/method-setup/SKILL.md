@@ -25,14 +25,14 @@ Read user arguments from `$ARGUMENTS`. `--locked-down` and `--no-install` mean c
 **Resolve config root:** !`git rev-parse --show-toplevel 2>/dev/null || true`
 
 Use the resolved root, or resolve it at runtime. Read
-`.ce-datascience/config.local.yaml` with the native file-read tool. In a linked
+`.methodsmith/config.local.yaml` with the native file-read tool. In a linked
 worktree, fall back to the main checkout when the machine-local file is absent.
 An existing profile is confirmed evidence; retain it unless it conflicts with an
 explicit current request.
 
 ### Phase 0a: Sensitive-data boundary (before any data inspection)
 
-**Sensitive-data boundary.** Resolve `phi_environment.mode` in `.ce-datascience/config.local.yaml` (worktree, then main checkout; legacy `compliant: true` = `approved`, `compliant: false` = `schema-only`, `sensitive_data: false` = `no-sensitive-data`; any schema-only signal wins; unreadable = `schema-only`). `approved` or `no-sensitive-data`: proceed silently and never mention the boundary again. `schema-only`: headings, types, counts, and aggregates only; never open, print, or paste data values; run data-reading scripts as `method-safe-run -- <command>` (path in the guard's deny message); save results as aggregate tables (counts under 11 suppressed) in `output/` or a `phi_environment.aggregate_dirs` entry. Unset, interactive: ask once with the blocking question tool (else a numbered list) offering `Approved endpoint: full access`, `Not approved or unsure: schema-only`, and `No sensitive data: public or synthetic`; save the answer as `phi_environment.mode` there once `git check-ignore -q .ce-datascience/config.local.yaml` passes (else first add `.ce-datascience/*.local.yaml` to `.gitignore`) so the guard hook sees it. Unset, headless: schema-only.
+**Sensitive-data boundary.** Resolve `phi_environment.mode` in `.methodsmith/config.local.yaml` (worktree, then main checkout; legacy `compliant: true` = `approved`, `compliant: false` = `schema-only`, `sensitive_data: false` = `no-sensitive-data`; any schema-only signal wins; unreadable = `schema-only`). `approved` or `no-sensitive-data`: proceed silently and never mention the boundary again. `schema-only`: headings, types, counts, and aggregates only; never open, print, or paste data values; run data-reading scripts as `method-safe-run -- <command>` (path in the guard's deny message); save results as aggregate tables (counts under 11 suppressed) in `output/` or a `phi_environment.aggregate_dirs` entry. Unset, interactive: ask once with the blocking question tool (else a numbered list) offering `Approved endpoint: full access`, `Not approved or unsure: schema-only`, and `No sensitive data: public or synthetic`; save the answer as `phi_environment.mode` there once `git check-ignore -q .methodsmith/config.local.yaml` passes (else first add `.methodsmith/*.local.yaml` to `.gitignore`) so the guard hook sees it. Unset, headless: schema-only.
 
 When the mode is unset in an interactive run, or the user asks to change the boundary or says the model endpoint changed, read `references/sensitive-data-boundary.md` and follow it; it adds the schema-only explainer. In schema-only mode, never read data-file contents during the evidence scan below: use file names, and run the schema helper named in that reference for column headings. Completion evidence: `phi_environment.mode` is saved, or a headless run is proceeding schema-only.
 
@@ -150,7 +150,7 @@ For the full set of writable profile fields and their expected shapes, see `refe
 
 ## Phase 1.5: Save only confirmed values
 
-Write `.ce-datascience/config.local.yaml` under the repository root. Preserve
+Write `.methodsmith/config.local.yaml` under the repository root. Preserve
 the current compatible `stack_profile` structure and include only confirmed,
 non-null values. The optional `stack_profile.inference` record is additive and
 does not require a schema migration:
@@ -184,7 +184,7 @@ data. Once `data_root` is set, in any mode, build or refresh the identifier inde
 `references/sensitive-data-boundary.md`. Ask blinding state and reporting checklist only when an active study
 workflow requires them.
 
-For an active study without `.ce-datascience/study-metadata.yaml`, offer to
+For an active study without `.methodsmith/study-metadata.yaml`, offer to
 copy `references/study-metadata-template.yaml` to that path (recommended for
 any study that will have a SAP; required once its `ai_involvement` is not
 `none`); planning, review, and SAP tracking read it. Uncomment only fields backed by evidence. This shared provenance file
@@ -193,7 +193,7 @@ is committed, unlike the machine-local config.
 If the local config is not ignored, offer the entry:
 
 ```text
-.ce-datascience/*.local.yaml
+.methodsmith/*.local.yaml
 ```
 
 Display a short summary containing values, confidence, and the next safe skill,
