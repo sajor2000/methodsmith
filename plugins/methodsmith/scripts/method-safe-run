@@ -34,20 +34,27 @@ TMPDIR, TMP, and TEMP point at it. Its absolute path is appended to
 so the guard treats it as data; it is deleted when the run finishes, and lines
 for directories that no longer exist are pruned when the next run starts.
 
-While a run is in progress, .methodsmith/runs/active/<runner pid>.json marks it
-(JSON keys: pid, pid_start, pgid, host, start, tmp; start is the run start on
-the filesystem clock in ns). The command runs in its own session and process
-group; the marker's mtime is touched every 10 s as a heartbeat. SIGTERM or
-SIGINT is forwarded to the whole group, which gets 10 s before SIGKILL; after a
-normal exit, processes the command left behind get 10 s, then the same
-SIGTERM/SIGKILL sequence. Outputs are recorded only once the group is gone, then
-the temp directory and the marker are removed. A marker is stale when its runner
-is gone (or the pid now belongs to a process with another start time), no
-member of its process group is alive, and it was written on this host. Each run
-start, and `method-safe-run --reconcile` (prints one count line), records the
-project files a stale run changed between its start and its last heartbeat
-(plus 2 s) in outputs.txt and removes the marker. Appends to outputs.txt and
-temp-roots.txt are O_APPEND writes under an fcntl lock.
+While a run is in progress, .methodsmith/runs/active/<runner pid>-<start>.json
+marks it (unique per run, so a reused pid never overwrites an unreconciled
+marker; JSON keys: pid, pid_start, pgid, host, start, tmp; start is the run
+start on the filesystem clock in ns). A small keeper (this script in a hidden
+--keeper mode) leads its own session and process group; it starts the command
+in that group only after the marker naming the group is on disk, and touches
+the marker every 10 s (recreating it if deleted) while any other member of the
+group is alive, so processes that outlive a killed runner keep the run
+heartbeating. The runner touches it too. SIGTERM, SIGINT, or SIGHUP is
+forwarded to the whole group, which gets 10 s before SIGKILL; after a normal
+exit, processes the command left behind get 10 s, then the same SIGTERM/SIGKILL
+sequence. Outputs are recorded only once the group is gone, then the temp
+directory and the marker are removed. A marker is stale when its runner is gone
+(or the pid now belongs to a process with another start time), no member of its
+process group is alive, and it was written on this host; an unreadable or
+malformed marker is stale once the pid in its name is gone and it has missed
+several heartbeats. Each run start, and `method-safe-run --reconcile` (prints
+one count line), records the project files a stale run changed between its
+start and its last heartbeat (plus 2 s) in outputs.txt and removes the marker.
+Appends to outputs.txt and temp-roots.txt are O_APPEND writes under an fcntl
+lock.
 
 Environment: METHOD_SAFE_RUN_HEARTBEAT_SECONDS overrides the 10 s heartbeat
 interval (tests use a short one).
@@ -368,28 +375,23 @@ def process_start(pid):
     return " ".join(out.stdout.split()) if out.returncode == 0 else ""
 
 
-def pid_alive(pid):
+def _alive(target, group=False):
+    """True while a process (or, with group=True, any member of a process group) exists."""
     try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
+        (os.killpg if group else os.kill)(target, 0)
     except PermissionError:
         return True
     except (OSError, OverflowError, ValueError):
         return False
     return True
+
+
+def pid_alive(pid):
+    return _alive(pid)
 
 
 def group_alive(pgid):
-    try:
-        os.killpg(pgid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    except (OSError, OverflowError, ValueError):
-        return False
-    return True
+    return _alive(pgid, group=True)
 
 
 def signal_group(pgid, signum):
@@ -409,17 +411,21 @@ def write_marker(path, fields):
 
 
 def marker_is_stale(marker):
-    """Runner gone (or its pid reused), whole process group gone, same host. Anything unreadable is not stale."""
+    """Runner gone (or its pid reused), whole process group gone, same host. Callers handle malformed markers."""
     pid, pgid = marker.get("pid"), marker.get("pgid")
-    if marker.get("host") != socket.gethostname() or type(pid) is not int:
+    if marker.get("host") != socket.gethostname():
         return False
     if pid_alive(pid):
         recorded, current = marker.get("pid_start"), process_start(pid)
         if not isinstance(recorded, str) or not recorded or not current or recorded == current:
             return False  # the runner is alive (or we cannot tell): fail closed
-    if pgid is None:
-        return True  # the runner died before the command started
-    return type(pgid) is int and not group_alive(pgid)
+    return pgid is None or not group_alive(pgid)  # pgid None: the runner died before the command started
+
+
+def marker_malformed(marker):
+    """Unreadable, or a field the staleness test needs has the wrong type."""
+    return (not isinstance(marker, dict) or type(marker.get("start")) is not int or type(marker.get("pid")) is not int
+            or not (marker.get("pgid") is None or type(marker.get("pgid")) is int))
 
 
 def reconcile(root, runs):
@@ -444,21 +450,27 @@ def reconcile(root, runs):
                 marker = json.load(fh)
         except (OSError, ValueError):
             marker = None
-        start = marker.get("start") if isinstance(marker, dict) else None
-        if type(start) is not int:
-            # Unreadable: stale once its writer is gone and it has missed several heartbeats; the window
-            # then runs from the marker's creation to its last heartbeat.
-            writer = name[:-5]
+        if marker_malformed(marker):
+            # Unreadable or malformed: stale once its writer (the pid in <pid>-<start>.json) is gone and it has
+            # missed several heartbeats; the window then runs from its start (or the marker's creation) to its
+            # last heartbeat. A marker from another host is never stale here.
+            marker = marker if isinstance(marker, dict) else {}
+            writer = name[:-5].split("-")[0]
             silent = time.time_ns() - heartbeat_ns > 6 * heartbeat_seconds() * 1_000_000_000
-            if not (writer.isdigit() and silent and not pid_alive(int(writer))):
+            host = marker.get("host")
+            if (isinstance(host, str) and host != socket.gethostname()) or not (
+                    writer.isdigit() and silent and not pid_alive(int(writer))):
                 left += 1
                 continue
-            birth = getattr(st, "st_birthtime", None)
-            start = int(birth * 1e9) if birth else min(st.st_ctime_ns, st.st_mtime_ns)
-            marker = {}
+            start = marker.get("start")
+            if type(start) is not int:
+                birth = getattr(st, "st_birthtime", None)
+                start = int(birth * 1e9) if birth else min(st.st_ctime_ns, st.st_mtime_ns)
         elif not marker_is_stale(marker):
             left += 1
             continue
+        else:
+            start = marker["start"]
         if files is None:
             files, _ = snapshot(root, None)
         end = heartbeat_ns + HEARTBEAT_MARGIN_NS
@@ -475,9 +487,111 @@ def reconcile(root, runs):
     return stale, recorded, left
 
 
+FORWARDED = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
+
+
+def _read_all(fd):
+    chunks = []
+    try:
+        for chunk in iter(lambda: os.read(fd, 1 << 16), b""):
+            chunks.append(chunk)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+    return b"".join(chunks)
+
+
+def _others_in_group(pgid, child):
+    """True while a live (non-zombie) process other than this one is in process group pgid. Falls back to the
+    direct child when ps cannot be run."""
+    try:
+        ps = subprocess.Popen(["ps", "-A", "-o", "pid=,pgid=,stat="], stdout=subprocess.PIPE,
+                              stderr=subprocess.DEVNULL, text=True, env={**os.environ, "LC_ALL": "C"})
+        out, _ = ps.communicate(timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return child.poll() is None
+    if ps.returncode != 0:
+        return child.poll() is None
+    skip = {str(os.getpid()), str(ps.pid)}
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) >= 3 and parts[1] == str(pgid) and parts[0] not in skip and not parts[2].startswith("Z"):
+            return True
+    return False
+
+
+def keeper(argv):
+    """Hidden `--keeper <go fd> <status fd> -- <command>` mode: the session and group leader of a run.
+
+    Blocks until the runner sends the marker path and contents on the go pipe (sent only after the marker with
+    pgid = this pid is on disk; EOF without them means the runner died first, so nothing runs), starts the
+    command in this process group, writes its exit code to the status pipe, and touches the marker every
+    heartbeat (recreating it if deleted) while any other member of the group is alive. Then it exits with the
+    command's code. Forwarded signals are caught, so the keeper outlives a SIGTERM to the group.
+    """
+    for signum in FORWARDED:
+        signal.signal(signum, lambda s, f: None)  # a handler, not SIG_IGN: the command gets default dispositions
+    go_fd, status_fd, cmd = int(argv[0]), int(argv[1]), argv[3:]
+    try:
+        go = json.loads(_read_all(go_fd))
+        path, marker = go["path"], go["marker"]
+    except (ValueError, KeyError, TypeError):
+        os.close(status_fd)
+        return 125
+
+    def report(code):
+        try:
+            os.write(status_fd, str(code).encode())
+        except OSError:
+            pass
+        os.close(status_fd)
+
+    def touch():
+        try:
+            os.utime(path)
+        except FileNotFoundError:
+            try:
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                write_marker(path, marker)
+            except OSError:
+                pass
+        except OSError:
+            pass
+
+    try:
+        child = subprocess.Popen(cmd)
+    except OSError as exc:
+        sys.stderr.write(f"method-safe-run: could not start the command ({type(exc).__name__})\n")
+        report(127)
+        return 127
+    pgid, beat, code = os.getpgrp(), heartbeat_seconds(), None
+    next_beat, next_check = time.monotonic() + beat, 0.0
+    while True:
+        if code is None:
+            try:
+                code = child.wait(timeout=0.05)
+                report(code)
+            except subprocess.TimeoutExpired:
+                pass
+        now = time.monotonic()
+        if code is not None and now >= next_check:
+            if not _others_in_group(pgid, child):
+                touch()  # a last heartbeat covers the final writes
+                break
+            next_check = now + min(beat, 0.2)
+        if now >= next_beat:
+            touch()
+            next_beat = now + beat
+        if code is not None:
+            time.sleep(0.05)
+    return code if code >= 0 else 128 - code
+
+
 def run_command(cmd, env, marker_path, marker):
-    """Run cmd in its own session and process group, heartbeat the marker, and return (code, stdout, stderr,
-    group_gone) once the whole group has exited. SIGTERM/SIGINT are forwarded to the group."""
+    """Run cmd under a keeper (see keeper()) that leads its own session and process group, heartbeat the marker,
+    and return (code, stdout, stderr, group_gone, signaled) once the whole group has exited. SIGTERM, SIGINT,
+    and SIGHUP are forwarded to the group."""
     state = {"proc": None, "signal": None, "at": None}
 
     def forward(signum, frame):
@@ -486,43 +600,63 @@ def run_command(cmd, env, marker_path, marker):
         if state["proc"] is not None:
             signal_group(state["proc"].pid, signum)
 
-    for signum in (signal.SIGTERM, signal.SIGINT):
+    for signum in FORWARDED:
         signal.signal(signum, forward)
+    go_r, go_w = os.pipe()
+    status_r, status_w = os.pipe()
     try:
-        proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                env=env, start_new_session=True)
+        proc = subprocess.Popen([sys.executable, "-I", os.path.realpath(__file__), "--keeper", str(go_r),
+                                 str(status_w), "--", *cmd], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, env=env, start_new_session=True, pass_fds=(go_r, status_w))
     except OSError as exc:
+        for fd in (go_w, status_r):
+            os.close(fd)
         return 127, b"", f"method-safe-run: could not start the command ({type(exc).__name__})\n".encode(), True, None
+    finally:
+        os.close(go_r)
+        os.close(status_w)
     state["proc"] = proc
-    pgid = proc.pid  # start_new_session: the child leads its own group
+    pgid = proc.pid  # start_new_session: the keeper leads its own group
     marker["pgid"] = pgid
     try:
         write_marker(marker_path, marker)
     except OSError:
         pass
+    try:  # the keeper starts the command only after this: the marker on disk already names its group
+        os.write(go_w, json.dumps({"path": marker_path, "marker": marker}).encode())
+    except OSError:
+        pass
+    os.close(go_w)
     if state["signal"] is not None:
         signal_group(pgid, state["signal"])
 
     buffers = {"out": [], "err": []}
+    status = {}
 
     def drain(stream, key):
         for chunk in iter(lambda: stream.read1(1 << 16), b""):
             buffers[key].append(chunk)
 
+    def wait_status():
+        text = _read_all(status_r).decode("ascii", errors="replace").strip()
+        if re.fullmatch(r"-?\d+", text):
+            status["code"] = int(text)
+        status["done"] = True
+
     readers = [threading.Thread(target=drain, args=(proc.stdout, "out"), daemon=True),
                threading.Thread(target=drain, args=(proc.stderr, "err"), daemon=True)]
-    for reader in readers:
+    for reader in readers + [threading.Thread(target=wait_status, daemon=True)]:
         reader.start()
     beat = heartbeat_seconds()
     next_beat = time.monotonic() + beat
     term_at = kill_at = give_up_at = None
     exited_at = None
     while True:
-        code = proc.poll()
+        done = proc.poll() is not None
         now = time.monotonic()
-        if code is not None and exited_at is None:
+        if exited_at is None and (status.get("done") or done):  # the command exited (or the keeper died)
             exited_at = now
-        if code is not None and not group_alive(pgid):
+        if done and not group_alive(pgid):
             break
         if term_at is None:
             if state["signal"] is not None:
@@ -546,11 +680,11 @@ def run_command(cmd, env, marker_path, marker):
             proc.wait(timeout=0.05)
         except subprocess.TimeoutExpired:
             pass
-        if code is not None:
+        if done:
             time.sleep(0.05)
     for reader in readers:
         reader.join(timeout=2)
-    code = proc.poll()
+    code = status.get("code", proc.poll())
     if code is None:
         code = -signal.SIGKILL
     return code, b"".join(buffers["out"]), b"".join(buffers["err"]), give_up_at is None, state["signal"]
@@ -670,6 +804,8 @@ def legacy_refusal(tool, start):
 
 
 def main(argv):
+    if argv[:1] == ["--keeper"] and len(argv) >= 4 and argv[3] == "--":
+        return keeper(argv[1:])
     reconcile_only = argv == ["--reconcile"]
     if not reconcile_only and ("--" not in argv or argv.index("--") == len(argv) - 1):
         print(__doc__.strip())
@@ -704,7 +840,7 @@ def main(argv):
     tmp = tempfile.mkdtemp(prefix="msr-")
     os.chmod(tmp, 0o700)
     append_lines(os.path.join(runs, "temp-roots.txt"), [os.path.abspath(tmp)])
-    marker_path = os.path.join(active, f"{os.getpid()}.json")
+    marker_path = os.path.join(active, f"{os.getpid()}-{run_start}.json")  # unique per run, even on pid reuse
     marker = {"pid": os.getpid(), "pid_start": process_start(os.getpid()), "pgid": None,
               "host": socket.gethostname(), "start": run_start, "tmp": os.path.abspath(tmp)}
     write_marker(marker_path, marker)

@@ -299,6 +299,62 @@ describe("limit 1a: agent-written scripts that read data (schema-only)", () => {
     expect(runGuard(root, "Bash", bash("Rscript analysis/main.R")).reason).toContain("method-safe-run")
   })
 
+  test("extensionless and shebang scripts get the run-a-file check in the interpreter's or shebang's language", () => {
+    const root = sourceProject()
+    withFile(root, "analysis/runner", "#!/usr/bin/env python3\nimport runpy, sys\nrunpy.run_path(sys.argv[1])\n")
+    withFile(root, "analysis/runall", "#!/usr/bin/env Rscript\nfs <- list.files('R', full.names = TRUE)\nfor (f in fs) source(f)\n")
+    withFile(root, "analysis/plain", "import runpy\nrunpy.run_path('s.py')\n")
+    chmodSync(path.join(root, "analysis", "runner"), 0o755)
+    chmodSync(path.join(root, "analysis", "runall"), 0o755)
+    expectAll(root, "deny", calls(["./analysis/runner x", "python3 analysis/runner x", "Rscript analysis/runall", "./analysis/runall"]))
+    expectAll(root, "allow", calls(["python3 analysis/plain"]))
+    expectAll(sourceProject(APPROVED), "allow", calls(["python3 s.py"]))
+  })
+
+  test("Python literals that start with f are literals, not f-strings", () => {
+    const root = sourceProject()
+    withFile(root, "features.py", "print('features')\n")
+    expectAll(root, "allow", calls([
+      `python3 -c "import runpy; runpy.run_path('features.py')"`,
+      `python3 -c "__import__('functools')"`,
+    ]))
+    expectAll(root, "deny", calls([`python3 -c "import runpy; runpy.run_path(f'{x}.py')"`]))
+  })
+
+  test("R parse() of a file is followed, and str2expression/str2lang of computed text is denied", () => {
+    const root = sourceProject()
+    expectAll(root, "deny", calls([
+      `Rscript -e 'for (e in parse("R/bad.R")) eval(e)'`,
+      `Rscript -e 'lapply(parse("R/bad.R"), eval)'`,
+      `Rscript -e 'eval(str2expression(readLines(f)))'`,
+      `Rscript -e 'eval(str2lang(code))'`,
+      `Rscript -e 'exprs <- parse(f); for (e in exprs) eval(e)'`,
+    ]))
+    expectAll(root, "allow", calls([
+      `Rscript -e 'parse(text = "1 + 1")'`,
+      `Rscript -e 'for (e in parse("R/x.R")) eval(e)'`,
+      `Rscript -e 'eval(str2lang("1 + 1"))'`,
+    ]))
+  })
+
+  test("an import path changed at run time makes an unresolved literal module name unresolvable", () => {
+    const root = sourceProject()
+    withFile(root, "lib/hidden.py", "import pandas as pd\nprint(pd.read_csv('data/cohort.csv'))\n")
+    withFile(root, "analysis/load.py", "import sys, importlib\nsys.path.insert(0, 'lib')\nimportlib.import_module('hidden')\n")
+    expectAll(root, "deny", calls([
+      `python3 -c "import sys, importlib; sys.path.insert(0, 'lib'); importlib.import_module('hidden')"`,
+      `python3 -c "import sys; sys.path.append('lib'); __import__('hidden')"`,
+      `python3 -c "import sys, runpy; sys.path += ['lib']; runpy.run_module('hidden')"`,
+      `python3 -c "import site, importlib; site.addsitedir('lib'); importlib.import_module('hidden')"`,
+      `python3 -c "import os, importlib; os.environ['PYTHONPATH'] = 'lib'; importlib.import_module('hidden')"`,
+      "python3 analysis/load.py",
+    ]))
+    expectAll(root, "allow", calls([
+      `python3 -c "import importlib; importlib.import_module('numpy')"`,
+      `python3 -c "import sys, importlib; sys.path.insert(0, 'lib'); importlib.import_module('pkg.ok')"`,
+    ]))
+  })
+
   test("unresolvable run-a-file code is allowed under the plugin's method-safe-run and in approved projects", () => {
     expectAll(sourceProject(), "allow", calls([`${safeRun} -- Rscript -e 'source(f)'`]))
     const approved = sourceProject(APPROVED)
@@ -664,27 +720,96 @@ describe("limit 1b: method-safe-run keeps script output out of the context", () 
     expect(await new Response(proc.stdout).text()).not.toContain("synthetic")
   }, 30000)
 
+  // A writer in the run's process group that waits (at most 20 s) for a release file, then writes results/late.txt.
+  const WRITER = "import os, signal, sys, time\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\n" +
+    "open('results/writer_ready.txt', 'w').write('synthetic\\n')\ndeadline = time.time() + 20\n" +
+    "while not os.path.exists(sys.argv[1]) and time.time() < deadline:\n    time.sleep(0.05)\n" +
+    "open('results/late.txt', 'w').write('synthetic\\n')\n"
+  const groupAlive = (pgid: number) => Bun.spawnSync(["kill", "-0", "--", `-${pgid}`], { stderr: "ignore" }).exitCode === 0
+
   test("a background writer that outlives the SIGTERM keeps the marker until it exits, and its late file is recorded", async () => {
     const root = project(SCHEMA_ONLY)
-    withFile(root, "analysis/writer.py",
-      "import os, signal, sys, time\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\n" +
-      "open('results/writer_ready.txt', 'w').write('synthetic\\n')\n" +
-      "while not os.path.exists(sys.argv[1]):\n    time.sleep(0.05)\nopen('results/late.txt', 'w').write('synthetic\\n')\n")
+    withFile(root, "analysis/writer.py", WRITER)
     withFile(root, "analysis/bg.py",
       "import subprocess, sys, time\nsubprocess.Popen([sys.executable, 'analysis/writer.py', sys.argv[1]])\ntime.sleep(60)\n")
     mkdirSync(path.join(root, "results"))
     const release = path.join(tempDir(), "release")
     const proc = startSafe(root, "python3", "analysis/bg.py", release)
-    await waitFor(() => existsSync(path.join(root, "results", "writer_ready.txt")) && markersOf(root).length === 1)
-    proc.kill("SIGTERM")
-    await Bun.sleep(800)
-    expect(proc.exitCode).toBeNull()
-    expect(markersOf(root)).toHaveLength(1)
-    writeFileSync(release, "")
-    await proc.exited
-    expect(outputsOf(root)).toContain(path.join("results", "late.txt"))
-    expect(markersOf(root)).toEqual([])
+    let pgid = 0
+    try {
+      await waitFor(() => existsSync(path.join(root, "results", "writer_ready.txt")) && markersOf(root).length === 1
+        && typeof markerJson(root, markersOf(root)[0]).pgid === "number")
+      pgid = markerJson(root, markersOf(root)[0]).pgid
+      proc.kill("SIGTERM")
+      await Bun.sleep(800)
+      expect(proc.exitCode).toBeNull()
+      expect(markersOf(root)).toHaveLength(1)
+      writeFileSync(release, "")
+      await proc.exited
+      expect(outputsOf(root)).toContain(path.join("results", "late.txt"))
+      expect(markersOf(root)).toEqual([])
+    } finally {
+      writeFileSync(release, "")
+      proc.kill("SIGKILL")
+      if (pgid) killGroup(pgid)
+    }
   }, 30000)
+
+  test("a child that outlives a SIGKILLed runner keeps the run heartbeating; reconcile records its late write", async () => {
+    const root = project(SCHEMA_ONLY)
+    withFile(root, "analysis/writer.py", WRITER)
+    withFile(root, "analysis/bg.py", "import subprocess, sys\nsubprocess.Popen([sys.executable, 'analysis/writer.py', sys.argv[1]])\n")
+    mkdirSync(path.join(root, "results"))
+    const release = path.join(tempDir(), "release")
+    const proc = startSafe(root, "python3", "analysis/bg.py", release)
+    let pgid = 0
+    try {
+      await waitFor(() => existsSync(path.join(root, "results", "writer_ready.txt")) && markersOf(root).length === 1
+        && typeof markerJson(root, markersOf(root)[0]).pgid === "number")
+      pgid = markerJson(root, markersOf(root)[0]).pgid
+      proc.kill("SIGKILL")
+      await proc.exited
+      await Bun.sleep(2600) // past the runner's last heartbeat plus the 2 s margin
+      writeFileSync(release, "")
+      await waitFor(() => existsSync(path.join(root, "results", "late.txt")) && !groupAlive(pgid))
+      const rec = Bun.spawnSync([safeRun, "--reconcile"], { cwd: root, env: FAST_ENV })
+      expect(rec.stdout.toString()).toMatch(/reconciled 1 stale run/)
+      expect(outputsOf(root)).toContain(path.join("results", "late.txt"))
+      expect(markersOf(root)).toEqual([])
+    } finally {
+      writeFileSync(release, "")
+      proc.kill("SIGKILL")
+      if (pgid) killGroup(pgid)
+    }
+  }, 30000)
+
+  test("a marker is unique per run: a new runner that reuses an old pid leaves that pid's marker alone", () => {
+    const root = project(SCHEMA_ONLY)
+    const active = path.join(runsDir(root), "active")
+    mkdirSync(active, { recursive: true })
+    const planted = `{"pid": 1, "pid_start": "", "pgid": null, "host": "elsewhere.invalid", "start": 1}`
+    const proc = Bun.spawnSync(["sh", "-c", `printf '%s' '${planted}' > .methodsmith/runs/active/$$.json; exec "$0" -- python3 -c "import os, glob; print(sorted(os.path.basename(p) for p in glob.glob('.methodsmith/runs/active/*.json')))"`, safeRun],
+      { cwd: root, env: FAST_ENV })
+    expect(proc.exitCode).toBe(0)
+    const names = markersOf(root)
+    expect(names).toHaveLength(1)
+    expect(JSON.parse(readFileSync(path.join(active, names[0]), "utf8")).host).toBe("elsewhere.invalid")
+    expect(runStdout(root)).toMatch(/'\d+-\d+\.json'/)
+  })
+
+  test("a marker with a malformed pgid is reconciled once its writer is gone and it stopped heartbeating", () => {
+    const root = project(SCHEMA_ONLY)
+    const active = path.join(runsDir(root), "active")
+    mkdirSync(active, { recursive: true })
+    const dead = deadPid()
+    const file = path.join(active, `${dead}-1.json`)
+    writeFileSync(file, `{"pid": ${dead}, "pid_start": "", "pgid": "abc", "host": ${JSON.stringify(os.hostname())}, "start": 1}`)
+    const old = new Date(Date.now() - 600_000)
+    utimesSync(file, old, old)
+    const proc = Bun.spawnSync([safeRun, "--reconcile"], { cwd: root, env: { ...process.env, METHOD_SAFE_RUN_HEARTBEAT_SECONDS: "1" } })
+    expect(proc.stdout.toString()).toMatch(/reconciled 1 stale run/)
+    expect(existsSync(file)).toBe(false)
+  })
 
   // A run whose runner and process group were SIGKILLed: the marker stays behind.
   async function crashedRun(root: string) {
@@ -937,6 +1062,9 @@ describe("limit 1c: the guard reads method-safe-run temp roots and in-progress r
       ["Bash", bash("find . -type f -exec rm {} +")],
       ["Bash", bash("cd .methodsmith/runs && rm temp-roots.txt")],
       ["Bash", bash("bash -c 'rm .methodsmith/runs/active/123.json'")],
+      ["Bash", bash(`${safeRun} -- bash -c 'rm .methodsmith/runs/active/123.json'`)],
+      ["Bash", bash(`${safeRun} -- sh -c 'cat notes.txt; echo x > .methodsmith/runs/temp-roots.txt'`)],
+      ["Bash", bash(`${safeRun} -- bash -c "eval 'rm -f .methodsmith/runs/active/*.json'"`)],
       ["Monitor", bash("rm .methodsmith/runs/active/123.json")],
       ["Write", { file_path: ".methodsmith/runs/temp-roots.txt", content: "" }],
       ["Write", { file_path: ".methodsmith/runs/active/9.json", content: "{}" }],

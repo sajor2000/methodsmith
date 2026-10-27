@@ -40,7 +40,8 @@ and recursive content searches are denied. Script files are read statically
 path, unless the command runs through the plugin's method-safe-run, however the
 script is launched: python/Rscript/bash/sh/quarto render/jupyter nbconvert
 --execute, run wrappers (uv/pdm/poetry run), a direct path with a script
-extension or interpreter shebang, stdin, source/., python -m for a project
+extension or interpreter shebang (scanned in the shebang's or interpreter's
+language even without an extension), stdin, source/., python -m for a project
 module, Rscript -e source(), and sh -c/bash -c/eval code. Workflow runners
 (make, snakemake, pytest, dvc, npm/pnpm/yarn/bun run scripts, targets::tar_make,
 rmarkdown::render, and similar) are denied unless run through method-safe-run.
@@ -48,18 +49,24 @@ Relative, cd, -C, symlinked, and inline-code paths anchor the project they
 reach, so a call from outside a project gets that project's boundary (strictest
 wins). Unquoted shell wildcards are expanded (bounded) and checked match by
 match; an over-cap expansion is data in schema-only access checks.
-Code that runs another file (R source/sys.source/eval(parse()), source passed to
-apply-style functions, Python runpy, exec/eval of computed code, import_module,
-__import__) follows literal targets and denies computed, missing, or
-setwd/chdir-relative ones. Database MCP tools (named with a database word, or
-carrying SQL/Cypher statement text) deny in schema-only unless the call only
-inspects the schema (list/describe tools, or one DESCRIBE, SHOW TABLES|COLUMNS,
-PRAGMA table_info, or plain information_schema select).
+Code that runs another file (R source/sys.source/parse(), str2lang/
+str2expression of computed text, source passed to apply-style functions, Python
+runpy, exec/eval of computed code, import_module, __import__) follows literal
+targets and denies computed, missing, or setwd/chdir-relative ones; after a
+run-time import path change (sys.path, site.addsitedir, PYTHONPATH) a literal
+module name with no project file is denied too. Database MCP tools (named with a
+database word, or carrying SQL/Cypher statement text) deny in schema-only unless
+the call only inspects the schema (list/describe tools, or one DESCRIBE, SHOW
+TABLES|COLUMNS, PRAGMA table_info, or plain information_schema select); on a
+database-named tool a statement under any argument key counts, and an exempt
+literature server word does not exempt a server name that also has a database
+word.
 Inside method-safe-run only the copy rule still applies (output stays in the log),
 and files a run wrote (runs/outputs.txt) are data afterwards, as are its temp
 directories (runs/temp-roots.txt) and, while a run is live or was never
 reconciled (runs/active/*.json), project files changed since it started. Those
-state files can only be changed by method-safe-run itself. Tables under
+state files can only be changed by method-safe-run itself, also not by shell code
+it runs (method-safe-run -- bash -c 'rm ...'). Tables under
 phi_environment.aggregate_dirs print through the plugin's method-aggregate-read,
 which reads once and checks the bytes it prints (no identifier headers or
 indexed cells, no counts 1-10, at most 500 rows); a hook-time check of a later
@@ -163,8 +170,11 @@ PY_WORKFLOW_MODULES = {"pytest", "tox", "nox", "invoke", "papermill", "snakemake
 R_WORKFLOW = re.compile(r"\b(?:targets::)?tar_make\w*\s*\(|\b(?:rmarkdown::)?render(?:_site)?\s*\(|"
                         r"\bquarto::quarto_render\s*\(|\bbookdown::render_book\s*\(|\bknitr::(?:knit|purl)\s*\(")
 # Code that runs another file or module (sink table, R7). The group name says how the target is read.
+# parse() is a sink wherever it appears (its expressions can be eval'd later); str2expression/str2lang turn text
+# into code, so only a literal argument is resolvable.
 R_SINKS = re.compile(r"(?<![\w.$@])(?:base::)?(?P<source>sys\.source|source)\s*\(|"
-                     r"(?<![\w.$@])(?:base::)?eval\s*\(\s*(?:base::)?(?P<parse>parse)\s*\(")
+                     r"(?<![\w.$@:])(?:base::)?(?P<parse>parse)\s*\(|"
+                     r"(?<![\w.$@:])(?:base::)?(?P<str2>str2expression|str2lang)\s*\(")
 PY_SINKS = re.compile(r"(?<![\w.])(?:runpy\.)?(?P<run_path>run_path)\s*\(|"
                       r"(?<![\w.])(?:runpy\.|importlib\.)?(?P<module>run_module|import_module|__import__)\s*\(|"
                       r"(?<![\w.])(?:importlib\.)?(?:util\.)?(?P<spec>spec_from_file_location)\s*\(|"
@@ -173,6 +183,11 @@ PY_SINKS = re.compile(r"(?<![\w.])(?:runpy\.)?(?P<run_path>run_path)\s*\(|"
 R_HIGHER_ORDER = re.compile(r"(?<![\w.$@])(?:purrr::|base::)?(?:[lsvmt]?apply|Map|Reduce|Filter|do\.call|"
                             r"[ip]?walk\w*|[ip]?map\w*)\s*\(")
 R_SOURCE_VALUE = re.compile(r"^(?:(?:base::)?(?:sys\.)?source|['\"](?:sys\.)?source['\"])$")
+# Python code that changes the import path at run time: a literal module name that resolves to no project file
+# may then be a local module the guard cannot find, not an installed one.
+IMPORT_PATH_CHANGE = re.compile(
+    r"(?<![\w.])sys\s*\.\s*path\s*(?:\.\s*(?:insert|append|extend)\s*\(|\+=|\[[^\]\n]*\]\s*=(?!=)|=(?!=))|"
+    r"(?<![\w.])site\s*\.\s*addsitedir\s*\(|PYTHONPATH")
 # A working-directory change before a sink makes its relative target unresolvable.
 CHDIR_CALL = re.compile(r"(?<![\w.$@])(?:base::)?setwd\s*\(|(?<![\w])os\.chdir\s*\(|(?<![\w.])chdir\s*\(")
 SINK_LANGS = {"r": ("r",), "rmd": ("r", "py-file"), "qmd": ("r", "py-file"), "py": ("py",), "pyw": ("py",),
@@ -392,7 +407,7 @@ INDEX_REL = os.path.join(STATE_DIR, "identifier-index.local.json")
 LEGACY_INDEX_REL = os.path.join(LEGACY_STATE_DIR, "identifier-index.local.json")
 OUTPUTS = "outputs.txt"  # method-safe-run lists the files its runs wrote here, one project-relative path per line
 TEMP_ROOTS = "temp-roots.txt"  # method-safe-run lists each run's temp directory here, one absolute path per line
-ACTIVE = "active"  # method-safe-run marks each run in progress with active/<runner pid>.json
+ACTIVE = "active"  # method-safe-run marks each run in progress with active/<runner pid>-<start>.json
 
 
 def run_outputs(mode):
@@ -1715,8 +1730,8 @@ def _r_value(expr, root):
 
 def _py_value(expr):
     """The string a Python literal holds (no f-strings), else None."""
-    literal = _PY_STRING.fullmatch(expr.strip())
-    if not literal or "f" in expr.strip()[:2].lower():
+    literal = _PY_STRING.fullmatch(expr.strip())  # the prefix set has no f, so f-strings never match
+    if not literal:
         return None
     return literal.group(1) if literal.group(1) is not None else literal.group(2)
 
@@ -1748,7 +1763,10 @@ def _sink_target(lang, kind, positional, named, root):
             if named.get("chdir", "FALSE") not in ("FALSE", "F"):
                 return UNRESOLVED  # nested relative paths resolve against the sourced file's directory
             expr = named.get("file", positional[0] if positional else None)
-        else:  # eval(parse(...)): a file, or text that is code
+        elif kind == "str2":
+            expr = named.get("text", named.get("s", positional[0] if positional else None))
+            return ("code", None) if expr is not None and _r_value(expr, root) is not None else UNRESOLVED
+        else:  # parse(...): a file, or text that is code
             if "file" not in named and not positional and "text" in named:
                 return ("code", None) if _r_value(named["text"], root) is not None else UNRESOLVED
             expr = named.get("file", positional[0] if positional else None)
@@ -1763,9 +1781,9 @@ def _sink_target(lang, kind, positional, named, root):
         return _py_code_file(expr) or UNRESOLVED
     if kind == "module":
         expr = named.get("mod_name", named.get("name", positional[0] if positional else None))
-        value = _py_value(expr) if expr is not None else None
         if expr is None:
             return "none", None
+        value = _py_value(expr)
         return ("module", value) if value and re.fullmatch(r"[A-Za-z_][\w.]*", value) else UNRESOLVED
     if kind == "spec":
         expr = named.get("location", positional[1] if len(positional) > 1 else None)
@@ -1805,6 +1823,8 @@ def run_problem(code, langs, cwd, mode, env=()):
                 return UNRESOLVED
             if what == "module":
                 paths = [(target, path) for path in module_files(target, cwd, env)]
+                if not paths and IMPORT_PATH_CHANGE.search(code, 0, m.start()):
+                    return UNRESOLVED  # may be a module on the changed path, not an installed one
             elif what == "file":
                 path = _resolve(target, cwd)
                 if not os.path.isfile(path):
@@ -1946,13 +1966,23 @@ def script_kind(path, interpreter=None):
     """
     ext = _ext(path)
     if interpreter:
-        return "sh" if program(interpreter) in SHELLS else (ext or "code")
+        return "sh" if program(interpreter) in SHELLS else (ext if ext in SINK_LANGS else _lang_of(interpreter, ext))
     if ext in SCRIPT_EXTS or ext == "ipynb":
         return ext
     found = shebang(path)
     if found:
-        return "sh" if found in SHELLS else "code"
+        return "sh" if found in SHELLS else _lang_of(found, "")
     return None
+
+
+def _lang_of(interpreter, ext):
+    """The SINK_LANGS key for an interpreter (python/pypy/ipython -> py, Rscript/R -> r), else ext or "code"."""
+    name = program(interpreter)
+    if re.match(r"^(?:python|pypy|ipython)", name):
+        return "py"
+    if name in ("rscript", "r"):
+        return "r"
+    return ext or "code"
 
 
 def _script_ops(verb, args):
@@ -2432,6 +2462,7 @@ def bash_violations(command, cwd, mode, depth=0):
                     tainted.add(name)
             if mode["mode"] == "schema-only" and state_redirect(seg, run_cwd, mode):
                 access = access or STATE_REASON
+                mode["_state_hits"] = mode.get("_state_hits", 0) + 1
             if not cmd:
                 continue
             safe = False
@@ -2443,16 +2474,20 @@ def bash_violations(command, cwd, mode, depth=0):
             egress = egress or upload_violation(cmd, cur, mode) or ncbi_violation(cmd, mode)
             inner = shell_code(cmd)
             if inner is not None:
+                hits = mode.get("_state_hits", 0)
                 e, a = bash_violations(inner, cur, mode, depth + 1)
                 egress = egress or e
                 if not safe:  # under the plugin's method-safe-run the inner code's output stays in the log
                     access = access or a
+                elif mode.get("_state_hits", 0) > hits:  # but it must not change the boundary state
+                    access = access or STATE_REASON
             feeding, fed = fed, (tuple(t for t in operands(cmd[1:]) if t != "-") if program(cmd[0]) == "cat" else ())
             if mode["mode"] != "schema-only":
                 continue
             verb = program(cmd[0])
             if state_violation(cmd, run_cwd, mode):  # also under method-safe-run: only the runner itself changes it
                 access = access or STATE_REASON
+                mode["_state_hits"] = mode.get("_state_hits", 0) + 1
             if safe:  # output stays in the run log; a copy to a readable path still leaks
                 if verb in COPY_VERBS:
                     access = access or judge(cmd, cur, mode, tainted, written)[0]
@@ -2744,12 +2779,15 @@ def mcp_database_violation(tool, tool_input):
     name = tool[len("mcp__"):]
     server, _, short = name.rpartition("__")
     server = server or short
-    if set(_name_words(server)) & DB_EXEMPT_SERVERS:
+    server_words = set(_name_words(server))
+    if server_words & DB_EXEMPT_SERVERS and not server_words & DB_WORDS:  # vercel_postgres is a database server
         return None
     queries = list(_db_queries(tool_input))
-    is_db = bool(set(_name_words(name)) & DB_WORDS) or any(isinstance(q, str) and _db_statement(q) for q in queries)
-    if not is_db:
+    named_db = bool(set(_name_words(name)) & DB_WORDS)
+    if not (named_db or any(isinstance(q, str) and _db_statement(q) for q in queries)):
         return None
+    if named_db:  # a statement under any key (sql_text, q, options.raw) is query text too
+        queries += [text for _, text in _strings(tool_input) if _db_statement(text)]
     command = tool_input.get("command")
     if command is not None:  # a router tool: `command` names a sub-command, it is not query text
         if not (isinstance(command, str) and re.fullmatch(r"[A-Za-z0-9_.\-]+", command)):

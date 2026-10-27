@@ -731,6 +731,31 @@ describe("schema-only: database MCP tools return rows into the context", () => {
     for (const fragment of [SELECT_ALL, "patients"]) expect(message.stdout).not.toContain(fragment)
   })
 
+  test("on a database-named tool, a statement under any key is inspected", () => {
+    const root = project(SCHEMA_ONLY)
+    expectAll(root, "deny", [
+      ["mcp__postgres__query", { sql_text: SELECT_ALL }],
+      ["mcp__postgres__query", { q: "select * from patients" }],
+      ["mcp__duckdb__describe_table", { table: "t", options: { raw: "SELECT name, dob FROM patients" } }],
+    ])
+    expectAll(root, "allow", [
+      ["mcp__postgres__inspect", { q: "SHOW TABLES" }],
+      ["mcp__duckdb__describe_table", { table: "t", note: "select a table to describe" }],
+    ])
+  })
+
+  test("an exempt server word does not exempt a server that also names a database", () => {
+    const root = project(SCHEMA_ONLY)
+    expectAll(root, "deny", [
+      ["mcp__vercel_postgres__query", { sql: SELECT_ALL }],
+      ["mcp__notion-sqlite__run", { query: SELECT_ALL }],
+    ])
+    expectAll(root, "allow", [
+      ["mcp__claude_ai_Vercel__list_projects", { query: "select the production project" }],
+      ["mcp__claude_ai_Paperclip__sql", { query: "SELECT title FROM papers" }],
+    ])
+  })
+
   test("search tools without a database name keep prose queries that start with a SQL keyword", () => {
     const root = project(SCHEMA_ONLY)
     expectAll(root, "allow", [
