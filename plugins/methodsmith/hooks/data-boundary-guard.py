@@ -366,6 +366,8 @@ def _header_patterns():
 INDEX_REL = os.path.join(STATE_DIR, "identifier-index.local.json")
 LEGACY_INDEX_REL = os.path.join(LEGACY_STATE_DIR, "identifier-index.local.json")
 OUTPUTS = "outputs.txt"  # method-safe-run lists the files its runs wrote here, one project-relative path per line
+TEMP_ROOTS = "temp-roots.txt"  # method-safe-run lists each run's temp directory here, one absolute path per line
+ACTIVE = "active"  # method-safe-run marks each run in progress with active/<runner pid>.json
 
 
 def run_outputs(mode):
@@ -380,6 +382,162 @@ def run_outputs(mode):
             except OSError:
                 continue
     return mode["_outputs"]
+
+
+def temp_roots(runs, base):
+    """Each temp directory listed in a runs folder's temp-roots.txt, as written and resolved: run output."""
+    roots = set()
+    try:
+        with open(os.path.join(runs, TEMP_ROOTS), encoding="utf-8", errors="replace") as fh:
+            lines = fh.read().splitlines()
+    except OSError:
+        return roots
+    for line in lines:
+        line = line.strip()
+        if line:
+            path = os.path.normpath(os.path.join(base, os.path.expanduser(line)))
+            roots.update({path, os.path.realpath(path)})
+    return roots
+
+
+def run_markers(mode):
+    """The in-progress run markers of schema-only projects, read once per decision. Only runs/active/ is listed.
+
+    A marker that cannot be read, or has no integer start, counts as a run of unknown start (fail closed).
+    """
+    if "_markers" not in mode:
+        mode["_markers"] = []
+        for active, root in mode.get("marker_dirs", []):
+            try:
+                names = sorted(n for n in os.listdir(active) if n.endswith(".json") and not n.startswith("."))
+            except OSError:
+                continue
+            roots = sorted({root, os.path.realpath(root)})
+            for name in names:
+                try:
+                    with open(os.path.join(active, name), encoding="utf-8") as fh:
+                        fields = json.load(fh)
+                except FileNotFoundError:
+                    continue  # the run finished between the listing and the read; its outputs are recorded
+                except (OSError, ValueError):
+                    fields = None
+                start = fields.get("start") if isinstance(fields, dict) else None
+                if type(start) is not int:  # unreadable: count from when the marker file was created, still live
+                    fields, start = None, _created_ns(os.path.join(active, name))
+                mode["_markers"].append({"start": start, "roots": roots, "fields": fields, "hit": False})
+    return mode["_markers"]
+
+
+def _changed_ns(path, mode):
+    cache = mode.setdefault("_changed", {})
+    if path not in cache:
+        try:
+            st = os.lstat(path)
+            cache[path] = max(st.st_mtime_ns, st.st_ctime_ns)
+        except OSError:
+            cache[path] = None
+    return cache[path]
+
+
+def marker_hit(path, mode):
+    """An existing project path that, or whose directory, changed at or after the start of an in-progress run."""
+    markers = run_markers(mode)
+    if not markers or not os.path.lexists(path):
+        return False
+    hit = False
+    for candidate in {path, os.path.realpath(path)}:
+        parent = os.path.dirname(candidate)
+        for marker in markers:
+            if candidate in marker["roots"] or not _under(candidate, marker["roots"]):
+                continue
+            times = [_changed_ns(candidate, mode)]
+            if _under(parent, marker["roots"]):
+                times.append(_changed_ns(parent, mode))
+            if any(t is not None and t >= marker["start"] for t in times):
+                marker["hit"] = hit = True
+    return hit
+
+
+def _pid_alive(pid, group=False):
+    try:
+        (os.killpg if group else os.kill)(pid, 0)
+    except PermissionError:
+        return True
+    except (OSError, OverflowError, ValueError):
+        return False
+    return True
+
+
+def _process_start(pid, cache):
+    """The process start time as `ps -o lstart=` prints it (whitespace collapsed); "" when unknown."""
+    if pid not in cache:
+        import subprocess  # only a marker hit on a live runner needs it
+
+        try:
+            out = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True, text=True, timeout=2,
+                                 env={**os.environ, "LC_ALL": "C"})
+            cache[pid] = " ".join(out.stdout.split()) if out.returncode == 0 else ""
+        except (OSError, ValueError, subprocess.SubprocessError):
+            cache[pid] = ""
+    return cache[pid]
+
+
+def _created_ns(path):
+    """A file's creation time (birth time where the filesystem records it, else its change time), or 0."""
+    try:
+        st = os.stat(path)
+    except OSError:
+        return 0
+    birth = getattr(st, "st_birthtime", None)
+    return int(birth * 1e9) if birth else min(st.st_ctime_ns, st.st_mtime_ns)
+
+
+def marker_state(marker, cache):
+    """"stale" (runner and its process group gone, this host), "foreign" (another host), else "live".
+
+    Mirrors method-safe-run's own staleness test; anything it cannot tell is live.
+    """
+    import socket
+
+    fields = marker["fields"]
+    if fields is None:
+        return "live"
+    pid, pgid, host = fields.get("pid"), fields.get("pgid"), fields.get("host")
+    if isinstance(host, str) and host != socket.gethostname():
+        return "foreign"
+    if host is None or type(pid) is not int:
+        return "live"
+    if _pid_alive(pid):
+        recorded = fields.get("pid_start")
+        if not isinstance(recorded, str) or not recorded:
+            return "live"
+        current = _process_start(pid, cache)
+        if not current or current == recorded:
+            return "live"
+    if pgid is not None and (type(pgid) is not int or _pid_alive(pgid, group=True)):
+        return "live"
+    return "stale"
+
+
+def marker_note(mode):
+    """Why a marker hit is data, and what clears it. None when no marker matched this decision."""
+    hits = [m for m in mode.get("_markers", []) if m["hit"]]
+    if not hits:
+        return None
+    cache = {}
+    states = {marker_state(m, cache) for m in hits}
+    notes = []
+    if "stale" in states:
+        notes.append("a method-safe-run that changed files here ended without recording its outputs, so files "
+                     f"changed since it started count as data; run `{SAFE_RUNNER} --reconcile` to record them "
+                     "and clear its marker")
+    if "live" in states:
+        notes.append("a method-safe-run is still in progress (or its marker cannot be read), so files changed "
+                     "since it started count as data until it finishes")
+    if "foreign" in states:
+        notes.append("a method-safe-run marker from another host is in force, so files changed since that run "
+                     "started count as data until it is cleared on that host")
+    return "; ".join(notes)
 
 
 def load_index(mode):
@@ -594,9 +752,18 @@ def _project_mode(ce_root, main):
         mode, why, detail = mode_from_config(phi, error)
     runs = os.path.join(ce_root, STATE_DIR, "runs")  # method-safe-run logs hold raw output
     data_roots = {runs, os.path.realpath(runs)}
+    runs_dirs = [runs]
     for base in bases:  # logs left in an unmoved pre-rename folder are still data
         legacy_runs = os.path.join(base, LEGACY_STATE_DIR, "runs")
         data_roots.update({legacy_runs, os.path.realpath(legacy_runs)})
+        runs_dirs.append(legacy_runs)
+    for runs_dir in runs_dirs:  # files a run wrote to its own temp directory are data
+        data_roots.update(temp_roots(runs_dir, ce_root))
+    boundary_state = set()  # only method-safe-run may change these
+    for runs_dir in runs_dirs:
+        for rel in (ACTIVE, TEMP_ROOTS):
+            path = os.path.join(runs_dir, rel)
+            boundary_state.update({path, os.path.realpath(path)})
     for root in (data_root, legacy_root):
         if not root:
             continue
@@ -625,7 +792,8 @@ def _project_mode(ce_root, main):
             break
     return {"mode": mode, "why": why, "detail": detail, "roots": [ce_root], "data_roots": sorted(data_roots),
             "aggregate_dirs": aggregate, "index_paths": index_paths, "output_lists": output_lists,
-            "locale": locale or None}
+            "locale": locale or None, "marker_dirs": [[os.path.join(runs, ACTIVE), ce_root]],
+            "boundary_state": sorted(boundary_state)}
 
 
 RANK = {"off": 0, "approved": 1, "no-sensitive-data": 1, "schema-only": 2}
@@ -736,6 +904,7 @@ def resolve_mode(context):
     cwd, anchors = _anchors(context)
     cache, projects = {}, {}
     best, data_roots, roots, aggregate, index_paths, output_lists = None, set(), [], set(), [], []
+    marker_dirs, boundary_state = [], set()
     for anchor in anchors:
         found = _locate(anchor, cache)
         if not found or found in projects:
@@ -746,13 +915,18 @@ def resolve_mode(context):
         index_paths.extend(p for p in project["index_paths"] if p not in index_paths)
         output_lists.extend(p for p in project["output_lists"] if p not in output_lists)
         roots.extend(r for r in project["roots"] if r not in roots)
+        if project["mode"] == "schema-only":  # in-progress runs and their state matter only where access is limited
+            marker_dirs.extend(project["marker_dirs"])
+            boundary_state.update(project["boundary_state"])
         if best is None or RANK[project["mode"]] > RANK[best["mode"]]:
             best = project
     if best is None:
         return {"mode": "off", "why": None, "detail": "", "roots": [], "data_roots": [], "aggregate_dirs": [],
-                "index_paths": [], "output_lists": [], "cwd": cwd, "locale": None}
+                "index_paths": [], "output_lists": [], "cwd": cwd, "locale": None, "marker_dirs": [],
+                "boundary_state": []}
     return dict(best, roots=roots, data_roots=sorted(data_roots), aggregate_dirs=sorted(aggregate),
-                index_paths=index_paths, output_lists=output_lists, cwd=cwd)
+                index_paths=index_paths, output_lists=output_lists, cwd=cwd, marker_dirs=marker_dirs,
+                boundary_state=sorted(boundary_state))
 
 
 # ------------------------------------------------------------------- data refs
@@ -913,6 +1087,8 @@ def is_data_path(raw, cwd, mode, over_cap_is_data=False):
             if parts and parts[-1].lower() in DATAISH_DIRS:
                 return True
             continue
+        if mode.get("marker_dirs") and marker_hit(path, mode):
+            return True
         if os.path.lexists(path):
             real = os.path.realpath(path)
             if real != path and (DATA_REF.search(real) or _under(real, mode["data_roots"])):
@@ -1859,6 +2035,93 @@ def judge(cmd, cwd, mode, tainted, written, fed=(), env=()):
     return f"`{verb}` on a data file prints its values", False
 
 
+STATE_REASON = ("`.methodsmith/runs/active/` and `.methodsmith/runs/temp-roots.txt` are the boundary's record of "
+                "method-safe-run runs, and only method-safe-run changes them (a dead run's marker is cleared by "
+                f"`{SAFE_RUNNER} --reconcile`)")
+STATE_REMOVERS = {"rm", "unlink", "rmdir", "shred", "srm"}
+STATE_WRITERS = {"cp", "ln", "rsync", "install", "truncate", "tee", "touch", "chmod", "chown", "chgrp", "dd"}
+WRITE_REDIRECTS = {">", ">>", ">|", "&>", "&>>", "<>", ">&"}
+
+
+def _state_part(pattern, name, globbed):
+    if not globbed:
+        return pattern == name
+    if name.startswith(".") and not pattern.startswith("."):
+        return False  # a shell wildcard does not match a leading dot
+    return fnmatch.fnmatchcase(name, pattern)
+
+
+def names_state(raw, cwd, mode, remove=False):
+    """A path (or unquoted wildcard) that is, or lies under, the boundary state; remove=True adds its ancestors."""
+    targets = mode.get("boundary_state") or []
+    if not targets or not raw:
+        return False
+    for variant in expand_braces(raw):
+        globbed = isinstance(raw, GlobToken) and any(ch in variant for ch in "*?[")
+        path = _resolve(variant, cwd)
+        for candidate in {path} if globbed else {path, os.path.realpath(path)}:
+            parts = [p for p in candidate.split(os.sep) if p]
+            for target in targets:
+                tparts = [p for p in target.split(os.sep) if p]
+                if len(parts) < len(tparts) and not remove:
+                    continue
+                if all(_state_part(a, b, globbed) for a, b in zip(parts, tparts)):
+                    return True
+    return False
+
+
+def state_redirect(seg, cwd, mode):
+    """A shell redirect in this segment that writes the boundary state."""
+    for index, token in enumerate(seg[:-1]):
+        target = seg[index + 1]
+        if token in WRITE_REDIRECTS and not (token == ">&" and re.match(r"^(?:\d+|-)$", target)):
+            if names_state(target, cwd, mode):
+                return True
+    return False
+
+
+def _find_removes(args):
+    """find -delete, or an -exec/-ok command line that removes or moves files."""
+    if "-delete" in args:
+        return True
+    return any(t in FIND_EXEC and i + 1 < len(args) and program(args[i + 1]) in STATE_REMOVERS | {"mv"}
+               for i, t in enumerate(args))
+
+
+def state_violation(cmd, cwd, mode):
+    """A command that removes, moves, truncates, or writes the boundary state (runs/active/, runs/temp-roots.txt)."""
+    verb, args = program(cmd[0]), cmd[1:]
+    values = [t.split("=", 1)[1] for t in args if t.startswith("--") and "=" in t]
+    ops = [t for t in args if not t.startswith("-") and t not in REDIRECTS]
+    if verb in STATE_REMOVERS:
+        return any(names_state(t, cwd, mode, remove=True) for t in ops + values)
+    if verb == "mv":
+        dest = None if any(t == "-t" or t.startswith("--target-directory") for t in args) else (ops[-1:] or [None])[0]
+        return any(names_state(t, cwd, mode, remove=t is not dest) for t in ops + values)
+    if verb == "dd":
+        return any(t.startswith("of=") and names_state(t[3:], cwd, mode) for t in args)
+    if verb in STATE_WRITERS or (verb in ("sed", "perl") and any(re.match(r"^(?:-[A-Za-z]*i|--in-place)", t) for t in args)):
+        return any(names_state(t, cwd, mode) for t in ops + values)
+    if verb == "find" and _find_removes(args):
+        starts = []
+        for t in args:
+            if t.startswith("-") or t in ("!", "("):
+                break
+            starts.append(t)
+        if not _find_negates_or_alternates(args):  # a -name filter that cannot match a state file keeps it safe
+            names = [(args[i], args[i + 1]) for i in range(len(args) - 1) if args[i] in FIND_NAME_ONLY_OPTS]
+            state_names = (TEMP_ROOTS, ACTIVE, "0.json")
+            if names and not any(fnmatch.fnmatchcase(n.lower() if opt == "-iname" else n,
+                                                     p.lower() if opt == "-iname" else p)
+                                 for opt, p in names for n in state_names):
+                return False
+        return any(names_state(t, cwd, mode, remove=True) for t in starts or ["."])
+    if verb == "git" and _git_sub(args)[:1] == ["clean"]:
+        cleans_ignored = any(re.match(r"^-[A-Za-z]*[xX]", t) for t in args)
+        return cleans_ignored and names_state(".", cwd, mode, remove=True)
+    return False
+
+
 def safe_companion(cmd):
     """A command that may share a Bash call with method-safe-run: metadata only, or a reader of the pipe (no files)."""
     verb = program(cmd[0])
@@ -1939,6 +2202,8 @@ def bash_violations(command, cwd, mode, depth=0):
                 name, value = assignment.split("=", 1)
                 if token_ref(value, cur, mode, tainted):
                     tainted.add(name)
+            if mode["mode"] == "schema-only" and state_redirect(seg, run_cwd, mode):
+                access = access or STATE_REASON
             if not cmd:
                 continue
             safe = False
@@ -1958,6 +2223,8 @@ def bash_violations(command, cwd, mode, depth=0):
             if mode["mode"] != "schema-only":
                 continue
             verb = program(cmd[0])
+            if state_violation(cmd, run_cwd, mode):  # also under method-safe-run: only the runner itself changes it
+                access = access or STATE_REASON
             if safe:  # output stays in the run log; a copy to a readable path still leaks
                 if verb in COPY_VERBS:
                     access = access or judge(cmd, cur, mode, tainted, written)[0]
@@ -2335,6 +2602,10 @@ def classify(call, mode):
     if mode["mode"] != "schema-only":
         return None
     reason = access
+    if tool in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
+        path = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
+        if isinstance(path, str) and names_state(path, cwd, mode):
+            return {"kind": "access", "reason": STATE_REASON}
     if tool in ("Read", "NotebookRead", "Edit", "MultiEdit", "NotebookEdit"):  # edits return a snippet
         path = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
         resolved = _resolve(path, cwd) if path else ""
@@ -2350,6 +2621,9 @@ def classify(call, mode):
             reason = "reading a data file returns its values"
     elif tool == "Grep":
         reason = grep_tool_violation(tool_input, cwd, mode)
+    if reason and reason != STATE_REASON:
+        note = marker_note(mode)
+        reason = f"{reason}; {note}" if note else reason
     return {"kind": "access", "reason": reason} if reason else None
 
 

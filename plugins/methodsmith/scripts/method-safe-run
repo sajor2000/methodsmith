@@ -435,14 +435,28 @@ def reconcile(root, runs):
     for name in names:
         path = os.path.join(active, name)
         try:
+            st = os.stat(path)
+        except OSError:
+            continue
+        heartbeat_ns = st.st_mtime_ns
+        try:
             with open(path, encoding="utf-8") as fh:
                 marker = json.load(fh)
-            heartbeat_ns = os.stat(path).st_mtime_ns
         except (OSError, ValueError):
-            left += 1
-            continue
+            marker = None
         start = marker.get("start") if isinstance(marker, dict) else None
-        if type(start) is not int or not marker_is_stale(marker):
+        if type(start) is not int:
+            # Unreadable: stale once its writer is gone and it has missed several heartbeats; the window
+            # then runs from the marker's creation to its last heartbeat.
+            writer = name[:-5]
+            silent = time.time_ns() - heartbeat_ns > 6 * heartbeat_seconds() * 1_000_000_000
+            if not (writer.isdigit() and silent and not pid_alive(int(writer))):
+                left += 1
+                continue
+            birth = getattr(st, "st_birthtime", None)
+            start = int(birth * 1e9) if birth else min(st.st_ctime_ns, st.st_mtime_ns)
+            marker = {}
+        elif not marker_is_stale(marker):
             left += 1
             continue
         if files is None:
