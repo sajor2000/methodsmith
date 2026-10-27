@@ -11,7 +11,7 @@ argument-hint: "[task, file, or clifpy function name]"
 - **Problem it solves:** CLIF projects hand-roll SOFA, outlier handling, unit conversion, stitching, and wide datasets that `clifpy` already provides, and call `clifpy` from memory with wrong arguments, wrong version vocabularies, and silent timezone shifts.
 - **Use when:** Writing, fixing, upgrading, or reviewing Python that loads CLIF tables or calls any `clifpy` function, class, or utility.
 - **Output:** Working `clifpy` code that uses the verified API, the selected CLIF version, explicit timezone handling, post-call assertions, and output paths that keep row-level artifacts out of shared folders.
-- **Ask only if:** The CLIF version family or the site timezone is unknown and the code depends on it.
+- **Ask only if:** The CLIF version family or the site timezone is unknown and the code depends on it. Exception: the output-path approval gate in workflow step 6 always applies; ask for any output, DuckDB temp, or log path that lacks approval before running on real data.
 - **Do not do:** Do not write `clifpy` calls from memory, copy examples from the upstream README or validation guide without checking them, or reimplement a capability `clifpy` already ships.
 - **Interaction:** Check repo/config/chat evidence first. Ask one decision-changing question at a time; use the current harness's blocking question UI when available, otherwise present numbered choices and wait.
 

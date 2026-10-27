@@ -107,7 +107,7 @@ A project with both spellings and no normalization step is a CA-03 candidate.
 
 ## Code health
 
-- **CA-90:** `rg "${SAFE[@]}" -n 'except\s*(Exception)?\s*:\s*$' -A1 | rg 'pass|continue' . < /dev/null`; `rg "${SAFE[@]}" -n "filterwarnings\(.ignore" . < /dev/null`
+- **CA-90:** `rg "${SAFE[@]}" -n -A1 'except\s*(Exception)?\s*:\s*$' . < /dev/null | rg 'pass|continue'`; `rg "${SAFE[@]}" -n "filterwarnings\(.ignore" . < /dev/null`
 - **CA-91:** `rg "${SAFE[@]}" -n -i "site(_name)?\s*==\s*['\"]|mimic" . < /dev/null` in shared code
 - **CA-92:** `git ls-files | rg '_v[0-9]+\.|_copy|_[0-9]{6}\.'`
 - **CA-93:** `rg "${SAFE[@]}" -n 'sys\.path\.(append|insert)|setwd\(' . < /dev/null`
