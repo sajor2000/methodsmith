@@ -801,7 +801,7 @@ def _project_mode(ce_root, main):
         data_roots.update(temp_roots(runs_dir, ce_root))
     boundary_state = set()  # only method-safe-run may change these
     for runs_dir in runs_dirs:
-        for rel in (ACTIVE, TEMP_ROOTS):
+        for rel in (ACTIVE, TEMP_ROOTS, OUTPUTS):
             path = os.path.join(runs_dir, rel)
             boundary_state.update({path, os.path.realpath(path)})
     for root in (data_root, legacy_root):
@@ -2293,7 +2293,8 @@ def judge(cmd, cwd, mode, tainted, written, fed=(), env=()):
     return f"`{verb}` on a data file prints its values", False
 
 
-STATE_REASON = ("`.methodsmith/runs/active/` and `.methodsmith/runs/temp-roots.txt` are the boundary's record of "
+STATE_REASON = ("`.methodsmith/runs/active/`, `.methodsmith/runs/temp-roots.txt`, and `.methodsmith/runs/outputs.txt` "
+                "are the boundary's record of "
                 "method-safe-run runs, and only method-safe-run changes them (a dead run's marker is cleared by "
                 f"`{SAFE_RUNNER} --reconcile`)")
 STATE_REMOVERS = {"rm", "unlink", "rmdir", "shred", "srm"}
@@ -2347,7 +2348,7 @@ def _find_removes(args):
 
 
 def state_violation(cmd, cwd, mode):
-    """A command that removes, moves, truncates, or writes the boundary state (runs/active/, runs/temp-roots.txt)."""
+    """A command that removes, moves, truncates, or writes the boundary state (runs/active/, runs/temp-roots.txt, runs/outputs.txt)."""
     verb, args = program(cmd[0]), cmd[1:]
     values = [t.split("=", 1)[1] for t in args if t.startswith("--") and "=" in t]
     ops = [t for t in args if not t.startswith("-") and t not in REDIRECTS]
@@ -2368,7 +2369,7 @@ def state_violation(cmd, cwd, mode):
             starts.append(t)
         if not _find_negates_or_alternates(args):  # a -name filter that cannot match a state file keeps it safe
             names = [(args[i], args[i + 1]) for i in range(len(args) - 1) if args[i] in FIND_NAME_ONLY_OPTS]
-            state_names = (TEMP_ROOTS, ACTIVE, "0.json")
+            state_names = (TEMP_ROOTS, OUTPUTS, ACTIVE, "0.json")
             if names and not any(fnmatch.fnmatchcase(n.lower() if opt == "-iname" else n,
                                                      p.lower() if opt == "-iname" else p)
                                  for opt, p in names for n in state_names):

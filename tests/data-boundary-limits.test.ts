@@ -453,6 +453,12 @@ describe("wildcards and find patterns (schema-only)", () => {
 })
 
 describe("limit 1b: method-safe-run keeps script output out of the context", () => {
+  test("a command killed by a signal exits 128 + the signal number", () => {
+    const { code, out } = runSafe(project(SCHEMA_ONLY), "sh", "-c", "kill -TERM $$")
+    expect(code).toBe(143)
+    expect(out).toContain("exit code: 143")
+  })
+
   test("runs the command, logs stdout and stderr locally, and prints only the exit code and log path", () => {
     const root = withFile(project(SCHEMA_ONLY), "analysis/leak.py",
       "import sys\nprint('Zed Testperson FAKE0001')\nprint('to stderr', file=sys.stderr)\nsys.exit(3)\n")
@@ -1058,6 +1064,10 @@ describe("limit 1c: the guard reads method-safe-run temp roots and in-progress r
       ["Bash", bash("echo x | tee .methodsmith/runs/temp-roots.txt")],
       ["Bash", bash("sed -i '' -e d .methodsmith/runs/temp-roots.txt")],
       ["Bash", bash("truncate -s 0 .methodsmith/runs/temp-roots.txt")],
+      ["Bash", bash("rm .methodsmith/runs/outputs.txt")],
+      ["Bash", bash(": > .methodsmith/runs/outputs.txt")],
+      ["Bash", bash("find .methodsmith/runs -name outputs.txt -delete")],
+      ["Write", { file_path: ".methodsmith/runs/outputs.txt", content: "" }],
       ["Bash", bash("touch .methodsmith/runs/active/123.json")],
       ["Bash", bash("find .methodsmith/runs/active -name '*.json' -delete")],
       ["Bash", bash("find . -type f -exec rm {} +")],

@@ -645,7 +645,8 @@ def run_command(cmd, env, marker_path, marker):
 
     readers = [threading.Thread(target=drain, args=(proc.stdout, "out"), daemon=True),
                threading.Thread(target=drain, args=(proc.stderr, "err"), daemon=True)]
-    for reader in readers + [threading.Thread(target=wait_status, daemon=True)]:
+    status_reader = threading.Thread(target=wait_status, daemon=True)
+    for reader in readers + [status_reader]:
         reader.start()
     beat = heartbeat_seconds()
     next_beat = time.monotonic() + beat
@@ -682,11 +683,13 @@ def run_command(cmd, env, marker_path, marker):
             pass
         if done:
             time.sleep(0.05)
-    for reader in readers:
+    for reader in readers + [status_reader]:
         reader.join(timeout=2)
-    code = status.get("code", proc.poll())
+    code = status.get("code", proc.poll())  # the keeper's report first: it is the command's own status
     if code is None:
         code = -signal.SIGKILL
+    if code < 0:  # killed by a signal: the shell's 128 + N, not a wrapped negative exit status
+        code = 128 - code
     return code, b"".join(buffers["out"]), b"".join(buffers["err"]), give_up_at is None, state["signal"]
 
 
