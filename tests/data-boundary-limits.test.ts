@@ -933,11 +933,14 @@ describe("limit 1c: the guard reads method-safe-run temp roots and in-progress r
     writeFileSync(probe, "")
     return statSync(probe, { bigint: true }).ctimeNs
   }
-  function marker(root: string, name: string, fields: { pid: number; pid_start: string; pgid: number | null; host: string; start: bigint }) {
+  function marker(root: string, name: string, fields: { pid: number; pid_start: string; pgid: number | null; host: string; start: bigint },
+    extra: { tmp?: string; outputs_lines?: number } = {}) {
     const dir = path.join(runs(root), "active")
     mkdirSync(dir, { recursive: true })
+    const more = extra.outputs_lines === undefined ? "" : `, "outputs_lines": ${extra.outputs_lines}`
     writeFileSync(path.join(dir, name), `{"pid": ${fields.pid}, "pid_start": ${JSON.stringify(fields.pid_start)}, ` +
-      `"pgid": ${fields.pgid}, "host": ${JSON.stringify(fields.host)}, "start": ${fields.start}, "tmp": "/nonexistent/msr-x"}`)
+      `"pgid": ${fields.pgid}, "host": ${JSON.stringify(fields.host)}, "start": ${fields.start}, ` +
+      `"tmp": ${JSON.stringify(extra.tmp ?? "/nonexistent/msr-x")}${more}}`)
   }
   const liveMarker = (start: bigint) => ({
     pid: process.pid, pid_start: psField("lstart", process.pid), pgid: Number(psField("pgid", process.pid)), host: os.hostname(), start,
@@ -1013,6 +1016,48 @@ describe("limit 1c: the guard reads method-safe-run temp roots and in-progress r
       ["Read", { file_path: "R/x.R" }],
       ["Bash", bash("cat R/x.R")],
     ])
+  })
+
+  test("during a live run, an outputs.txt changed since the run started makes every project file data", () => {
+    const root = project(SCHEMA_ONLY)
+    for (const dir of ["results", "notes"]) mkdirSync(path.join(root, dir))
+    writeFileSync(path.join(root, "results", "earlier.csv"), "FAKE0001,synthetic\n")
+    writeFileSync(path.join(root, "notes", "before.txt"), "synthetic note\n")
+    mkdirSync(runs(root), { recursive: true })
+    writeFileSync(path.join(runs(root), "outputs.txt"), "results/earlier.csv\n")
+    pause()
+    const start = fsNow()
+    pause()
+    marker(root, `${process.pid}.json`, liveMarker(start), { outputs_lines: 1 })
+    // Untouched since the run started: the list is trusted, the earlier output is data, other files read.
+    expectAll(root, "deny", [["Read", { file_path: "results/earlier.csv" }]])
+    expectAll(root, "allow", [["Read", { file_path: "notes/before.txt" }]])
+    writeFileSync(path.join(runs(root), "outputs.txt"), "") // the run's own code erased it
+    expectAll(root, "deny", [
+      ["Read", { file_path: "results/earlier.csv" }],
+      ["Bash", bash("cat results/earlier.csv")],
+      ["Read", { file_path: "notes/before.txt" }],
+    ])
+    rmSync(path.join(runs(root), "outputs.txt"))
+    expectAll(root, "deny", [["Read", { file_path: "results/earlier.csv" }]])
+    // With nothing recorded before the run there is nothing to lose, so a new list changes nothing.
+    marker(root, `${process.pid}.json`, liveMarker(start), { outputs_lines: 0 })
+    writeFileSync(path.join(runs(root), "outputs.txt"), "")
+    expectAll(root, "allow", [["Read", { file_path: "notes/before.txt" }]])
+  })
+
+  test("a live run's own temp directory is data even when temp-roots.txt no longer lists it", () => {
+    const { root, start } = runProject()
+    const tmp = mkdtempSync(path.join(os.tmpdir(), "msr-"))
+    tempRoots.push(tmp)
+    writeFileSync(path.join(tmp, "rows.txt"), "FAKE0001 synthetic row\n")
+    marker(root, `${process.pid}.json`, liveMarker(start), { tmp })
+    writeFileSync(path.join(runs(root), "temp-roots.txt"), "")
+    expectAll(root, "deny", [
+      ["Read", { file_path: path.join(tmp, "rows.txt") }],
+      ["Bash", bash(`cat ${path.join(realpathSync(tmp), "rows.txt")}`)],
+    ])
+    expectAll(project(APPROVED), "allow", [["Read", { file_path: path.join(tmp, "rows.txt") }]])
   })
 
   test("a stale marker denies and names --reconcile; another host's marker denies without offering it", () => {

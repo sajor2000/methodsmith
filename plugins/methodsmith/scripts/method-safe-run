@@ -36,7 +36,7 @@ for directories that no longer exist are pruned when the next run starts.
 
 While a run is in progress, .methodsmith/runs/active/<runner pid>-<start>.json
 marks it (unique per run, so a reused pid never overwrites an unreconciled
-marker; JSON keys: pid, pid_start, pgid, host, start, tmp; start is the run
+marker; JSON keys: pid, pid_start, pgid, host, start, tmp, outputs_lines; start is the run
 start on the filesystem clock in ns). A small keeper (this script in a hidden
 --keeper mode) leads its own session and process group; it starts the command
 in that group only after the marker naming the group is on disk, and touches
@@ -57,7 +57,12 @@ Appends to outputs.txt and temp-roots.txt are O_APPEND writes under an fcntl
 lock. The command's own code could erase those lists, so the runner snapshots
 them before the command starts and re-appends any missing line at every
 heartbeat and again before recording outputs; an erased entry is missing for at
-most one heartbeat interval.
+most one heartbeat interval. Meanwhile the guard does not trust the list: the
+marker records how many outputs.txt lines there were at the start
+(outputs_lines), and while that was more than none and outputs.txt has changed
+or gone since the start, every project file counts as data until the run
+finishes. The marker's tmp directory is data whether or not temp-roots.txt
+still lists it.
 
 Environment: METHOD_SAFE_RUN_HEARTBEAT_SECONDS overrides the 10 s heartbeat
 interval (tests use a short one).
@@ -872,7 +877,8 @@ def main(argv):
     saved = read_lists(runs)  # includes this run's temp dir
     marker_path = os.path.join(active, f"{os.getpid()}-{run_start}.json")  # unique per run, even on pid reuse
     marker = {"pid": os.getpid(), "pid_start": process_start(os.getpid()), "pgid": None,
-              "host": socket.gethostname(), "start": run_start, "tmp": os.path.abspath(tmp)}
+              "host": socket.gethostname(), "start": run_start, "tmp": os.path.abspath(tmp),
+              "outputs_lines": len(saved["outputs.txt"])}
     write_marker(marker_path, marker)
     env = {**os.environ, "TMPDIR": tmp, "TMP": tmp, "TEMP": tmp}
     start = time.monotonic()

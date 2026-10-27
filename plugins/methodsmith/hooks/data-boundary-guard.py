@@ -464,8 +464,29 @@ def run_markers(mode):
                 start = fields.get("start") if isinstance(fields, dict) else None
                 if type(start) is not int:  # unreadable: count from when the marker file was created, still live
                     fields, start = None, _created_ns(os.path.join(active, name))
-                mode["_markers"].append({"start": start, "roots": roots, "fields": fields, "hit": False})
+                tmp = fields.get("tmp") if fields else None
+                tmps = sorted({tmp, os.path.realpath(tmp)}) if isinstance(tmp, str) and os.path.isabs(tmp) else []
+                mode["_markers"].append({"start": start, "roots": roots, "fields": fields, "hit": False, "tmp": tmps,
+                                         "lists_changed": _lists_changed(os.path.dirname(active), fields, start)})
     return mode["_markers"]
+
+
+def _lists_changed(runs, fields, start):
+    """outputs.txt held entries when the run started and has since changed or gone: the run's own code may have
+    erased them (the runner puts them back only at its next heartbeat), so the list cannot be trusted."""
+    lines = fields.get("outputs_lines") if fields else None
+    if type(lines) is not int or lines <= 0:
+        return False
+    try:
+        st = os.lstat(os.path.join(runs, OUTPUTS))
+    except OSError:
+        return True
+    return max(st.st_mtime_ns, st.st_ctime_ns) >= start
+
+
+def marker_tmp_hit(path, mode):
+    """A path under the temp directory an in-progress run's marker names, listed in temp-roots.txt or not."""
+    return any(m["tmp"] and _under(c, m["tmp"]) for m in run_markers(mode) for c in {path, os.path.realpath(path)})
 
 
 def _changed_ns(path, mode):
@@ -489,6 +510,9 @@ def marker_hit(path, mode):
         parent = os.path.dirname(candidate)
         for marker in markers:
             if candidate in marker["roots"] or not _under(candidate, marker["roots"]):
+                continue
+            if marker["lists_changed"]:
+                marker["hit"] = hit = True
                 continue
             times = [_changed_ns(candidate, mode)]
             if _under(parent, marker["roots"]):
@@ -571,6 +595,9 @@ def marker_note(mode):
         notes.append("a method-safe-run that changed files here ended without recording its outputs, so files "
                      f"changed since it started count as data; run `{SAFE_RUNNER} --reconcile` to record them "
                      "and clear its marker")
+    if any(m["lists_changed"] for m in hits):
+        notes.append("a method-safe-run's outputs.txt changed while the run is in progress, so until it finishes "
+                     "every project file counts as data")
     if "live" in states:
         notes.append("a method-safe-run is still in progress (or its marker cannot be read), so files changed "
                      "since it started count as data until it finishes")
@@ -1127,7 +1154,7 @@ def is_data_path(raw, cwd, mode, over_cap_is_data=False):
             if parts and parts[-1].lower() in DATAISH_DIRS:
                 return True
             continue
-        if mode.get("marker_dirs") and marker_hit(path, mode):
+        if mode.get("marker_dirs") and (marker_hit(path, mode) or marker_tmp_hit(path, mode)):
             return True
         if os.path.lexists(path):
             real = os.path.realpath(path)
