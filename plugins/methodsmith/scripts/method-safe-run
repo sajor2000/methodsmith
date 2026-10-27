@@ -36,7 +36,8 @@ for directories that no longer exist are pruned when the next run starts.
 
 While a run is in progress, .methodsmith/runs/active/<runner pid>-<start>.json
 marks it (unique per run, so a reused pid never overwrites an unreconciled
-marker; JSON keys: pid, pid_start, pgid, host, start, tmp, outputs_lines; start is the run
+marker; JSON keys: pid, pid_start, pgid, host, start, tmp, outputs_lines,
+outputs_stamp; start is the run
 start on the filesystem clock in ns). A small keeper (this script in a hidden
 --keeper mode) leads its own session and process group; it starts the command
 in that group only after the marker naming the group is on disk, and touches
@@ -60,8 +61,9 @@ heartbeat and again before recording outputs; an erased entry is missing for at
 most one heartbeat interval. At each heartbeat the runner first merges the lists' current
 lines into its saved set, so entries other runs record later are kept too.
 Meanwhile the guard does not trust the list: outputs.txt exists before the
-start, the marker records its line count then (outputs_lines), and while
-outputs.txt has changed or gone since the start, every project file counts as
+start, the marker records its line count (outputs_lines) and its [mtime, ctime]
+(outputs_stamp) then, and while outputs.txt's stamp differs or the file is gone,
+every project file counts as
 data until the run finishes. The marker's tmp directory is data whether or not
 temp-roots.txt still lists it.
 
@@ -346,6 +348,15 @@ def read_lists(runs):
         except OSError:
             saved[name] = []
     return saved
+
+
+def list_stamp(runs):
+    """outputs.txt's [mtime, ctime] in ns, or None: the guard distrusts the list once it differs during the run."""
+    try:
+        st = os.lstat(os.path.join(runs, "outputs.txt"))
+    except OSError:
+        return None
+    return [st.st_mtime_ns, st.st_ctime_ns]
 
 
 def restore_lists(runs, saved):
@@ -884,7 +895,7 @@ def main(argv):
     marker_path = os.path.join(active, f"{os.getpid()}-{run_start}.json")  # unique per run, even on pid reuse
     marker = {"pid": os.getpid(), "pid_start": process_start(os.getpid()), "pgid": None,
               "host": socket.gethostname(), "start": run_start, "tmp": os.path.abspath(tmp),
-              "outputs_lines": len(saved["outputs.txt"])}
+              "outputs_lines": len(saved["outputs.txt"]), "outputs_stamp": list_stamp(runs)}
     write_marker(marker_path, marker)
     env = {**os.environ, "TMPDIR": tmp, "TMP": tmp, "TEMP": tmp}
     start = time.monotonic()

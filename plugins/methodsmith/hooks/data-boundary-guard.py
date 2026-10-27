@@ -474,13 +474,20 @@ def run_markers(mode):
 def _lists_changed(runs, fields, start):
     """outputs.txt changed or went missing since an in-progress run started (the runner creates it first): the
     run's own code may have erased entries, its own or another run's, which the runner puts back only at its next
-    heartbeat, so the list cannot be trusted. Markers older than outputs_lines keep the per-file rule."""
-    if not fields or type(fields.get("outputs_lines")) is not int:
+    heartbeat, so the list cannot be trusted. The marker's outputs_stamp is the list's [mtime, ctime] at the start;
+    markers without it but with outputs_lines compare against the start; older markers keep the per-file rule."""
+    if not fields:
+        return False
+    stamp = fields.get("outputs_stamp")
+    exact = isinstance(stamp, list) and len(stamp) == 2 and all(type(t) is int for t in stamp)
+    if not exact and type(fields.get("outputs_lines")) is not int:
         return False
     try:
         st = os.lstat(os.path.join(runs, OUTPUTS))
     except OSError:
         return True
+    if exact:
+        return [st.st_mtime_ns, st.st_ctime_ns] != stamp
     return max(st.st_mtime_ns, st.st_ctime_ns) >= start
 
 

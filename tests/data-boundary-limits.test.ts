@@ -907,6 +907,26 @@ describe("limit 1b: method-safe-run keeps script output out of the context", () 
     rmSync(kept, { recursive: true, force: true })
   })
 
+  test("a live first run in a fresh project leaves unrelated files readable until its code touches outputs.txt", async () => {
+    const root = withFile(project(SCHEMA_ONLY), "notes/before.txt", "synthetic note\n")
+    await Bun.sleep(2200) // older than the runner's 2 s start margin, so only the list rule can deny it
+    // The child waits for go, then erases outputs.txt and idles; until then it changes nothing.
+    const code = "import os, time\nend = time.time() + 10\n" +
+      "while not os.path.exists('go') and time.time() < end: time.sleep(0.05)\n" +
+      "open('.methodsmith/runs/outputs.txt', 'w').close()\n" +
+      "while not os.path.exists('done') and time.time() < end: time.sleep(0.05)\n"
+    const run = startSafe(root, "python3", "-c", code)
+    await waitFor(() => markersOf(root).length === 1)
+    expectAll(root, "allow", [["Read", { file_path: "notes/before.txt" }]]) // outputs.txt was created inside the start margin
+    const list = path.join(runsDir(root), "outputs.txt")
+    const stamp = statSync(list, { bigint: true }).ctimeNs
+    writeFileSync(path.join(root, "go"), "")
+    await waitFor(() => statSync(list, { bigint: true }).ctimeNs !== stamp)
+    expectAll(root, "deny", [["Read", { file_path: "notes/before.txt" }]])
+    writeFileSync(path.join(root, "done"), "")
+    expect(await run.exited).toBe(0)
+  })
+
   test("an output another run records after this run started survives this run's code erasing the list", async () => {
     const root = project(SCHEMA_ONLY)
     mkdirSync(runsDir(root), { recursive: true })
