@@ -10,7 +10,8 @@ MARKER_PREFIX="<!-- METHODSMITH_ALIAS_MANAGED v1 "
 # Aliases written before the rename to Methodsmith carry this marker. They are
 # still ours: stale ones are removed and current ones are rewritten.
 LEGACY_MARKER_PREFIX="<!-- CE_DATASCIENCE_ALIAS_MANAGED v1 "  # rebrand:keep
-# Pre-rebrand command names stay usable as deprecated aliases for one release.
+# Pre-rebrand command names were deprecated aliases through 5.x. They are no longer
+# written; managed ones left from an older install are removed as stale.
 LEGACY_PREFIX="ce-"  # rebrand:keep
 DEFAULT_PLUGIN_NAME="methodsmith"
 
@@ -34,8 +35,7 @@ Options:
   --dry-run                 Print actions without writing files
   --help                    Show this help
 
-Each command name from before the rename to Methodsmith
-also gets a deprecated alias that points to the renamed skill.
+Deprecated aliases under pre-rename names, written by older installs, are removed.
 
 The installer never overwrites a user-owned command. Existing managed
 aliases are updated in place; stale managed aliases are removed.
@@ -132,6 +132,14 @@ alias_files_in() {
   done
 }
 
+# Only current names are installed, even from a prebuilt directory made by an older release.
+source_files_in() {
+  local file
+  for file in "$1"/method-*.md; do
+    [ -f "$file" ] && printf '%s\n' "$file"
+  done
+}
+
 write_alias_file() {
   local output_file="$1"
   local skill_name="$2"
@@ -148,35 +156,6 @@ Delegate to that namespaced plugin skill and pass through the arguments exactly:
 
 \$ARGUMENTS
 EOF_ALIAS
-}
-
-write_legacy_alias_file() {
-  local output_file="$1"
-  local old_name="$2"
-  local skill_name="$3"
-  cat > "$output_file" <<EOF_ALIAS
----
-description: "Deprecated: /${old_name} is now /${plugin_name}:${skill_name} (Methodsmith)."
----
-${MARKER_PREFIX}plugin=${plugin_name} skill=${skill_name} legacy=${old_name} -->
-Deprecated alias. \`/${old_name}\` was renamed to \`/${plugin_name}:${skill_name}\` when the plugin
-was renamed to Methodsmith. This alias will be removed in the next major release.
-
-Tell the user about the new name once, then delegate to the renamed skill and pass
-the arguments through exactly:
-
-\`/${plugin_name}:${skill_name} \$ARGUMENTS\`
-
-\$ARGUMENTS
-EOF_ALIAS
-}
-
-# Prints "old new" pairs from the rebrand mapping (one pair per line in mapping.json).
-legacy_skill_pairs() {
-  local mapping="$repo_root/scripts/rebrand/mapping.json"
-  [ -f "$mapping" ] || return 0
-  sed -n '/"skills": {/,/}/p' "$mapping" \
-    | sed -n 's/^ *"\([a-z0-9-]*\)": "\(method-[a-z0-9-]*\)",\{0,1\}$/\1 \2/p'
 }
 
 build_source_dir() {
@@ -206,12 +185,6 @@ build_source_dir() {
     echo "No public method-* skills found under $plugin_dir/skills" >&2
     exit 2
   fi
-
-  local old_name new_name
-  while read -r old_name new_name; do
-    [ -n "$old_name" ] && [ -f "$plugin_dir/skills/$new_name/SKILL.md" ] || continue
-    write_legacy_alias_file "$temp_dir/${old_name}.md" "$old_name" "$new_name"
-  done < <(legacy_skill_pairs)
 
   printf '%s\n' "$temp_dir"
 }
@@ -253,7 +226,7 @@ install_aliases() {
       cp "$source_file" "$target"
     fi
     echo "installed $base"
-  done < <(alias_files_in "$source_dir")
+  done < <(source_files_in "$source_dir")
 
   local existing
   while IFS= read -r existing; do

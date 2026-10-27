@@ -136,18 +136,14 @@ describe("4. converter installs", () => {
   }
 })
 
-describe("5. old names resolve through the alias layer", () => {
-  test("every pre-rename skill has a deprecated Claude alias pointing at an existing renamed skill", async () => {
+describe("5. old names are no longer aliased", () => {
+  test("the Claude alias installer writes only method-* aliases", async () => {
     const { root, run } = await sandbox("aliases")
     const commandsDir = path.join(root, "commands")
     expect(run(["bash", "scripts/install/install-claude-aliases.sh", "--plugin-dir", pluginDir, "--commands-dir", commandsDir]).status).toBe(0)
-    for (const [oldName, newName] of Object.entries(rebrandMap.skills)) {
-      if (!shippedSkills.includes(newName)) continue
-      const alias = readFileSync(path.join(commandsDir, `${oldName}.md`), "utf8")
-      const target = alias.match(/`\/methodsmith:([a-z0-9-]+) \$ARGUMENTS`/)?.[1]
-      expect(target).toBe(newName)
-      expect(existsSync(path.join(pluginDir, "skills", target!, "SKILL.md"))).toBe(true)
-    }
+    const written = readdirSync(commandsDir)
+    expect(written.filter((name) => !name.startsWith("method-"))).toEqual([])
+    expect(written.length).toBe(shippedSkills.length)
   }, SLOW)
 })
 
