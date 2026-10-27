@@ -35,10 +35,19 @@ Schema-only access: Read/Grep/NotebookRead and Edit/MultiEdit/NotebookEdit
 (they return a snippet) on data files (including data_root and method-safe-run
 logs), Bash/Monitor/PowerShell commands whose text references a data path (any
 program except a metadata allowlist), inline interpreter code that opens data,
-and recursive content searches are denied. Script files run by
-python/Rscript/bash/sh/quarto render/jupyter nbconvert --execute are read
-statically (1 MB cap) and denied when they name a data path or call a reader
-on a variable path, unless the command runs through the plugin's method-safe-run.
+and recursive content searches are denied. Script files are read statically
+(1 MB cap) and denied when they name a data path or call a reader on a variable
+path, unless the command runs through the plugin's method-safe-run, however the
+script is launched: python/Rscript/bash/sh/quarto render/jupyter nbconvert
+--execute, run wrappers (uv/pdm/poetry run), a direct path with a script
+extension or interpreter shebang, stdin, source/., python -m for a project
+module, Rscript -e source(), and sh -c/bash -c/eval code. Workflow runners
+(make, snakemake, pytest, dvc, npm/pnpm/yarn/bun run scripts, targets::tar_make,
+rmarkdown::render, and similar) are denied unless run through method-safe-run.
+Relative, cd, -C, symlinked, and inline-code paths anchor the project they
+reach, so a call from outside a project gets that project's boundary (strictest
+wins). Unquoted shell wildcards are expanded (bounded) and checked match by
+match; an over-cap expansion is data in schema-only access checks.
 Inside method-safe-run only the copy rule still applies (output stays in the log),
 and files a run wrote (runs/outputs.txt) are data afterwards. Tables under
 phi_environment.aggregate_dirs print through the plugin's method-aggregate-read,
@@ -95,7 +104,7 @@ SCRIPT_EXTS = {"py", "r", "sh", "bash", "zsh", "jl", "qmd", "rmd", "js", "mjs", 
 MODES = ("approved", "schema-only", "no-sensitive-data")
 AGGREGATE_DIRS = ("output", "results", "analysis/publication", "analysis/sap-tables")
 STATE_DIR = ".methodsmith"
-# The pre-rename state folder. Detected so an unmoved project fails closed (schema-only), never read.
+# The pre-rename state folder. An unmoved project fails closed (schema-only); the folder is read only to tighten.
 LEGACY_STATE_DIR = ".ce-datascience"  # rebrand:keep
 CONFIG_REL = os.path.join(STATE_DIR, "config.local.yaml")
 
@@ -2090,7 +2099,7 @@ def deny_message(result, mode, helper):
     return ("methodsmith schema-only mode: the model endpoint is not approved for this project's sensitive "
             f"data ({reason}). Inspect structure with `python3 \"{helper}\" <file>` (headings, types, counts, "
             f"% missing only). Run scripts that read data through `{SAFE_RUNNER} -- <command>`: it keeps their "
-            "output in a local log and prints only the exit code, files written, and a masked stderr tail. If the endpoint is "
+            "output in a local log and prints only the exit code, files written, and traceback frames and error types. If the endpoint is "
             "approved, re-run method-setup or set phi_environment.mode in .methodsmith/config.local.yaml.")
 
 
