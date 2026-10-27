@@ -1,5 +1,5 @@
 # methodsmith -- study metadata
-# Copy to .ce-datascience/study-metadata.yaml in your project root.
+# Copy to .methodsmith/study-metadata.yaml in your project root.
 # All fields are optional. Uncomment and populate only what applies.
 # See the study metadata schema for field descriptions and reviewer checks.
 

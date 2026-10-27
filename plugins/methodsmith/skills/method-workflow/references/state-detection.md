@@ -9,7 +9,7 @@ File-system signals to determine which lifecycle steps have been completed. Use 
 | `method-question` | `analysis/research-question.yaml` exists and contains `pico:` block | File exists but `pico:` has empty slots |
 | `method-pubmed` | `analysis/pubmed/` contains a result `.csv` (with its sibling `.md` summary) | Directory exists but is empty |
 | `method-extract` | `analysis/pubmed/` contains `*-methods.csv` or `*-methods-summary.md` | — |
-| `method-checklist` | `stack_profile.reporting_checklist` is set in `.ce-datascience/config.local.yaml`, or `analysis/checklists/*.md` exists | — |
+| `method-checklist` | `stack_profile.reporting_checklist` is set in `.methodsmith/config.local.yaml`, or `analysis/checklists/*.md` exists | — |
 | `method-meta-analysis` | `analysis/effect-size/` contains a `*-pooled.md` result | — |
 | `method-power` | `analysis/power/` directory or `analysis/power-analysis.*` file exists | — |
 | `method-cohort` | `analysis/cohort/` contains `.sql` or `.json` concept-set files | Directory exists but no SQL/JSON |
@@ -25,7 +25,7 @@ File-system signals to determine which lifecycle steps have been completed. Use 
 | `method-review` | PR exists on the current branch, or `/tmp/methodsmith/method-review/` contains a run artifact | — |
 | `method-compound` | `docs/solutions/` contains a new learning file dated within the last 7 days | — |
 | `method-omics-qc` | `reports/bioinfo-qa/*.md` QC summary exists | — |
-| `method-genome-build` | `.ce-datascience/config.local.yaml` contains `genome_build` key | — |
+| `method-genome-build` | `.methodsmith/config.local.yaml` contains `genome_build` key | — |
 | `method-ml-track` | `mlruns/`, `wandb/`, or `dvc.yaml` exists at repo root | — |
 | `method-model-card` | `analysis/model-card.md` or `docs/model-card.md` exists | — |
 | `method-numbers` | `analysis/numbers/registry.json` exists and the `method-numbers` `check` on the manuscript sources and tables exits 0 (`PASS`) | Registry exists but the check prints `FAIL`, or it has not been run on the manuscript |
@@ -40,7 +40,7 @@ When multiple signals are ambiguous, prefer "not started" over "in progress" to 
 
 ## Stack Profile Detection
 
-If `.ce-datascience/config.local.yaml` exists, read `stack_profile.language` and `stack_profile.reporting` to determine language-specific annotations for the lifecycle card.
+If `.methodsmith/config.local.yaml` exists, read `stack_profile.language` and `stack_profile.reporting` to determine language-specific annotations for the lifecycle card.
 
 If no config exists, load the `method-language-detect` skill detection rules (check for `renv.lock`, `requirements.txt`, `pyproject.toml`, `.R` files, `.py` files) to infer the primary language.
 

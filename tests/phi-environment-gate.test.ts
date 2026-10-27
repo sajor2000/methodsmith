@@ -10,14 +10,14 @@ const OPTIONS = ["`Approved endpoint: full access`", "`Not approved or unsure: s
 
 // The one gating clause. Every gating skill and agent carries it word for word.
 export const GATE_CLAUSE =
-  "**Sensitive-data boundary.** Resolve `phi_environment.mode` in `.ce-datascience/config.local.yaml` (worktree, then main checkout; legacy `compliant: " +
+  "**Sensitive-data boundary.** Resolve `phi_environment.mode` in `.methodsmith/config.local.yaml` (worktree, then main checkout; legacy `compliant: " +
   "true` = `approved`, `compliant: false` = `schema-only`, `sensitive_data: false` = `no-sensitive-data`; any schema-only signal wins; unreadable = " +
   "`schema-only`). `approved` or `no-sensitive-data`: proceed silently and never mention the boundary again. `schema-only`: headings, types, counts, and " +
   "aggregates only; never open, print, or paste data values; run data-reading scripts as `method-safe-run -- <command>` (path in the guard's deny " +
   "message); save results as aggregate tables (counts under 11 suppressed) in `output/` or a `phi_environment.aggregate_dirs` entry. Unset, interactive: " +
   "ask once with the blocking question tool (else a numbered list) offering `Approved endpoint: full access`, `Not approved or unsure: schema-only`, and " +
-  "`No sensitive data: public or synthetic`; save the answer as `phi_environment.mode` there once `git check-ignore -q .ce-datascience/config.local.yaml` " +
-  "passes (else first add `.ce-datascience/*.local.yaml` to `.gitignore`) so the guard hook sees it. Unset, headless: schema-only."
+  "`No sensitive data: public or synthetic`; save the answer as `phi_environment.mode` there once `git check-ignore -q .methodsmith/config.local.yaml` " +
+  "passes (else first add `.methodsmith/*.local.yaml` to `.gitignore`) so the guard hook sees it. Unset, headless: schema-only."
 
 // The one MCP egress sentence. Every literature skill carries it word for word.
 export const MCP_EGRESS =
@@ -68,7 +68,7 @@ describe("sensitive-data boundary: one clause, asked once, then silent", () => {
     expect(askAndSave(workRef)).toBe(block)
     for (const option of OPTIONS) expect(block).toContain(option)
     for (const value of ["`mode: approved`", "`mode: schema-only`", "`mode: no-sensitive-data`"]) expect(block).toContain(value)
-    expect(block).toContain("git check-ignore -q .ce-datascience/config.local.yaml")
+    expect(block).toContain("git check-ignore -q .methodsmith/config.local.yaml")
     expect(block).toContain("Confirming that approval (BAA or institutional sign-off) is your responsibility.")
     for (const phrase of ["The agent CAN see", "The agent CANNOT", "look at example rows", "join mismatches", "free text", "counts under 11 suppressed"]) {
       expect(block).toContain(phrase)

@@ -60,7 +60,7 @@ Resolve `OUTPUT_FORMAT` before any other phase. Output is **exclusive**: markdow
 **Read config.** The repository root is pre-resolved at skill load:
 !`git rev-parse --show-toplevel 2>/dev/null || true`
 
-If that line is an absolute path, use it as `<repo-root>`; if empty or a literal command string, run `git rev-parse --show-toplevel` at runtime. Read `<repo-root>/.ce-datascience/config.local.yaml` with the native file-read tool. In a linked worktree without the file, resolve the absolute common Git directory and try the main checkout's copy. If none is found, use defaults.
+If that line is an absolute path, use it as `<repo-root>`; if empty or a literal command string, run `git rev-parse --show-toplevel` at runtime. Read `<repo-root>/.methodsmith/config.local.yaml` with the native file-read tool. In a linked worktree without the file, resolve the absolute common Git directory and try the main checkout's copy. If none is found, use defaults.
 
 Precedence:
 

@@ -3,8 +3,8 @@
 
 Usage: method-safe-run -- <command> [args...]
 
-Full stdout and stderr go to .ce-datascience/runs/<UTC-timestamp>-<pid>.log in
-the project; `.ce-datascience/runs/` is added to .gitignore when git does not
+Full stdout and stderr go to .methodsmith/runs/<UTC-timestamp>-<pid>.log in
+the project; `.methodsmith/runs/` is added to .gitignore when git does not
 already ignore it. The terminal gets only the exit code, the duration,
 the log path, the files created or modified under the project (path, size,
 and row count for tabular files), and the last 30 lines of stderr with values
@@ -14,7 +14,7 @@ keep that path readable (identifier-shaped or indexed parts masked); any other
 frame-shaped line is masked like the rest. File names are masked against the
 index too. Stdout is never printed. The exit code is the
 command's. Files the run created or modified (except raster images) are listed in
-.ce-datascience/runs/outputs.txt, and the boundary guard treats them as data: the
+.methodsmith/runs/outputs.txt, and the boundary guard treats them as data: the
 run read data, so what it wrote may hold values. Writes outside the project, or
 under .git and dependency trees (node_modules, venvs, renv, caches), are not
 tracked. In schema-only mode the guard requires method-safe-run to run as its own
@@ -147,7 +147,7 @@ def index_hit(text, index):
 # --- end identifier index ---
 
 SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", ".mypy_cache", ".pytest_cache", ".ruff_cache",
-             "renv"}  # VCS and dependency trees; .ce-datascience is walked except runs/ (data already)
+             "renv"}  # VCS and dependency trees; .methodsmith is walked except runs/ (data already)
 TABULAR = (".csv", ".tsv", ".psv", ".tab")
 RASTER = (".png", ".jpg", ".jpeg", ".gif", ".webp")
 MAX_FILES = 20000
@@ -167,7 +167,7 @@ MASKS = (
 def project_root(start):
     probe = os.path.abspath(start)
     while True:
-        if os.path.isdir(os.path.join(probe, ".ce-datascience")) or os.path.exists(os.path.join(probe, ".git")):
+        if os.path.isdir(os.path.join(probe, ".methodsmith")) or os.path.exists(os.path.join(probe, ".git")):
             return probe
         parent = os.path.dirname(probe)
         if parent == probe:
@@ -202,7 +202,7 @@ def snapshot(root):
     files = {}
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS
-                       and not (d == "runs" and os.path.basename(dirpath) == ".ce-datascience")]
+                       and not (d == "runs" and os.path.basename(dirpath) == ".methodsmith")]
         for name in filenames:
             full = os.path.join(dirpath, name)
             try:
@@ -314,7 +314,7 @@ def mask_path(path, index):
 
 def find_index(root):
     for base in (root, git_main(root)):
-        index = read_index(os.path.join(base, ".ce-datascience", "identifier-index.local.json")) if base else None
+        index = read_index(os.path.join(base, ".methodsmith", "identifier-index.local.json")) if base else None
         if index:
             return index
     return None
@@ -330,15 +330,47 @@ def git_main(top):
     return os.path.dirname(common.rstrip(os.sep)) if out.returncode == 0 and common.endswith(".git") else None
 
 
+LEGACY_STATE_DIR = ".ce-datascience"  # rebrand:keep
+
+
+def legacy_state_root(start):
+    """The nearest project folder holding only the pre-rename state folder, or None."""
+    probe = os.path.abspath(start)
+    while True:
+        if os.path.isdir(os.path.join(probe, ".methodsmith")):
+            return None
+        if os.path.isdir(os.path.join(probe, LEGACY_STATE_DIR)):
+            return probe
+        if os.path.exists(os.path.join(probe, ".git")):
+            return None
+        parent = os.path.dirname(probe)
+        if parent == probe:
+            return None
+        probe = parent
+
+
+def legacy_refusal(tool, start):
+    """Refuse (exit 2) instead of running without the project's boundary settings."""
+    legacy = legacy_state_root(start)
+    if not legacy:
+        return None
+    print(f"{tool}: {legacy} still uses the pre-rename state folder {LEGACY_STATE_DIR}/, which is no longer "
+          f"read. Move it with `mv {LEGACY_STATE_DIR} .methodsmith` (or run method-update), then retry.")
+    return 2
+
+
 def main(argv):
     if "--" not in argv or argv.index("--") == len(argv) - 1:
         print(__doc__.strip())
         return 2
     cmd = argv[argv.index("--") + 1:]
+    refused = legacy_refusal("method-safe-run", os.getcwd())
+    if refused:
+        return refused
     root = project_root(os.getcwd())
-    runs = os.path.join(root, ".ce-datascience", "runs")
+    runs = os.path.join(root, ".methodsmith", "runs")
     os.makedirs(runs, exist_ok=True)
-    ensure_ignored(root, ".ce-datascience/runs/", ".ce-datascience/runs/probe.log")
+    ensure_ignored(root, ".methodsmith/runs/", ".methodsmith/runs/probe.log")
     name = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime()) + f"-{os.getpid()}.log"
     log_path = os.path.join(runs, name)
     before = snapshot(root)

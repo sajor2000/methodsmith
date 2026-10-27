@@ -21,9 +21,9 @@ Ask exactly one question with the platform's blocking question tool (`AskUserQue
 
 Resolve `<today>` at runtime, then save:
 
-1. Run `git check-ignore -q .ce-datascience/config.local.yaml`. Exit 0 means ignored. Outside a git repository, skip to step 3.
-2. If it is not ignored, add `.ce-datascience/*.local.yaml` to `.gitignore` and say so in the confirmation line.
-3. Merge the block into `.ce-datascience/config.local.yaml`, creating the file if needed. Keep every other key, and drop any legacy `compliant` or `sensitive_data` key from the block so it cannot conflict with `mode`. Never write data values, identifiers, or credentials to the config.
+1. Run `git check-ignore -q .methodsmith/config.local.yaml`. Exit 0 means ignored. Outside a git repository, skip to step 3.
+2. If it is not ignored, add `.methodsmith/*.local.yaml` to `.gitignore` and say so in the confirmation line.
+3. Merge the block into `.methodsmith/config.local.yaml`, creating the file if needed. Keep every other key, and drop any legacy `compliant` or `sensitive_data` key from the block so it cannot conflict with `mode`. Never write data values, identifiers, or credentials to the config.
 
 In headless or non-interactive runs, do not ask or save. Work in schema-only mode for the run.
 
@@ -52,13 +52,13 @@ error tail. Aggregate tables under output/ print through method-aggregate-read,
 which checks the same bytes it shows (no identifier columns, no counts from
 1 to 10).
 To change this later, re-run the method-setup skill or edit phi_environment.mode
-in .ce-datascience/config.local.yaml.
+in .methodsmith/config.local.yaml.
 ```
 <!-- ask-and-save:end -->
 
 ## Identifier index
 
-Build or refresh the identifier index whenever `data_root` is set, in every mode (the guard uses it to keep patient names and IDs out of MCP tools and NCBI queries even with an approved endpoint). `scripts/method-identifier-index` in this skill's directory hashes values from identifier-like columns (names, MRN and other IDs, SSN, date of birth, address, phone, email) under `data_root` with a fresh salt and writes `.ce-datascience/identifier-index.local.json`, gitignored, with no plaintext. It prints counts only. Check that the file exists, then run it with the first interpreter found among `python3`, then `python`, then `py`:
+Build or refresh the identifier index whenever `data_root` is set, in every mode (the guard uses it to keep patient names and IDs out of MCP tools and NCBI queries even with an approved endpoint). `scripts/method-identifier-index` in this skill's directory hashes values from identifier-like columns (names, MRN and other IDs, SSN, date of birth, address, phone, email) under `data_root` with a fresh salt and writes `.methodsmith/identifier-index.local.json`, gitignored, with no plaintext. It prints counts only. Check that the file exists, then run it with the first interpreter found among `python3`, then `python`, then `py`:
 
 ```bash
 SKILL_DIR="<absolute path of the directory containing this SKILL.md>";

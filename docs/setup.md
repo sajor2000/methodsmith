@@ -229,9 +229,15 @@ Methodsmith is the same plugin as ce-datascience, renamed in 5.0. Every
 command and agent now starts with `method-` instead of `ce-`. A few names are
 also shorter, for example `/ce-statistical-analysis-plan` is now `/method-sap`.
 
-**What stays the same:** your own skills, your project's `.ce-datascience/`
-folder (including the PHI-boundary settings in `config.local.yaml`), and the
-plan -> work -> review -> compound loop.
+**What stays the same:** your own skills and the plan -> work -> review ->
+compound loop.
+
+**Move each project's state folder:** the per-project folder is now
+`.methodsmith/`. In every project that has a `.ce-datascience/` folder, run
+`mv .ce-datascience .methodsmith` (`/method-update` prints this command
+for the current project). The folder holds the PHI-boundary settings in `config.local.yaml`, so
+until it is moved the boundary guard treats the project as schema-only and
+says why; it never reads the old folder.
 
 **What the switch does:** the first Methodsmith install moves the old plugin's
 files to a `backups/` folder next to the new install. Nothing is deleted, and
@@ -254,9 +260,9 @@ bash plugins/methodsmith/skills/method-update/scripts/detect-pre-rename-install.
 | Gemini CLI, Kiro | `bunx github:sajor2000/methodsmith install methodsmith --to gemini --output .` (or `--to kiro`) in each workspace |
 | Qwen Code | `qwen extensions uninstall ce-datascience`, then `qwen extensions install sajor2000/methodsmith:methodsmith` |
 
-On Claude Code with `--aliases`, the old `/ce-*` commands keep working for one
-release as deprecated aliases that point at the new skills. Elsewhere, use the
-new names.
+The old `/ce-*` commands no longer work; use the new names. The deprecated
+`/ce-*` aliases that 5.x wrote with `--aliases` are removed the next time you
+run `bash install.sh claude --aliases`.
 
 <details>
 <summary>Every renamed command</summary>
@@ -393,7 +399,7 @@ is never silently treated as mixed R + Python.
 
 Before setup looks at any data, `method-setup` asks one question and saves the
 answer as `phi_environment.mode` in the gitignored, machine-local
-`.ce-datascience/config.local.yaml`:
+`.methodsmith/config.local.yaml`:
 
 | Answer | Saved as | What happens |
 |---|---|---|
@@ -407,7 +413,7 @@ Older configs keep working: `compliant: true` reads as `approved`,
 
 **What enforces it.** In Claude Code, a plugin `PreToolUse` hook
 (`hooks/data-boundary-guard.py`) runs only inside projects that have a
-`.ce-datascience/` directory, in the working tree or the main checkout of a
+`.methodsmith/` directory, in the working tree or the main checkout of a
 linked worktree. It is silent unless it blocks a call. In schema-only mode it
 denies:
 
@@ -433,7 +439,7 @@ denies:
   only read aggregate tables that pass the check below, run as before.
 
 **Safe runner.** `scripts/method-safe-run -- <command>` runs the command and writes
-its full stdout and stderr to `.ce-datascience/runs/<UTC-timestamp>-<pid>.log`
+its full stdout and stderr to `.methodsmith/runs/<UTC-timestamp>-<pid>.log`
 (gitignored). It prints only the exit code, the duration, the files created or
 modified under the project (path, size, and row count for tabular files), and
 the last 30 lines of stderr with quoted literals, digit runs of 4 or more,
@@ -498,7 +504,7 @@ builds and `method-data-qa` refreshes the identifier index with
 `scripts/method-identifier-index`. It reads identifier-like columns under
 `data_root` (names; MRN, patient, member, subscriber, and record IDs; claim
 numbers; SSN; date of birth; address; phone; email) and stores only salted
-hashes in `.ce-datascience/identifier-index.local.json`: local, gitignored,
+hashes in `.methodsmith/identifier-index.local.json`: local, gitignored,
 with a random per-project salt and no plaintext. It prints counts only. Each
 full value is stored, plus first+last name pairs, plus single tokens that
 contain a digit for ID columns only, so a lone surname or common word never
@@ -523,7 +529,7 @@ calls that mention a data file or an upload; anything else is allowed with a
 one-line warning, so a hook bug never blocks unrelated work.
 
 **Changing the answer.** Re-run `method-setup`, or edit or delete the
-`phi_environment` block in `.ce-datascience/config.local.yaml`.
+`phi_environment` block in `.methodsmith/config.local.yaml`.
 
 ## 2. Locked-Down Or Demo Laptop
 

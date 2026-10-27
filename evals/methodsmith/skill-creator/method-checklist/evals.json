@@ -4,11 +4,11 @@
     {
       "id": 1,
       "prompt": "Which reporting guideline do we follow? Study: retrospective cohort using our health system's EHR (Epic Clarity extract) 2018-2024, causal aim — does early statin exposure after stroke reduce 1-year mortality. No AI involved. Not preregistered yet. Setup was already run.",
-      "expected_output": "Routes the study to STROBE with RECORD, writes the canonical string fields to <repo-root>/.ce-datascience/config.local.yaml, drops fillable checklist placeholders under analysis/checklists/, and prints the __CE_CHECKLIST__ signal.",
+      "expected_output": "Routes the study to STROBE with RECORD, writes the canonical string fields to <repo-root>/.methodsmith/config.local.yaml, drops fillable checklist placeholders under analysis/checklists/, and prints the __CE_CHECKLIST__ signal.",
       "files": [],
       "expectations": [
         "Selects STROBE as primary and RECORD as an extension",
-        "Writes stack_profile.reporting_checklist: STROBE (string form, not boolean) and reporting_checklist_extensions: [RECORD] to <repo-root>/.ce-datascience/config.local.yaml resolved via git rev-parse --show-toplevel",
+        "Writes stack_profile.reporting_checklist: STROBE (string form, not boolean) and reporting_checklist_extensions: [RECORD] to <repo-root>/.methodsmith/config.local.yaml resolved via git rev-parse --show-toplevel",
         "Writes analysis/checklists/STROBE.md and analysis/checklists/RECORD.md as fillable checklist tables",
         "Heads each checklist placeholder with the guideline statement's citation (PMID/DOI) confirmed through the PubMed MCP rather than an invented or unverified reference",
         "Prints exactly one line of the form __CE_CHECKLIST__ primary=STROBE extensions=[RECORD]",

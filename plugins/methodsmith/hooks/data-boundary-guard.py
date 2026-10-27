@@ -7,7 +7,7 @@ Two functions carry the policy and are unit-tested in-process:
   classify(call, mode)  -> None (allow) or {"kind", "reason"} (deny)
 
 Modes come from `phi_environment.mode` in the machine-local
-`.ce-datascience/config.local.yaml` (worktree first, then the main checkout):
+`.methodsmith/config.local.yaml` (worktree first, then the main checkout):
 
   approved           endpoint approved for the data -> no access limits
   no-sensitive-data  public or synthetic data       -> no access limits
@@ -18,6 +18,9 @@ Legacy keys map onto it: compliant: true -> approved, compliant: false ->
 schema-only, sensitive_data: false -> no-sensitive-data. Any explicit
 schema-only signal wins a conflict. An unreadable or misspelled value, or no
 saved answer, also resolves to schema-only, with a deny reason that says why.
+A project that still has only the pre-rename state folder is schema-only until
+the folder is moved; that folder is read only for data_root, the identifier
+index, and run outputs, never for its mode.
 
 Egress (every mode except off): MCP tool arguments and Bash HTTP requests
 (curl/wget/httpie/xh to any host, so NCBI E-utilities by name or IP, and the
@@ -90,7 +93,10 @@ CODE_TYPES = {
 SCRIPT_EXTS = {"py", "r", "sh", "bash", "zsh", "jl", "qmd", "rmd", "js", "mjs", "ts", "rb", "pl", "php", "lua", "do", "sas"}
 MODES = ("approved", "schema-only", "no-sensitive-data")
 AGGREGATE_DIRS = ("output", "results", "analysis/publication", "analysis/sap-tables")
-CONFIG_REL = os.path.join(".ce-datascience", "config.local.yaml")
+STATE_DIR = ".methodsmith"
+# The pre-rename state folder. Detected so an unmoved project fails closed (schema-only), never read.
+LEGACY_STATE_DIR = ".ce-datascience"  # rebrand:keep
+CONFIG_REL = os.path.join(STATE_DIR, "config.local.yaml")
 
 METADATA_VERBS = {
     "ls", "du", "stat", "file", "wc", "mkdir", "rmdir", "rm", "touch", "test", "[",
@@ -245,7 +251,7 @@ def index_hit(text, index):
 # --- end identifier index ---
 
 # --- locale packs: opt-in per-project identifier shapes, data in hooks/locales/<locale>.json ---
-# A locale is set as `phi_environment.locale` in .ce-datascience/config.local.yaml. The pack is data:
+# A locale is set as `phi_environment.locale` in .methodsmith/config.local.yaml. The pack is data:
 # regexes plus (optional) named checksum validators, so new countries need no guard-code changes.
 # Checksum-valid matches are treated as identifiers; checksum-INVALID matches (synthetic/test
 # fixtures) are allowed, and a malformed or unknown pack fails closed.
@@ -321,7 +327,8 @@ def _header_patterns():
     return list(HEADER_KINDS) + extra
 
 
-INDEX_REL = os.path.join(".ce-datascience", "identifier-index.local.json")
+INDEX_REL = os.path.join(STATE_DIR, "identifier-index.local.json")
+LEGACY_INDEX_REL = os.path.join(LEGACY_STATE_DIR, "identifier-index.local.json")
 OUTPUTS = "outputs.txt"  # method-safe-run lists the files its runs wrote here, one project-relative path per line
 
 
@@ -372,6 +379,10 @@ def _git_common_dir(top):
         return None
 
 
+def _has_state(path):
+    return os.path.isdir(os.path.join(path, STATE_DIR)) or os.path.isdir(os.path.join(path, LEGACY_STATE_DIR))
+
+
 def _locate(anchor, cache):
     """Return (ce_root, main_root) for the project containing anchor, or None."""
     probe = anchor
@@ -385,7 +396,7 @@ def _locate(anchor, cache):
     ce_root, top, main = None, None, None
     walk = probe
     while True:
-        if ce_root is None and os.path.isdir(os.path.join(walk, ".ce-datascience")):
+        if ce_root is None and _has_state(walk):
             ce_root = walk
         if os.path.exists(os.path.join(walk, ".git")):
             top = walk
@@ -398,7 +409,7 @@ def _locate(anchor, cache):
         common = _git_common_dir(top)
         if common and os.path.basename(common.rstrip(os.sep)) == ".git":
             main = os.path.dirname(common.rstrip(os.sep))
-    if ce_root is None and main and os.path.isdir(os.path.join(main, ".ce-datascience")):
+    if ce_root is None and main and _has_state(main):
         ce_root = top
     result = (ce_root, main) if ce_root else None
     cache[probe] = result
@@ -506,24 +517,37 @@ def mode_from_config(phi, error):
 
 
 def _project_mode(ce_root, main):
+    bases = [ce_root] + ([main] if main else [])
     config = os.path.join(ce_root, CONFIG_REL)
     if not os.path.isfile(config) and main and os.path.isfile(os.path.join(main, CONFIG_REL)):
         config = os.path.join(main, CONFIG_REL)
-    if os.path.isfile(config):
-        phi, data_root, error = read_config(config)
+    legacy = not any(os.path.isdir(os.path.join(base, STATE_DIR)) for base in bases)
+    if legacy:
+        # Only the pre-rename folder exists. Its mode is never trusted (schema-only until it is
+        # moved); it is read only for what tightens the boundary: data_root and the locale.
+        legacy_config = next((c for c in (os.path.join(b, LEGACY_STATE_DIR, "config.local.yaml") for b in bases)
+                              if os.path.isfile(c)), None)
+        phi, data_root, _ = read_config(legacy_config) if legacy_config else (None, None, None)
+        phi = {"locale": phi["locale"]} if isinstance(phi, dict) and "locale" in phi else None
+        mode, why, detail = "schema-only", "legacy", ""
     else:
-        phi, data_root, error = None, None, None
-    mode, why, detail = mode_from_config(phi, error)
-    runs = os.path.join(ce_root, ".ce-datascience", "runs")  # method-safe-run logs hold raw output
+        if os.path.isfile(config):
+            phi, data_root, error = read_config(config)
+        else:
+            phi, data_root, error = None, None, None
+        mode, why, detail = mode_from_config(phi, error)
+    runs = os.path.join(ce_root, STATE_DIR, "runs")  # method-safe-run logs hold raw output
     data_roots = {runs, os.path.realpath(runs)}
+    for base in bases:  # logs left in an unmoved pre-rename folder are still data
+        legacy_runs = os.path.join(base, LEGACY_STATE_DIR, "runs")
+        data_roots.update({legacy_runs, os.path.realpath(legacy_runs)})
     if data_root:
         expanded = os.path.expanduser(data_root)
-        bases = [ce_root] + ([main] if main else [])
         for base in bases:
             path = os.path.normpath(expanded if os.path.isabs(expanded) else os.path.join(base, expanded))
             data_roots.update({path, os.path.realpath(path)})
     aggregate = set()
-    configured = (phi or {}).get("aggregate_dirs")
+    configured = None if legacy else (phi or {}).get("aggregate_dirs")  # never widen from the old folder
     inside = [ce_root, os.path.realpath(ce_root)]
     for rel in (configured if isinstance(configured, list) else AGGREGATE_DIRS):
         path = os.path.normpath(os.path.join(ce_root, os.path.expanduser(rel)))
@@ -532,11 +556,14 @@ def _project_mode(ce_root, main):
             continue  # an aggregate directory must be a subdirectory of its own project
         aggregate.update({path, real})
     aggregate = sorted(aggregate)
-    index_paths = [os.path.join(base, INDEX_REL) for base in [ce_root] + ([main] if main else [])]
+    # The pre-rename index and run outputs still count, so an unmoved or half-moved project
+    # keeps its identifier and output checks.
+    index_paths = [os.path.join(base, rel) for rel in (INDEX_REL, LEGACY_INDEX_REL) for base in bases]
+    output_lists = [os.path.join(runs, OUTPUTS)] + [os.path.join(b, LEGACY_STATE_DIR, "runs", OUTPUTS) for b in bases]
     locale_value = (phi or {}).get("locale")
     locale = _scalar(locale_value) if isinstance(locale_value, str) and locale_value.strip() else None
     return {"mode": mode, "why": why, "detail": detail, "roots": [ce_root], "data_roots": sorted(data_roots),
-            "aggregate_dirs": aggregate, "index_paths": index_paths, "output_lists": [os.path.join(runs, OUTPUTS)],
+            "aggregate_dirs": aggregate, "index_paths": index_paths, "output_lists": output_lists,
             "locale": locale or None}
 
 
@@ -923,7 +950,8 @@ def grep_violation(verb, args, cwd, mode, tainted):
     value_opts = {"-e", "--regexp", "-f", "--file", "-m", "--max-count", "-A", "-B", "-C", "--context",
                   "-d", "--directories", "-D", "--devices", "--include", "--exclude", "--exclude-dir",
                   "-g", "--glob", "--iglob", "-t", "--type", "-T", "--type-not", "--color", "--colour",
-                  "-M", "--max-columns", "-j", "--threads", "--label", "--sort", "--sortr"}
+                  "-M", "--max-columns", "-j", "--threads", "--label", "--sort", "--sortr",
+                  "--type-add", "--type-clear"}
     while i < len(args):
         token = args[i]
         if token in REDIRECTS:
@@ -933,6 +961,8 @@ def grep_violation(verb, args, cwd, mode, tainted):
             key, value = token.split("=", 1)
             if key in ("--include", "--glob", "--iglob", "--type"):
                 includes.append(value)
+            elif key in ("--type-add", "--type-clear"):
+                includes.append("!redefined-type")
             elif key in ("--file",):
                 files.append(value)
             elif key == "--directories" and value == "recurse":
@@ -949,6 +979,8 @@ def grep_violation(verb, args, cwd, mode, tainted):
                 files.append(value)
             elif token in ("--include", "-g", "--glob", "--iglob", "-t", "--type"):
                 includes.append(value)
+            elif token in ("--type-add", "--type-clear"):
+                includes.append("!redefined-type")  # a redefined type is not limited to code
             elif token in ("-d", "--directories") and value == "recurse":
                 recursive = True
             i += 2
@@ -962,7 +994,7 @@ def grep_violation(verb, args, cwd, mode, tainted):
                 flags = token[1:]
                 if verb not in ("rg", "ag", "ack", "git-grep") and ("r" in flags or "R" in flags):
                     recursive = True
-                if any(f in flags for f in "lLcq"):
+                if any(f in flags for f in ("lcq" if verb == "rg" else "lLcq")):  # rg -L follows symlinks
                     listing = True
             i += 1
             continue
@@ -983,7 +1015,12 @@ def grep_violation(verb, args, cwd, mode, tainted):
 
 
 def _is_code_glob(value):
+    parts = value.split()
+    if len(parts) > 1:  # several globs in one value: every one must be a code glob
+        return all(_is_code_glob(part) for part in parts)
     value = value.strip()
+    if not value or value.startswith("!"):  # a negated glob searches everything else, data included
+        return False
     if re.match(r"^[A-Za-z]+$", value):
         return value.lower() in CODE_TYPES
     for variant in expand_braces(value):
@@ -1406,7 +1443,7 @@ def identifier_reason(text, mode, key=""):
                     return f"an argument contains {label}"
     index = load_index(mode)
     if index is INVALID_INDEX:
-        return ("the project's identifier index (.ce-datascience/identifier-index.local.json) is malformed, so "
+        return ("the project's identifier index (.methodsmith/identifier-index.local.json) is malformed, so "
                 "arguments cannot be checked against it; rebuild it with method-identifier-index")
     if index and index_hit(text, index):
         return "an argument matches a value in the project's identifier index"
@@ -1421,6 +1458,21 @@ def mcp_violation(tool, tool_input, cwd, mode):
             return reason
         if uploadish and not value.startswith(("/clipboard", "http://", "https://")) and is_data_path(value.strip(), cwd, mode):
             return "the tool would send a local data file"
+    return None
+
+
+MCP_CODE_KEYS = {"code", "source", "script", "command", "cmd", "sql", "query_code", "cell", "program", "expression"}
+
+
+def mcp_access_violation(tool_input, cwd, mode):
+    """Schema-only: an MCP tool (filesystem, IDE, notebook, database) returns what it reads into the context."""
+    for key, value in _strings(tool_input):
+        text = value.strip()
+        if text and not re.search(r"\s", text) and not text.startswith(("http://", "https://")) \
+                and is_data_path(text, cwd, mode):
+            return "an MCP tool would read a data file into the model context"
+        if key in MCP_CODE_KEYS and (text_ref(value, cwd, mode) or lists_dataish_dir(value, cwd, mode)):
+            return "an MCP tool would run code that opens data"
     return None
 
 
@@ -1471,7 +1523,12 @@ def classify(call, mode):
     command = tool_input.get("command") if tool in ("Bash", "Monitor", "PowerShell") else None
     if tool.startswith("mcp__"):
         reason = mcp_violation(tool, tool_input, cwd, mode)
-        return {"kind": "egress", "reason": reason} if reason else None
+        if reason:
+            return {"kind": "egress", "reason": reason}
+        if mode["mode"] == "schema-only":
+            reason = mcp_access_violation(tool_input, cwd, mode)
+            return {"kind": "access", "reason": reason} if reason else None
+        return None
     if tool in ("WebFetch", "WebSearch"):
         for key, value in _strings(tool_input):
             reason = identifier_reason(value, mode, key)
@@ -1530,16 +1587,21 @@ def deny_message(result, mode, helper):
     if mode.get("why") == "unset":
         return ("methodsmith: no sensitive-data boundary is recorded for this project, so data values stay out "
                 f"of the model context ({reason}). Run the method-setup skill and choose a boundary, or set "
-                "phi_environment.mode in .ce-datascience/config.local.yaml.")
+                "phi_environment.mode in .methodsmith/config.local.yaml.")
+    if mode.get("why") == "legacy":
+        return ("methodsmith: this project still uses the pre-rename state folder "
+                f"{LEGACY_STATE_DIR}/, which is no longer read, so schema-only mode applies ({reason}). "
+                f"Move it with `mv {LEGACY_STATE_DIR} {STATE_DIR}` (or run method-update) to restore the "
+                "recorded boundary.")
     if mode.get("why") == "unreadable":
-        return ("methodsmith: the phi_environment block in .ce-datascience/config.local.yaml cannot be read "
+        return ("methodsmith: the phi_environment block in .methodsmith/config.local.yaml cannot be read "
                 f"({mode.get('detail')}), so schema-only mode applies ({reason}). Set phi_environment.mode to "
                 "approved, schema-only, or no-sensitive-data, or re-run method-setup.")
     return ("methodsmith schema-only mode: the model endpoint is not approved for this project's sensitive "
             f"data ({reason}). Inspect structure with `python3 \"{helper}\" <file>` (headings, types, counts, "
             f"% missing only). Run scripts that read data through `{SAFE_RUNNER} -- <command>`: it keeps their "
             "output in a local log and prints only the exit code, files written, and a masked stderr tail. If the endpoint is "
-            "approved, re-run method-setup or set phi_environment.mode in .ce-datascience/config.local.yaml.")
+            "approved, re-run method-setup or set phi_environment.mode in .methodsmith/config.local.yaml.")
 
 
 def emit(message):

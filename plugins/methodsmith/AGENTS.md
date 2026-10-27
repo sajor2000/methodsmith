@@ -207,7 +207,7 @@ When dispatching sub-agents, **omit the `mode` parameter** on the Agent/Task too
 
 ### Reading Config Files from Skills
 
-Plugin config lives at `.ce-datascience/config.local.yaml` in the repo root and is machine-local.
+Plugin config lives at `.methodsmith/config.local.yaml` in the repo root and is machine-local.
 
 1. Pre-resolve only the repository root with `!` backtick syntax. Do not embed config contents through `cat`; non-Claude platforms may leave the command literal in the prompt.
 2. If pre-resolution did not yield an absolute path, resolve the root at runtime with `git rev-parse --show-toplevel`.

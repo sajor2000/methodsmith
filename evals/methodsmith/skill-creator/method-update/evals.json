@@ -27,15 +27,17 @@
     },
     {
       "id": 3,
-      "prompt": "/method-update -- I still have the plugin from before it was renamed to Methodsmith (the old ce datascience one) in Claude Code and OpenCode. What do I run to switch, and will I lose my own skills?",
+      "prompt": "/method-update -- I still have the plugin from before it was renamed to Methodsmith (the old ce datascience one) in Claude Code and OpenCode, and this project still has its old pre-rename state folder. What do I run to switch, and will I lose my own skills or my PHI settings?",
       "expected_output": "Runs the bundled read-only detector, shows the exact per-harness switch commands it prints and the old -> new command table, says old plugin files are backed up rather than deleted and the user's own skills stay, and does not run the commands itself.",
       "files": [],
       "expectations": [
         "Runs scripts/detect-pre-rename-install.sh through the SKILL_DIR anchor before the version check",
         "Shows the Claude Code switch: uninstall the old plugin id, remove the old marketplace, add sajor2000/methodsmith, install methodsmith@methodsmith",
         "Shows 'bunx github:sajor2000/methodsmith install methodsmith --to opencode' for OpenCode",
+        "Reports the unmoved project state folder and shows the printed mv command that moves the old state folder to .methodsmith/, explaining that the guard treats the project as schema-only until it is moved",
         "States that the new install moves old plugin files to backups and leaves the user's own skills in place",
-        "Does not run the uninstall or install commands for the user"
+        "Does not run the uninstall or install commands for the user",
+        "Does not run the mv command for the user"
       ]
     }
   ]

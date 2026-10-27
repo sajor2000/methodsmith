@@ -4,14 +4,14 @@
     {
       "id": 1,
       "prompt": "/method-setup -- new repo for an ICU cohort study. There's a pyproject.toml, uv.lock, analysis/explore.ipynb and a cohort.parquet in data/.",
-      "expected_output": "Asks the one sensitive-data boundary question before inspecting data, then infers a Python/Jupyter/uv/Parquet profile from evidence, shows exactly one Detected profile card with three choices, saves only confirmed values to .ce-datascience/config.local.yaml, and runs the health check.",
+      "expected_output": "Asks the one sensitive-data boundary question before inspecting data, then infers a Python/Jupyter/uv/Parquet profile from evidence, shows exactly one Detected profile card with three choices, saves only confirmed values to .methodsmith/config.local.yaml, and runs the health check.",
       "files": [],
       "expectations": [
         "Before reading any data file, asks one sensitive-data boundary question with options Approved endpoint: full access, Not approved or unsure: schema-only, No sensitive data: public or synthetic",
         "Shows exactly one 'Detected profile' review card with options Continue with detected profile, Adjust a field, Full survey before any detailed questions",
         "Lists evidence and confidence for each field (e.g., Python high: pyproject.toml; Environment uv high: uv.lock)",
         "Does not ask R package or R project-type questions for this Python-only evidence",
-        "Writes only confirmed, non-null values to .ce-datascience/config.local.yaml and emits a __CE_LANG__ handoff",
+        "Writes only confirmed, non-null values to .methodsmith/config.local.yaml and emits a __CE_LANG__ handoff",
         "Runs scripts/check-health and finishes by recommending method-workflow"
       ]
     },

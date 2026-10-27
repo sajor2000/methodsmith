@@ -68,7 +68,7 @@ describe("#86: edit tools return a snippet of the file, so they follow the Read 
   })
 })
 
-const indexFile = (root: string) => path.join(root, ".ce-datascience", "identifier-index.local.json")
+const indexFile = (root: string) => path.join(root, ".methodsmith", "identifier-index.local.json")
 const VALID_SALT = "00112233445566778899aabbccddeeff"
 
 describe("#87: a malformed identifier index fails closed instead of disabling the checks", () => {
@@ -242,7 +242,7 @@ describe("#87: method-safe-run trusts a traceback frame only when it names a rea
   })
 })
 
-describe("#87 re-review: method-safe-run runs alone, and its writes under .ce-datascience are tracked (schema-only)", () => {
+describe("#87 re-review: method-safe-run runs alone, and its writes under .methodsmith are tracked (schema-only)", () => {
   test("another command that reads files in the same Bash call as method-safe-run is denied", () => {
     const root = project(SCHEMA_ONLY)
     const writer = `${safeRun} -- python3 -c "open('leak.txt','w').write(open('data/cohort.csv').read())"`
@@ -259,11 +259,11 @@ describe("#87 re-review: method-safe-run runs alone, and its writes under .ce-da
     ])
   })
 
-  test("files a run writes under .ce-datascience (outside runs/) are data afterwards", () => {
+  test("files a run writes under .methodsmith (outside runs/) are data afterwards", () => {
     const root = project(SCHEMA_ONLY)
-    const ran = Bun.spawnSync([safeRun, "--", "python3", "-c", "open('.ce-datascience/leak.txt','w').write(open('data/cohort.csv').read())"], { cwd: root })
+    const ran = Bun.spawnSync([safeRun, "--", "python3", "-c", "open('.methodsmith/leak.txt','w').write(open('data/cohort.csv').read())"], { cwd: root })
     expect(ran.exitCode).toBe(0)
-    expectAll(root, "deny", [["Read", { file_path: ".ce-datascience/leak.txt" }], ["Bash", bash("cat .ce-datascience/leak.txt")]])
+    expectAll(root, "deny", [["Read", { file_path: ".methodsmith/leak.txt" }], ["Bash", bash("cat .methodsmith/leak.txt")]])
   })
 })
 

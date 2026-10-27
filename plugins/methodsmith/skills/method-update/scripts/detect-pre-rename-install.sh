@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # rebrand:keep-start -- this script looks for the plugin's pre-5.0 name on purpose.
 # Read-only: finds installs of ce-datascience (Methodsmith's name before 5.0)
-# and prints the exact commands that switch each one to Methodsmith.
+# and an unmoved .ce-datascience/ project folder, and prints the exact commands
+# that switch each one to Methodsmith.
 # It never changes anything. Exit 0 whether or not an old install exists.
 
 set -u
@@ -48,8 +49,8 @@ if [ -n "$claude_ids" ]; then
 fi
 if ls "$claude_dir/commands"/ce-*.md >/dev/null 2>&1 && grep -lq "CE_DATASCIENCE_ALIAS_MANAGED" "$claude_dir/commands"/ce-*.md 2>/dev/null; then
   section "Claude Code bare aliases"
-  echo "Re-run the alias installer from a methodsmith checkout. It replaces the old /ce-* aliases with"
-  echo "deprecated ones that point at the new skills, and adds /method-* aliases:"
+  echo "Re-run the alias installer from a methodsmith checkout. It removes the old /ce-* aliases"
+  echo "and adds /method-* aliases:"
   echo "bash install.sh claude --aliases"
 fi
 
@@ -89,19 +90,40 @@ if [ -d "$qwen_dir/$OLD" ]; then
   echo "qwen extensions install $REPO:methodsmith"
 fi
 
-if [ "$found" -eq 0 ]; then
+# Project state folder: checked whether or not an old install remains, because a project
+# can outlive the install that created it. The folder is no longer read, so the boundary
+# guard runs the project as schema-only until it is moved.
+project_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+legacy_state=0
+if [ -d "$project_root/.$OLD" ] && [ ! -d "$project_root/.methodsmith" ]; then
+  legacy_state=1
+fi
+
+if [ "$found" -eq 0 ] && [ ! -d "$project_root/.$OLD" ]; then
   echo "No $OLD install found. Nothing to migrate."
   exit 0
 fi
 
-echo
-echo "## Project folders"
-echo "Keep any .$OLD/ folder in your projects. Methodsmith 5.0 still reads its config there,"
-echo "including the PHI-boundary settings in .$OLD/config.local.yaml."
-echo
-echo "## Renamed commands"
-echo "Every command and agent now starts with method- instead of ce-. The full table:"
-echo
-sed -n '/^| /p' "$script_dir/../references/renamed-commands.md"
+if [ "$legacy_state" -eq 1 ]; then
+  [ "$found" -eq 1 ] && echo
+  echo "## Project state folder"
+  echo "This project still has .$OLD/, which Methodsmith no longer reads. Until it is moved, the"
+  echo "boundary guard treats the project as schema-only and the data helpers refuse to run."
+  echo "Move it (it keeps the PHI-boundary settings in config.local.yaml):"
+  echo "mv \"$project_root/.$OLD\" \"$project_root/.methodsmith\""
+elif [ -d "$project_root/.$OLD" ]; then
+  [ "$found" -eq 1 ] && echo
+  echo "## Project state folder"
+  echo "This project has both .$OLD/ and .methodsmith/. Only .methodsmith/ is read. Compare"
+  echo "the two config.local.yaml files, keep what you need in .methodsmith/, then remove .$OLD/."
+fi
+
+if [ "$found" -eq 1 ]; then
+  echo
+  echo "## Renamed commands"
+  echo "Every command and agent now starts with method- instead of ce-. The full table:"
+  echo
+  sed -n '/^| /p' "$script_dir/../references/renamed-commands.md"
+fi
 exit 0
 # rebrand:keep-end

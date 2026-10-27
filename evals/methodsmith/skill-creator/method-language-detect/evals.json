@@ -31,7 +31,7 @@
       "expected_output": "With no reliable signals, falls back to cached config if present (source=cached) or emits primary=unknown secondary=null source=auto, and still does not ask a language question within this skill.",
       "files": [],
       "expectations": [
-        "Checks <repo-root>/.ce-datascience/config.local.yaml for stack_profile.language and uses source=cached if it exists",
+        "Checks <repo-root>/.methodsmith/config.local.yaml for stack_profile.language and uses source=cached if it exists",
         "Otherwise emits __CE_LANG__ primary=unknown secondary=null source=auto",
         "Does not ask the user a language-choice question inside this skill, even though the user offered",
         "Does not treat the detection result as a final user preference"

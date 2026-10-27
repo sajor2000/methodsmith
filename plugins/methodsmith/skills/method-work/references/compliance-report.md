@@ -10,7 +10,7 @@
 - Agent Instructions for Updating the Report
 - SAP Tracking Integration
 
-Defines the format for `.ce-datascience/compliance-report.md` — the Git-native compliance tracking file maintained by `method-reporting-checklist-reviewer`. This file lives in the user's project and is append-only: existing entries are never deleted or overwritten, only updated and extended.
+Defines the format for `.methodsmith/compliance-report.md` — the Git-native compliance tracking file maintained by `method-reporting-checklist-reviewer`. This file lives in the user's project and is append-only: existing entries are never deleted or overwritten, only updated and extended.
 
 ---
 
@@ -114,7 +114,7 @@ The changelog is strictly append-only. Each review run appends a new entry at th
 
 When `method-reporting-checklist-reviewer` runs:
 
-1. **Check for existing report.** Look for `.ce-datascience/compliance-report.md` in the project root.
+1. **Check for existing report.** Look for `.methodsmith/compliance-report.md` in the project root.
 
 2. **If no report exists:** Create it with the Header and Checklist Status sections. All items start as `INCOMPLETE`. Append the first changelog entry.
 
@@ -136,7 +136,7 @@ When `method-reporting-checklist-reviewer` runs:
 When `method-work` runs and a compliance report exists, display its overall status in the coverage summary:
 
 ```
-Reporting Compliance (from: .ce-datascience/compliance-report.md)
+Reporting Compliance (from: .methodsmith/compliance-report.md)
 
 | Guideline | Complete | Incomplete | Waived | Last updated |
 |-----------|----------|------------|--------|--------------|

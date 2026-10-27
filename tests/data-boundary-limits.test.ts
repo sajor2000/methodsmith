@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "fs"
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "fs"
 import path from "path"
 import { APPROVED, SCHEMA_ONLY, bash, expectAll, guard, helper, pluginRoot, project, runGuard, verdicts } from "./data-boundary-harness"
 
@@ -9,7 +9,7 @@ function buildIndex(cwd: string, ...args: string[]) {
   const proc = Bun.spawnSync([indexer, ...args], { cwd })
   return { code: proc.exitCode, out: proc.stdout.toString() + proc.stderr.toString() }
 }
-const indexPath = (root: string) => path.join(root, ".ce-datascience", "identifier-index.local.json")
+const indexPath = (root: string) => path.join(root, ".methodsmith", "identifier-index.local.json")
 function runSafe(cwd: string, ...cmd: string[]) {
   const proc = Bun.spawnSync([safeRun, "--", ...cmd], { cwd })
   return { code: proc.exitCode, out: proc.stdout.toString() + proc.stderr.toString() }
@@ -94,11 +94,11 @@ describe("limit 1b: method-safe-run keeps script output out of the context", () 
     expect(out).toContain("exit code: 3")
     expect(out).not.toContain("Zed Testperson")
     expect(out).not.toContain("FAKE0001")
-    const logs = readdirSync(path.join(root, ".ce-datascience", "runs"))
+    const logs = readdirSync(path.join(root, ".methodsmith", "runs"))
     expect(logs).toHaveLength(1)
     expect(logs[0]).toMatch(/^\d{8}T\d{6}Z-\d+\.log$/)
-    expect(out).toContain(`.ce-datascience/runs/${logs[0]}`)
-    const log = readFileSync(path.join(root, ".ce-datascience", "runs", logs[0]), "utf8")
+    expect(out).toContain(`.methodsmith/runs/${logs[0]}`)
+    const log = readFileSync(path.join(root, ".methodsmith", "runs", logs[0]), "utf8")
     expect(log).toContain("Zed Testperson FAKE0001")
     expect(log).toContain("to stderr")
   })
@@ -113,7 +113,7 @@ describe("limit 1b: method-safe-run keeps script output out of the context", () 
     const size = readFileSync(path.join(root, "output", "table1.csv")).length
     expect(out).toContain(`created  output/table1.csv  ${size} bytes  2 rows`)
     expect(out).toMatch(/modified src\/load\.py  \d+ bytes/)
-    expect(out).not.toMatch(/(created|modified)\s+\.ce-datascience/)
+    expect(out).not.toMatch(/(created|modified)\s+\.methodsmith/)
   })
 
   test("prints a masked stderr tail that keeps traceback structure", () => {
@@ -139,13 +139,13 @@ describe("limit 1b: method-safe-run keeps script output out of the context", () 
     runSafe(root, "true")
     runSafe(root, "true")
     const ignore = readFileSync(path.join(root, ".gitignore"), "utf8")
-    expect(ignore.split("\n").filter((l) => l === ".ce-datascience/runs/")).toHaveLength(1)
+    expect(ignore.split("\n").filter((l) => l === ".methodsmith/runs/")).toHaveLength(1)
     expect(ignore).toStartWith("node_modules/\n")
-    expect(Bun.spawnSync(["git", "check-ignore", "-q", ".ce-datascience/runs/x.log"], { cwd: root }).exitCode).toBe(0)
+    expect(Bun.spawnSync(["git", "check-ignore", "-q", ".methodsmith/runs/x.log"], { cwd: root }).exitCode).toBe(0)
     const covered = project(SCHEMA_ONLY, { git: "real" })
-    writeFileSync(path.join(covered, ".gitignore"), ".ce-datascience/\n")
+    writeFileSync(path.join(covered, ".gitignore"), ".methodsmith/\n")
     runSafe(covered, "true")
-    expect(readFileSync(path.join(covered, ".gitignore"), "utf8")).toBe(".ce-datascience/\n")
+    expect(readFileSync(path.join(covered, ".gitignore"), "utf8")).toBe(".methodsmith/\n")
   })
 
   test("masks identifier-index hits in the stderr tail and in reported file names", () => {
@@ -161,14 +161,14 @@ describe("limit 1b: method-safe-run keeps script output out of the context", () 
 
   test("run logs are data in schema-only mode: Read, cat, tail, and grep are denied", () => {
     const root = project(SCHEMA_ONLY)
-    withFile(root, ".ce-datascience/runs/20261015T000000Z-1.log", "Zed Testperson\n")
+    withFile(root, ".methodsmith/runs/20261015T000000Z-1.log", "Zed Testperson\n")
     expectAll(root, "deny", [
-      ["Read", { file_path: ".ce-datascience/runs/20261015T000000Z-1.log" }],
-      ["Bash", bash("cat .ce-datascience/runs/20261015T000000Z-1.log")],
-      ["Bash", bash("tail -n 5 .ce-datascience/runs/*.log")],
-      ["Grep", { pattern: "Zed", path: ".ce-datascience/runs", output_mode: "content" }],
+      ["Read", { file_path: ".methodsmith/runs/20261015T000000Z-1.log" }],
+      ["Bash", bash("cat .methodsmith/runs/20261015T000000Z-1.log")],
+      ["Bash", bash("tail -n 5 .methodsmith/runs/*.log")],
+      ["Grep", { pattern: "Zed", path: ".methodsmith/runs", output_mode: "content" }],
     ])
-    expectAll(root, "allow", [["Bash", bash("ls .ce-datascience/runs")], ["Read", { file_path: ".ce-datascience/config.local.yaml" }]])
+    expectAll(root, "allow", [["Bash", bash("ls .methodsmith/runs")], ["Read", { file_path: ".methodsmith/config.local.yaml" }]])
   })
 })
 
@@ -190,7 +190,7 @@ describe("limit 2a: method-identifier-index stores salted hashes of identifier v
     for (const value of ["zed", "testperson", "fake0001", "1970", "quinn", "samplewright", "55501", "mbr"]) {
       expect({ value, stored: raw.toLowerCase().includes(value) }).toEqual({ value, stored: false })
     }
-    expect(Bun.spawnSync(["git", "check-ignore", "-q", ".ce-datascience/identifier-index.local.json"], { cwd: root }).exitCode).toBe(0)
+    expect(Bun.spawnSync(["git", "check-ignore", "-q", ".methodsmith/identifier-index.local.json"], { cwd: root }).exitCode).toBe(0)
     const again = JSON.parse((buildIndex(root), readFileSync(indexPath(root), "utf8")))
     expect(again.salt).not.toBe(index.salt)
   })
@@ -426,5 +426,55 @@ describe("limit 5: aggregate outputs are readable in schema-only mode when they 
         ["Bash", bash("cat data/summary/table1.csv")],
       ])
     }
+  })
+})
+
+describe("pre-rename state folder: the data helpers refuse instead of running without the boundary", () => {
+  const LEGACY = ".ce-datascience" // rebrand:keep
+  function legacyProject() {
+    const root = project(undefined, { ceDir: false })
+    mkdirSync(path.join(root, LEGACY))
+    writeFileSync(path.join(root, LEGACY, "config.local.yaml"), APPROVED)
+    return root
+  }
+
+  test("method-safe-run, method-identifier-index, and schema-peek exit 2 with the move command", () => {
+    const root = legacyProject()
+    const peek = Bun.spawnSync(["python3", helper, path.join(root, "data", "cohort.csv")], { cwd: root })
+    for (const { code, out } of [
+      runSafe(root, "true"),
+      buildIndex(root),
+      { code: peek.exitCode, out: peek.stdout.toString() },
+    ]) {
+      expect(code).toBe(2)
+      expect(out).toContain(`mv ${LEGACY} .methodsmith`)
+      expect(out).not.toContain("FAKE0001")
+    }
+    expect(existsSync(path.join(root, ".methodsmith"))).toBe(false)
+  })
+
+  test("the guard still applies the old folder's data_root, identifier index, and run outputs", () => {
+    // Build the state in a current project, then move it back to the pre-rename name.
+    const root = project("phi_environment:\n  mode: approved\nstack_profile:\n  data_root: secure\n")
+    withFile(root, "secure/notes.txt", "synthetic note\n")
+    withFile(root, "secure/cohort.csv", "record_id,patient_name\nFAKE0001,Zed Testperson\n")
+    withFile(root, "results/out.txt", "synthetic output\n")
+    expect(buildIndex(root).code).toBe(0)
+    expect(existsSync(indexPath(root))).toBe(true)
+    withFile(root, ".methodsmith/runs/outputs.txt", "results/out.txt\n")
+    renameSync(path.join(root, ".methodsmith"), path.join(root, LEGACY))
+    const [secure, output, egress, readme] = verdicts(root, [
+      ["Read", { file_path: path.join(root, "secure", "notes.txt") }],
+      ["Read", { file_path: path.join(root, "results", "out.txt") }],
+      ["mcp__paperclip__search", { query: "Zed Testperson sepsis" }],
+      ["mcp__paperclip__search", { query: "sepsis bundle mortality" }],
+    ])
+    expect([secure.decision, output.decision, egress.decision, readme.decision]).toEqual(["deny", "deny", "deny", "allow"])
+    expect(egress.kind).toBe("egress")
+  })
+
+  test("once moved, the helpers run normally", () => {
+    const root = project(SCHEMA_ONLY)
+    expect(runSafe(root, "true").code).toBe(0)
   })
 })

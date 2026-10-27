@@ -38,7 +38,7 @@ Pick the narrowest row and read its reference file before writing code. Each fil
 4. Load the `method-data-qa` skill before model code and keep R transformations fail-loud at schema, join, and type boundaries.
 5. Preserve lockfiles and record `sessionInfo()` or the project-equivalent environment evidence with any reproducible result.
 6. Load the `method-review` skill for causal, survival, or reporting claims; language-specific R syntax does not validate methodology by itself.
-7. When `phi_environment.mode` in `.ce-datascience/config.local.yaml` is `schema-only`, run R scripts that read data as `method-safe-run -- Rscript <script>` (or `method-safe-run -- quarto render <doc>`), using the path the guard's deny message gives; it shows only the exit code, files written, and a masked stderr tail. Write results with `write.csv()` or `knitr::kable()` as aggregate tables, counts under 11 suppressed, under `output/` or another `phi_environment.aggregate_dirs` entry.
+7. When `phi_environment.mode` in `.methodsmith/config.local.yaml` is `schema-only`, run R scripts that read data as `method-safe-run -- Rscript <script>` (or `method-safe-run -- quarto render <doc>`), using the path the guard's deny message gives; it shows only the exit code, files written, and a masked stderr tail. Write results with `write.csv()` or `knitr::kable()` as aggregate tables, counts under 11 suppressed, under `output/` or another `phi_environment.aggregate_dirs` entry.
 
 ## Evidence-first R guidance
 

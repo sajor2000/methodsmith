@@ -10,7 +10,7 @@
 #   1. Refuses if the working tree is dirty.
 #   2. Tags the current commit as `submission/<tag>`.
 #   3. Writes submissions/<tag>/manifest.yaml with: commit sha, SAP version,
-#      locked-wave hash from .ce-datascience/data-state.yaml, environment
+#      locked-wave hash from .methodsmith/data-state.yaml, environment
 #      lock-file hashes, and the frozen-at timestamp.
 #
 # What it does NOT do:
@@ -46,13 +46,13 @@ USER="$(git config user.name || echo unknown)"
 # SAP version (best-effort from analysis/sap.md)
 SAP_VERSION="$(grep -m1 '^Version:' analysis/sap.md 2>/dev/null | awk '{print $2}' || echo unknown)"
 
-# Locked wave (best-effort from .ce-datascience/data-state.yaml)
-WAVE="$(grep -m1 '^current_wave:' .ce-datascience/data-state.yaml 2>/dev/null | awk '{print $2}' || echo unknown)"
+# Locked wave (best-effort from .methodsmith/data-state.yaml)
+WAVE="$(grep -m1 '^current_wave:' .methodsmith/data-state.yaml 2>/dev/null | awk '{print $2}' || echo unknown)"
 WAVE_HASH="$(awk -v w="$WAVE" '
   $1 == w":" { in_wave=1; next }
   in_wave && /^  hash_sha256:/ { print $2; exit }
   in_wave && /^[a-zA-Z0-9_-]+:$/ { exit }
-' .ce-datascience/data-state.yaml 2>/dev/null || echo unknown)"
+' .methodsmith/data-state.yaml 2>/dev/null || echo unknown)"
 
 # Hash any environment lock files that exist
 ENV_LOCKS=""

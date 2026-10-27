@@ -76,7 +76,7 @@ Compare current state to `entry_criteria`:
 
 - `analysis/sprint-log.yaml` -- the source of truth (the `sprints:` entry named `<name>`)
 - `analysis/sap-tables/02-outputs.csv` -- planned-output schema
-- `analysis/data-waves.md` or `.ce-datascience/data-state.yaml` -- data-wave state
+- `analysis/data-waves.md` or `.methodsmith/data-state.yaml` -- data-wave state
 - `analysis/sap.md` -- SAP version and amendment log
 - `Makefile` / `_targets.R` / `dvc.yaml` / `Snakefile` -- build system
 - `_freeze/` / `*.ipynb` -- rendered notebook outputs

@@ -23,7 +23,7 @@ The rule is strict: **actual columns and QA evidence come before SAP finalizatio
 
 1. Scan the input, chat context, stack profile, and project tree for inspectable data evidence:
    - explicit data file or table paths
-   - `.ce-datascience/data-state.yaml` registered waves
+   - `.methodsmith/data-state.yaml` registered waves
    - `analysis/cohort/` extracts, waterfall files, or concept-set outputs
    - `data/`, `input/`, `extracts/`, `analysis/data/`, Parquet/CSV/Feather files, notebooks with data reads, or query files
    - existing `__CE_DATA_PROFILE__`, `__CE_DATA_QA__`, `__CE_COHORT__`, or `__CE_CLIF__` handoff signals, and `method-data-qa` reports at `reports/data-qa/<extract_id>.md` (legacy fallback: `analysis/data-qa-report.md`)

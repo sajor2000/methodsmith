@@ -26,7 +26,7 @@ describe("Methodsmith docs", () => {
       expect(text).toContain("bunx github:sajor2000/methodsmith install methodsmith --to opencode")
       expect(text).toContain("codex plugin marketplace add sajor2000/methodsmith")
       expect(text).toContain(renamedCommandsTable())
-      expect(text).toContain(".ce-datascience/") // rebrand:keep
+      expect(text).toContain("mv .ce-datascience .methodsmith") // rebrand:keep
     })
 
     test(`${doc} credits Every's Compound Engineering`, () => {

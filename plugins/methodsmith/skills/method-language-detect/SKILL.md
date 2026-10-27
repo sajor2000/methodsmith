@@ -62,7 +62,7 @@ Also print one concise banner:
 If no reliable signals are found:
 
 - Use `primary=unknown secondary=null source=auto`.
-- Resolve the repository root with `git rev-parse --show-toplevel`, read `<repo-root>/.ce-datascience/config.local.yaml` with the native file-read tool, and fall back to the main checkout in a linked worktree. If `stack_profile.language` (written by `method-setup`) exists there, reuse it as `source=cached`; otherwise use `stack_profile.inference.language.value` when its confidence is `high`.
+- Resolve the repository root with `git rev-parse --show-toplevel`, read `<repo-root>/.methodsmith/config.local.yaml` with the native file-read tool, and fall back to the main checkout in a linked worktree. If `stack_profile.language` (written by `method-setup`) exists there, reuse it as `source=cached`; otherwise use `stack_profile.inference.language.value` when its confidence is `high`.
 - Never ask the user a language question in this skill.
 
 ## Consumers

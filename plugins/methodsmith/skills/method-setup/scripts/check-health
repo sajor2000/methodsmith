@@ -87,13 +87,18 @@ done
 
 repo_cfg_gitignore="skip"
 config_exists="skip"
+legacy_state="no"
 
 if [ "$in_repo" = "yes" ]; then
   repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
 
-  if [ -f "$repo_root/.ce-datascience/config.local.yaml" ]; then
+  if [ -d "$repo_root/.ce-datascience" ]; then  # rebrand:keep
+    legacy_state="yes"
+  fi
+
+  if [ -f "$repo_root/.methodsmith/config.local.yaml" ]; then
     config_exists="ok"
-    if git check-ignore -q "$repo_root/.ce-datascience/config.local.yaml" 2>/dev/null; then
+    if git check-ignore -q "$repo_root/.methodsmith/config.local.yaml" 2>/dev/null; then
       repo_cfg_gitignore="ok"
     else
       repo_cfg_gitignore="missing"
@@ -166,11 +171,20 @@ if [ "$in_repo" = "yes" ]; then
     has_project_issues="yes"
   fi
 
+  if [ "$legacy_state" = "yes" ]; then
+    has_project_issues="yes"
+  fi
+
   if [ "$has_project_issues" = "yes" ]; then
     section "Project"
 
+    if [ "$legacy_state" = "yes" ]; then
+      warn "Pre-rename state folder found; move it: mv .ce-datascience .methodsmith (the guard runs schema-only until then)"  # rebrand:keep
+      issues=$((issues + 1))
+    fi
+
     if [ "$config_exists" = "missing" ]; then
-      warn "Stack profile not configured (.ce-datascience/config.local.yaml)"
+      warn "Stack profile not configured (.methodsmith/config.local.yaml)"
       issues=$((issues + 1))
     fi
 

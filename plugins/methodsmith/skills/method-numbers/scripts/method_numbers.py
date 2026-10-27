@@ -371,8 +371,12 @@ DATAISH_DIRS = {"data", "raw", "rawdata", "restricted", "phi", "extract", "extra
                 "source_data", "sourcedata"}
 
 
+# The pre-rename state folder is read here only to refuse more: its data roots and run outputs stay data.
+STATE_DIRS = (".methodsmith", ".ce-datascience")  # rebrand:keep
+
+
 def _data_roots(root):
-    text = _read(os.path.join(root, ".ce-datascience", "config.local.yaml")) or ""
+    text = "\n".join(_read(os.path.join(root, d, "config.local.yaml")) or "" for d in STATE_DIRS)
     return [os.path.realpath(os.path.join(root, value.strip().strip("'\""))) for value in
             re.findall(r"^\s*data_root:\s*([^#\n]+)", text, re.M) if value.strip()]
 
@@ -389,7 +393,7 @@ def is_data_path(path, root):
 
 def run_outputs(root):
     """Files method-safe-run runs wrote; the guard treats them as data."""
-    text = _read(os.path.join(root, ".ce-datascience", "runs", "outputs.txt")) or ""
+    text = "\n".join(_read(os.path.join(root, d, "runs", "outputs.txt")) or "" for d in STATE_DIRS)
     return {os.path.realpath(os.path.join(root, line)) for line in text.splitlines() if line}
 
 

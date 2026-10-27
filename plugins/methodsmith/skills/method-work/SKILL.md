@@ -21,7 +21,7 @@ argument-hint: "[Plan doc path or description of work. Blank to auto use latest 
 The repository root is pre-resolved at skill load:
 !`git rev-parse --show-toplevel 2>/dev/null || true`
 
-Use it as `<repo-root>` if absolute, else run `git rev-parse --show-toplevel`. Read `<repo-root>/.ce-datascience/config.local.yaml` with the native file-read tool (in a linked worktree without it, try the main checkout from the absolute common Git directory). Parse `language`, `ide`, `libraries`, and `notebook_format` to drive `references/scaffolding-templates.md` (without config, infer the stack from project files), and `phi_environment` for the boundary gate below; do not open data files before that gate.
+Use it as `<repo-root>` if absolute, else run `git rev-parse --show-toplevel`. Read `<repo-root>/.methodsmith/config.local.yaml` with the native file-read tool (in a linked worktree without it, try the main checkout from the absolute common Git directory). Parse `language`, `ide`, `libraries`, and `notebook_format` to drive `references/scaffolding-templates.md` (without config, infer the stack from project files), and `phi_environment` for the boundary gate below; do not open data files before that gate.
 
 ## Input Document
 

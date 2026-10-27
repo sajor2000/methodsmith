@@ -1,6 +1,6 @@
 # Output Mode Resolution (Phase 0.0)
 
-`OUTPUT_FORMAT` is exclusive: the plan is written as markdown (`.md`) OR HTML (`.html`), never both. Precedence: CLI arg > config > default (`md`), with a hard pipeline override. `SKILL.md` resolves `<repo-root>` and reads `.ce-datascience/config.local.yaml`; apply these steps to the result.
+`OUTPUT_FORMAT` is exclusive: the plan is written as markdown (`.md`) OR HTML (`.html`), never both. Precedence: CLI arg > config > default (`md`), with a hard pipeline override. `SKILL.md` resolves `<repo-root>` and reads `.methodsmith/config.local.yaml`; apply these steps to the result.
 
 1. **CLI arg.** Scan `$ARGUMENTS` for a token starting with the literal prefix `output:`. If found, strip it before treating the remainder as the feature description, and match its value case-insensitively against `md` and `html`.
    - `output:` alone (no value) -> no-op; fall through to step 2.

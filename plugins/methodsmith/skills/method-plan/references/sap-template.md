@@ -188,7 +188,7 @@ status: draft | final | amended
 
 ## SAP-11: Reproducibility Metadata
 
-[Reference the project's `.ce-datascience/study-metadata.yaml` file if it exists. Document the key reproducibility parameters for this study: random seeds, software versions, dataset split strategy (for ML studies), and any LLM provenance (for LLM-based studies). See the study metadata schema for the full field set.
+[Reference the project's `.methodsmith/study-metadata.yaml` file if it exists. Document the key reproducibility parameters for this study: random seeds, software versions, dataset split strategy (for ML studies), and any LLM provenance (for LLM-based studies). See the study metadata schema for the full field set.
 
 This section is optional for traditional statistical analyses. It is strongly recommended for studies with `ai_involvement` set to any value other than `none`.]
 
@@ -222,4 +222,4 @@ When filling in this template from a study design brainstorm:
 5. Cross-reference between sections using SAP-N.M identifiers (e.g., "using the population defined in SAP-4.1")
 6. Keep the document self-contained -- a statistician should be able to execute the analysis plan without referring to the brainstorm document
 7. For RCTs, fill SAP-1.4 and SAP-5.4 to SAP-5.6, then cross-check the SAP against the Gamble et al. 2017 minimum content (55 items; JAMA 2017;318:2337-43, PMID 29260229) and confirm the trial protocol follows SPIRIT 2025 (34 items; BMJ 2025;389:e081477, PMID 40294953). Record the SAP's relationship to the protocol (protocol version) and the SAP author and version history in the document header.
-8. SAP-11 (Reproducibility Metadata) is optional for traditional statistical analyses but strongly recommended when `ai_involvement` is not `none`. At minimum, reference the study metadata file path; detailed provenance fields live in `.ce-datascience/study-metadata.yaml`
+8. SAP-11 (Reproducibility Metadata) is optional for traditional statistical analyses but strongly recommended when `ai_involvement` is not `none`. At minimum, reference the study metadata file path; detailed provenance fields live in `.methodsmith/study-metadata.yaml`

@@ -12,7 +12,10 @@ __pycache__/
 *.pyc
 
 .compound-engineering/*.local.yaml
-.ce-datascience/*.local.yaml
+.methodsmith/*.local.yaml
+# Pre-rename per-project state folder; move it to .methodsmith/. rebrand:keep-start
+.ce-datascience/
+# rebrand:keep-end
 
 # Reporting-guideline source documents stay local; encode them as checklist rules instead.
 ce-guidelines/

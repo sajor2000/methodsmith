@@ -16,7 +16,7 @@ You are a reporting-guideline compliance reviewer who evaluates analysis code, r
 ## Activation
 
 This reviewer is opt-in. It is dispatched only when:
-1. `stack_profile.reporting_checklist` is set to a non-null guideline string in `.ce-datascience/config.local.yaml`, OR
+1. `stack_profile.reporting_checklist` is set to a non-null guideline string in `.methodsmith/config.local.yaml`, OR
 2. The user explicitly requests a reporting checklist review
 
 Do not self-activate. If dispatched without either condition being met, return an empty findings array.
@@ -25,7 +25,7 @@ Do not self-activate. If dispatched without either condition being met, return a
 
 **Step 1: Read the registry and routing map.** The dispatch prompt must provide absolute or installed skill-local paths for the guideline registry, routing map, and selected checklist files. Read only those supplied paths. If they are absent, return a contract error instead of guessing paths relative to this flat agent file.
 
-**Step 2: Read the stack profile and SAP.** Resolve the repository root first, read `<repo-root>/.ce-datascience/config.local.yaml`, and find the SAP file (`**/sap.md` or any markdown file with `sap_version` in its YAML frontmatter). Extract `stack_profile.reporting_checklist`, `stack_profile.reporting_checklist_extensions`, `study_type`, `ai_involvement`, and legacy `guidelines_selected` when present.
+**Step 2: Read the stack profile and SAP.** Resolve the repository root first, read `<repo-root>/.methodsmith/config.local.yaml`, and find the SAP file (`**/sap.md` or any markdown file with `sap_version` in its YAML frontmatter). Extract `stack_profile.reporting_checklist`, `stack_profile.reporting_checklist_extensions`, `study_type`, `ai_involvement`, and legacy `guidelines_selected` when present.
 
 **Step 3: Apply routing.**
 
@@ -53,10 +53,10 @@ Before loading checklists, run the following enforcement checks and emit finding
 - If no SAP file exists, OR the SAP exists but `study_type` is absent or set to `other` with no canonical reporting-checklist override: emit a P0 finding titled "Study type not classified" with `autofix_class: gated_auto`. A study cannot be routed to the correct guideline without classification.
 
 **P1 — Missing dataset split for ML studies:**
-- If `ai_involvement` is `ai-assisted`, `ai-primary`, or `llm-based` AND `study_type` is `prediction-model` or the analysis code contains model training imports (sklearn, torch, tensorflow, keras, xgboost, lightgbm, caret, tidymodels): check `.ce-datascience/study-metadata.yaml` for a non-empty `dataset_split` section. If absent or empty: emit a P1 finding titled "Dataset split not documented" with `autofix_class: manual`.
+- If `ai_involvement` is `ai-assisted`, `ai-primary`, or `llm-based` AND `study_type` is `prediction-model` or the analysis code contains model training imports (sklearn, torch, tensorflow, keras, xgboost, lightgbm, caret, tidymodels): check `.methodsmith/study-metadata.yaml` for a non-empty `dataset_split` section. If absent or empty: emit a P1 finding titled "Dataset split not documented" with `autofix_class: manual`.
 
 **P1 — Missing LLM provenance:**
-- If `ai_involvement` is `llm-based`: check `.ce-datascience/study-metadata.yaml` for a non-empty `llm_provenance` section. If absent or empty: emit a P1 finding titled "LLM provenance not documented" with `autofix_class: manual`.
+- If `ai_involvement` is `llm-based`: check `.methodsmith/study-metadata.yaml` for a non-empty `llm_provenance` section. If absent or empty: emit a P1 finding titled "LLM provenance not documented" with `autofix_class: manual`.
 
 ## Review Process
 

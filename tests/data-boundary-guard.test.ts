@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from "fs"
 import path from "path"
 import {
-  APPROVED, SCHEMA_ONLY, bash, call, expectAll, fixture, git, guard, helper, pluginRoot, project, py, resolve, runGuard,
+  APPROVED, SCHEMA_ONLY, SYNTH_ROWS, bash, call, expectAll, fixture, git, guard, helper, pluginRoot, project, py, resolve, runGuard,
   tempDir, verdicts,
 } from "./data-boundary-harness"
 
@@ -38,7 +38,7 @@ describe("resolve_mode: one authority for the boundary", () => {
     expect(resolve(root)).toEqual({ mode: "schema-only", why: "unreadable" })
     expect(resolve(project("phi_environment:\n  mode: aproved\n"))).toEqual({ mode: "schema-only", why: "unreadable" })
     const binary = project()
-    writeFileSync(path.join(binary, ".ce-datascience", "config.local.yaml"), Buffer.from([0x70, 0x68, 0x69, 0xff, 0xfe, 0x0a]))
+    writeFileSync(path.join(binary, ".methodsmith", "config.local.yaml"), Buffer.from([0x70, 0x68, 0x69, 0xff, 0xfe, 0x0a]))
     expect(resolve(binary)).toEqual({ mode: "schema-only", why: "unreadable" })
   })
 
@@ -47,9 +47,28 @@ describe("resolve_mode: one authority for the boundary", () => {
     expect(resolve(project())).toEqual({ mode: "schema-only", why: "unset" })
   })
 
-  test("a linked worktree without .ce-datascience/ uses the main checkout's config (bypass 2)", () => {
+  test("a project with only the pre-rename state folder fails closed and is never read", () => {
+    const legacy = project(undefined, { ceDir: false })
+    mkdirSync(path.join(legacy, ".ce-datascience", "runs"), { recursive: true }) // rebrand:keep
+    writeFileSync(path.join(legacy, ".ce-datascience", "config.local.yaml"), APPROVED) // rebrand:keep
+    writeFileSync(path.join(legacy, ".ce-datascience", "runs", "old.log"), SYNTH_ROWS) // rebrand:keep
+    expect(resolve(legacy)).toEqual({ mode: "schema-only", why: "legacy" })
+    const denied = runGuard(legacy, "Read", { file_path: path.join(legacy, "data", "cohort.csv") })
+    expect(denied.decision).toBe("deny")
+    expect(denied.reason).toContain("mv .ce-datascience .methodsmith") // rebrand:keep
+    // Once moved, the recorded boundary applies again; logs left in a stale old folder stay data.
+    const moved = project(SCHEMA_ONLY)
+    mkdirSync(path.join(moved, ".ce-datascience", "runs"), { recursive: true }) // rebrand:keep
+    writeFileSync(path.join(moved, ".ce-datascience", "runs", "old.log"), SYNTH_ROWS) // rebrand:keep
+    expect(resolve(moved)).toEqual({ mode: "schema-only", why: "configured" })
+    expect(resolve(project(APPROVED))).toEqual({ mode: "approved", why: "configured" })
+    const stale = runGuard(moved, "Read", { file_path: path.join(moved, ".ce-datascience", "runs", "old.log") }) // rebrand:keep
+    expect(stale.decision).toBe("deny")
+  })
+
+  test("a linked worktree without .methodsmith/ uses the main checkout's config (bypass 2)", () => {
     const main = project(SCHEMA_ONLY, { git: "real" })
-    writeFileSync(path.join(main, ".gitignore"), ".ce-datascience/\ndata/\n")
+    writeFileSync(path.join(main, ".gitignore"), ".methodsmith/\ndata/\n")
     git(main, "add", ".gitignore", "src")
     git(main, "commit", "-q", "-m", "init")
     const linked = path.join(tempDir(), "wt")
@@ -254,7 +273,7 @@ describe("classify: schema-only data access", () => {
       ["Bash", bash("git status && git add src/load.py")],
       ["Bash", bash("bun test")],
       ["Read", { file_path: "src/load.py" }],
-      ["Read", { file_path: ".ce-datascience/config.local.yaml" }],
+      ["Read", { file_path: ".methodsmith/config.local.yaml" }],
       ["Grep", { pattern: "read_csv", path: "src" }],
     ])
   })
@@ -520,5 +539,43 @@ describe("schema-peek helper", () => {
     for (const skill of ["method-setup", "method-work"]) {
       expect(readFileSync(path.join(pluginRoot, "skills", skill, "scripts", "schema-peek.py"), "utf8")).toBe(canonical)
     }
+  })
+})
+
+describe("schema-only: searches and MCP tools that slipped past the access checks", () => {
+  test("rg -L follows symlinks and still prints rows; grep -L stays a listing", () => {
+    const root = project(SCHEMA_ONLY)
+    expect(verdicts(root, [["Bash", bash("rg -L Testperson data/cohort.csv")], ["Bash", bash("grep -L Testperson data/cohort.csv")]])
+      .map((v) => v.decision)).toEqual(["deny", "allow"])
+  })
+
+  test("negated globs, redefined types, and mixed glob lists are not limited to code", () => {
+    const root = project(SCHEMA_ONLY)
+    expectAll(root, "deny", [
+      ["Bash", bash('rg -g "!*.py" Testperson')],
+      ["Bash", bash("rg --type-add py:*.csv -t py Testperson .")],
+      ["Bash", bash("rg --type-add=py:*.csv -t py Testperson .")],
+      ["Grep", { pattern: "Testperson", output_mode: "content", glob: "!*.py" }],
+      ["Grep", { pattern: "Testperson", output_mode: "content", glob: "*.csv *.py" }],
+    ])
+    expectAll(root, "allow", [
+      ["Bash", bash('rg -g "*.py" read_csv')],
+      ["Grep", { pattern: "read_csv", output_mode: "content", glob: "*.py *.R" }],
+      ["Grep", { pattern: "read_csv", output_mode: "content", glob: "*.{py,R}" }],
+    ])
+  })
+
+  test("MCP tools cannot read data files or run code that opens them; literature queries still pass", () => {
+    const root = project(SCHEMA_ONLY)
+    expectAll(root, "deny", [
+      ["mcp__filesystem__read_text_file", { path: path.join(root, "data", "cohort.csv") }],
+      ["mcp__ide__executeCode", { code: "import pandas as pd\npd.read_csv('data/cohort.csv').head()" }],
+    ])
+    expectAll(root, "allow", [
+      ["mcp__filesystem__read_text_file", { path: path.join(root, "src", "load.py") }],
+      ["mcp__pubmed-mcp-server__pubmed_search_articles", { query: "sepsis bundle compliance mortality cohort" }],
+    ])
+    // Outside schema-only the same read is not limited.
+    expectAll(project(APPROVED), "allow", [["mcp__filesystem__read_text_file", { path: "data/cohort.csv" }]])
   })
 })
