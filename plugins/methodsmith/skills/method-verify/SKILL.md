@@ -58,11 +58,11 @@ Execute each applicable check from `references/check-catalog.md`. Skip checks th
 
 **Number gate.** Load the `method-numbers` skill and run its `check` on the manuscript sources, rendered copies, and tables (it reads `analysis/numbers/registry.json`). A `FAIL` exit, or a gate that could not run, blocks readiness: quote its `file:line: reason: token` lines as printed, and never add a result to the allowlist or edit the registry to make it pass. Run it whenever `analysis/numbers/registry.json` exists or the outputs feed a manuscript, table, caption, or model card; each `FAIL` line is a FAIL check.
 
-**Statistic recomputation gate.** When outputs or tables report t/F/chi2/z statistics with P values, or means and percentages with an N, extract the printed numbers into a claims file (values and reported P as the printed strings — their rounding drives the tolerance) and run the bundled recomputation:
+**Statistic recomputation gate.** When outputs or tables report t/F/chi2/z statistics with P values, or means and percentages with an N, extract the printed numbers into a claims file (values and reported P as the printed strings — their rounding drives the tolerance). Record `alternative` from the SAP (`two-sided`, `greater`, `less`, or `unknown`); ordinary F/chi2 tests use `greater`. Record `p_method="ordinary"` only for an unadjusted reference-distribution P value; identify adjusted, exact, permutation or sequential values separately. Unknown sidedness and unsupported P methods remain WARN/not checked, never a substituted two-sided calculation. Pass the SAP alpha with `--alpha` and run:
 
 ```bash
 SKILL_DIR="<absolute path of the directory containing this SKILL.md>";
-python3 "$SKILL_DIR/scripts/verify_stats.py" check analysis/numbers/stat-claims.json --out qc/stat_check.json
+python3 "$SKILL_DIR/scripts/verify_stats.py" check analysis/numbers/stat-claims.json --alpha <SAP-alpha> --out qc/stat_check.json
 ```
 
 If `python3` is unavailable, probe `python` then `py`; if none is available, recompute a sample of the reported statistics by hand and report the sweep as incomplete, never as passed. Each script `FAIL` (a decision error, an arithmetically impossible summary, or a malformed item) is a FAIL check; each `WARN` is a WARN check.

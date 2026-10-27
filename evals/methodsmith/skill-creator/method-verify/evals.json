@@ -31,13 +31,14 @@
     },
     {
       "id": 3,
-      "prompt": "Audit two finished analyses: survival has 80 events versus a prespecified required 300 despite adequate enrollment; prediction validation applies a locked training-fitted imputer without outcome labels. Our analyzable N excludes the planned dropout inflation. Report which checks can pass.",
-      "expected_output": "Reports survival information as FAIL because 80 observed events are below the prespecified 300; treats the attrition comparator as PASS when analyzable N matches the SAP; and does not fail a deployment-faithful prediction imputer for excluding validation outcomes.",
+      "prompt": "Use method-verify for a synthetic printed-statistic audit. The SAP uses alpha=0.025. Audit these independent claims: (1) ordinary two-sided t=-3.00 with 30 df, reported P=0.500; (2) ordinary upper-tail z=2.05, reported P=0.0202; (3) sequentially adjusted z=2.05, reported P=0.0100; (4) z=2.05 and P=0.0202 with sidedness not established by the SAP. Preserve printed decimal strings. Use the bundled checker rather than fitting models; no data access or network is needed. Write workspace/advice.json with status strings incorrect_negative, noninferiority, sequential, unknown_sidedness (PASS/WARN/FAIL). Retain the claims sent to the checker as workspace/stat-claims.json. Save your full response in response.md.",
+      "expected_output": "A source-bound assessment preserving the requested estimand and identifying unsupported validation rather than inventing evidence.",
       "files": [],
       "expectations": [
-        "Reports a FAIL because 80 observed events are below the required 300",
-        "Reports the attrition comparator as PASS when analyzable N matches the SAP, distinct from recruitment inflation",
-        "Does not report a FAIL merely because a deployment-faithful prediction imputer excludes validation outcomes"
+        "incorrect_negative is \"FAIL\" in the requested structured advice, consistent with the explanation",
+        "noninferiority is \"PASS\" in the requested structured advice, consistent with the explanation",
+        "sequential is \"WARN\" in the requested structured advice, consistent with the explanation",
+        "unknown_sidedness is \"WARN\" in the requested structured advice, consistent with the explanation"
       ]
     }
   ]

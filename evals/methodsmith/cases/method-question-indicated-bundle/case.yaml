@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0",
+  "id": "method-question-indicated-bundle",
+  "target": {
+    "kind": "skill",
+    "name": "method-question",
+    "source": "plugins/methodsmith/skills/method-question/SKILL.md"
+  },
+  "mode": "forward",
+  "prompt_path": "evals/methodsmith/cases/method-question-indicated-bundle/prompt.md",
+  "fixtures": [],
+  "required_behaviors": [
+    "requires-all-five-completed-one-hour",
+    "mortality-endpoint"
+  ],
+  "prohibited_behaviors": [
+    "unindicated-pressors-fail-adherence"
+  ],
+  "criteria": [
+    {
+      "id": "unindicated-pressors-fail-adherence",
+      "description": "unindicated pressors fail adherence",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "unindicated_pressors_fail_adherence",
+      "expected": false,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "requires-all-five-completed-one-hour",
+      "description": "requires all five completed one hour",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "requires_all_five_completed_one_hour",
+      "expected": false,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "mortality-endpoint",
+      "description": "mortality endpoint",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "mortality_endpoint",
+      "expected": "30-day all-cause mortality",
+      "weight": 2,
+      "hard_gate": true
+    }
+  ],
+  "threshold": 1,
+  "limitations": [
+    "Synthetic advisory behavior checks bounded scientific decisions, not clinical validity or comprehensive statistical reliability. Numeric helper behavior is checked separately by executable regression tests."
+  ]
+}

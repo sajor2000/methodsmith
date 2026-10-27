@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0",
+  "id": "method-cohort-baseline-observability",
+  "target": {
+    "kind": "skill",
+    "name": "method-cohort",
+    "source": "plugins/methodsmith/skills/method-cohort/SKILL.md"
+  },
+  "mode": "forward",
+  "prompt_path": "evals/methodsmith/cases/method-cohort-baseline-observability/prompt.md",
+  "fixtures": [],
+  "required_behaviors": [
+    "eligible-at-index",
+    "review-informative-censoring"
+  ],
+  "prohibited_behaviors": [
+    "requires-full-future-enrollment"
+  ],
+  "criteria": [
+    {
+      "id": "eligible-at-index",
+      "description": "eligible at index",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "eligible_at_index",
+      "expected": true,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "requires-full-future-enrollment",
+      "description": "requires full future enrollment",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "requires_full_future_enrollment",
+      "expected": false,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "review-informative-censoring",
+      "description": "review informative censoring",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "review_informative_censoring",
+      "expected": true,
+      "weight": 2,
+      "hard_gate": true
+    }
+  ],
+  "threshold": 1,
+  "limitations": [
+    "Synthetic advisory behavior checks bounded scientific decisions, not clinical validity or comprehensive statistical reliability. Numeric helper behavior is checked separately by executable regression tests."
+  ]
+}

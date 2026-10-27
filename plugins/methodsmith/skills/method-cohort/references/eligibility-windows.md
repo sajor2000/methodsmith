@@ -16,9 +16,9 @@ Without wash-out: prevalent users contaminate the analysis with selection bias.
 
 ## 3. Continuous-enrollment window
 
-Time during which the patient must be observable in the data source. For claims: continuous insurance coverage. For EHR: no true enrollment exists, so use an explicit observability proxy (e.g., at least one encounter in each look-back year, or the source's `observation_period`) and report it as a limitation; requiring healthcare contact can select sicker patients. Common: 365 days prior + the entire follow-up period.
+Baseline time during which the patient must be observable in the data source, assessable through index (for example, 365 days before index). For claims, define insurance coverage; for EHR, declare an observability proxy or the source's `observation_period` and its limitations. Requiring healthcare contact can select sicker patients. Do not require observation/enrollment for the entire future follow-up period as baseline eligibility. A person eligible at index who disenrolls on day 90 remains eligible; handle subsequent follow-up under the prespecified censoring/ascertainment rules below.
 
-Without this: missingness is informative (patient simply left the data source); leads to differential outcome ascertainment.
+State the observability and censoring assumptions: leaving the data source can produce informative loss or differential outcome ascertainment, but a future-enrollment eligibility requirement does not solve that bias.
 
 ## 4. Follow-up window
 

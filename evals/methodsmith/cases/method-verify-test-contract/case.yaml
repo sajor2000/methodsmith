@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.0",
+  "id": "method-verify-test-contract",
+  "target": {
+    "kind": "skill",
+    "name": "method-verify",
+    "source": "plugins/methodsmith/skills/method-verify/SKILL.md"
+  },
+  "mode": "forward",
+  "prompt_path": "evals/methodsmith/cases/method-verify-test-contract/prompt.md",
+  "fixtures": [],
+  "required_behaviors": [
+    "incorrect-negative",
+    "noninferiority",
+    "sequential"
+  ],
+  "prohibited_behaviors": [
+    "unknown-sidedness"
+  ],
+  "criteria": [
+    {
+      "id": "incorrect-negative",
+      "description": "incorrect negative",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "incorrect_negative",
+      "expected": "FAIL",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "noninferiority",
+      "description": "noninferiority",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "noninferiority",
+      "expected": "PASS",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "sequential",
+      "description": "sequential",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "sequential",
+      "expected": "WARN",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "unknown-sidedness",
+      "description": "unknown sidedness",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "unknown_sidedness",
+      "expected": "WARN",
+      "weight": 2,
+      "hard_gate": true
+    }
+  ],
+  "threshold": 1,
+  "limitations": [
+    "Synthetic advisory behavior checks bounded scientific decisions, not clinical validity or comprehensive statistical reliability. Numeric helper behavior is checked separately by executable regression tests."
+  ]
+}

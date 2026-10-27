@@ -45,9 +45,11 @@ Ask the user one question at a time (or extract from the survivor) until the fou
 | Slot | Definition | Example |
 |------|------------|---------|
 | **P**opulation | Inclusion criteria, setting, demographic constraints | "Adult ICU patients (≥ 18) with sepsis-3 criteria, 2018-2023, US academic medical centers" |
-| **I**ntervention or **E**xposure | What is being tested or compared | "Adherence to 1-hour sepsis bundle (lactate, blood cultures, antibiotics, fluids, vasopressors)" |
-| **C**omparator | What is the alternative | "Not fully adherent (fewer than 5 of 5 elements completed within 1 hour of sepsis time zero)" |
-| **O**utcome | What is being measured, with timing | "30-day in-hospital mortality" |
+| **I**ntervention or **E**xposure | What is being tested or compared | "Timely initiation of all clinically indicated Hour-1 sepsis components under prespecified component-specific rules" |
+| **C**omparator | What is the alternative | "At least one indicated component not initiated within its prespecified window; nonindicated components are not failures" |
+| **O**utcome | What is being measured, with timing | "30-day all-cause mortality, with ascertainment regardless of discharge" |
+
+For sepsis-bundle examples, record component indications, recognition/time zero, initiation versus completion, and any grace period. Fluids and vasopressors are conditional; the Hour-1 bundle does not require every action to be completed within an hour for every patient (official SCCM bundle: https://sccm.org/SCCM/media/SCCM/PDFs/Surviving-Sepsis-Campaign-Hour-1-Bundle.pdf). A stricter study-defined measure needs its own justification. Confirm vital-status coverage after discharge before choosing 30-day all-cause mortality; if only in-hospital deaths are observable, name that distinct outcome and its discharge handling consistently throughout PICO and YAML.
 
 For descriptive or prediction studies, the comparator slot may be `null` — record that explicitly so downstream skills know the design is not comparative.
 
@@ -118,9 +120,9 @@ research_question:
   one_line: "Among adult ICU patients with sepsis-3, does 1-hour bundle adherence reduce 30-day mortality?"
   pico:
     population:    "Adult ICU patients (≥18) with sepsis-3, 2018-2023, US academic medical centers"
-    intervention:  "Adherence to 1-hour sepsis bundle (5 elements)"
-    comparator:    "Not fully adherent (< 5 of 5 elements within 1 hour of sepsis time zero)"
-    outcome:       "30-day in-hospital mortality"
+    intervention:  "Timely initiation of all indicated Hour-1 components under prespecified component-specific rules"
+    comparator:    "At least one indicated component not initiated in its window; nonindicated components not counted as failures"
+    outcome:       "30-day all-cause mortality, regardless of discharge; requires confirmed vital-status coverage"
   target_trial:          # only when suggested_design is a target trial emulation; slots in references/pico-templates.md
     eligibility:           "..."
     treatment_strategies:  "..."

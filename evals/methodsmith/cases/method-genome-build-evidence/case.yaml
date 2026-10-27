@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.0",
+  "id": "method-genome-build-evidence",
+  "target": {
+    "kind": "skill",
+    "name": "method-genome-build",
+    "source": "plugins/methodsmith/skills/method-genome-build/SKILL.md"
+  },
+  "mode": "forward",
+  "prompt_path": "evals/methodsmith/cases/method-genome-build-evidence/prompt.md",
+  "fixtures": [],
+  "required_behaviors": [
+    "mismatch-status",
+    "no-evidence-status",
+    "unavailable-tool-status"
+  ],
+  "prohibited_behaviors": [
+    "ready"
+  ],
+  "criteria": [
+    {
+      "id": "mismatch-status",
+      "description": "mismatch status",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "mismatch_status",
+      "expected": "incompatible",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "no-evidence-status",
+      "description": "no evidence status",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "no_evidence_status",
+      "expected": "unknown",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "unavailable-tool-status",
+      "description": "unavailable tool status",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "unavailable_tool_status",
+      "expected": "uninspected",
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "ready",
+      "description": "ready",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "ready",
+      "expected": false,
+      "weight": 2,
+      "hard_gate": true
+    }
+  ],
+  "threshold": 1,
+  "limitations": [
+    "Synthetic advisory behavior checks bounded scientific decisions, not clinical validity or comprehensive statistical reliability. Numeric helper behavior is checked separately by executable regression tests."
+  ]
+}

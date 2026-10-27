@@ -52,9 +52,13 @@ using the protocol and confounding assessment, not the largest reported benefit
 
 Write `analysis/effect-size/<query>-parsed.csv` with:
 
-- `pmid, year, first_author, sample_size, metric, effect, effect_lo, effect_hi`;
+- `pmid, year, first_author, sample_size, metric, effect`, with source CI bounds `effect_lo, effect_hi` when available;
 - `population, comparator, estimand, outcome, time_horizon, adjustment_specification, adjusted,
   analysis_scale, unit, study_design, independent_unit_id`.
+
+Every row needs `uncertainty_source` naming the read source/table. Prefer a source-reported `standard_error` with `standard_error_scale=log` for OR/HR/RR or `identity` for MD/SMD; never log a ratio-scale SE. Without a reported SE, require `ci_method` (`wald_normal` or `wald_t`), `ci_level` as a fraction (e.g., `0.95` or `0.90`), and `ci_df` for t intervals. Also declare `ci_rounding_tolerance`: the maximum midpoint discrepancy justified by the source's printed rounding on the analysis scale, not a free tolerance to make an asymmetric interval pass. Set zero for exact unrounded bounds. The bundled `scripts/effect_uncertainty.R`, called by the pooling helper, validates and reconstructs these SEs; its numerical extraction uses base R.
+
+Unknown, profile-likelihood, exact or bootstrap intervals cannot be converted by assuming a normal 95% CI. Obtain a justified source SE/variance or use an appropriate method outside this scalar helper; keep unresolved rows accounted for and block their use as a numeric power anchor. A valid source SE does not itself establish normality or scientific compatibility.
 
 Resolve these scientific declarations from the protocol and read sources; do not
 fill unknown fields with invented labels to satisfy the validator. `adjusted`
@@ -87,7 +91,7 @@ read it before power/SAP use.
 ```
 MD 2.4 (95% CI 1.1-3.7) mmHg     -> metric=MD, point=2.4, lo=1.1, hi=3.7, unit=mmHg
 SMD 0.34 (0.18-0.50)             -> metric=SMD, point=0.34, lo=0.18, hi=0.50
-mean diff 4.5 (SE 1.2)           -> metric=MD, point=4.5, se=1.2 (compute CI: 4.5 +/- 1.96*1.2)
+mean diff 4.5 (SE 1.2)           -> metric=MD, effect=4.5, standard_error=1.2, standard_error_scale=identity (retain source provenance)
 ```
 
 ## P-value-only reports
@@ -122,6 +126,6 @@ Label every converted value as a conversion, with its inputs and their sources.
 
 ## Edge cases
 
-- Asymmetric CI on log scale (lo too far from point given hi): refit by computing SE = (log(hi) - log(lo)) / (2 * 1.96) and using log(point) +/- 1.96 * SE
-- Confidence levels other than 95%: convert (e.g., 90% CI -> SE = (hi - lo) / (2 * 1.645))
+- Asymmetric CI on the analysis scale beyond documented rounding: inspect its construction; never refit or symmetrize the published interval to manufacture a Wald SE.
+- Known symmetric Wald CI: `SE = (upper - lower) / (2 * critical)` on the analysis scale, with `critical = qnorm((1+ci_level)/2)` or `qt((1+ci_level)/2, ci_df)`. Confidence level and degrees of freedom come from the source, not a default. See Cochrane Handbook chapter 6, section on obtaining SEs from confidence intervals: https://www.cochrane.org/authors/handbooks-and-manuals/handbook/current/chapter-06.
 - Multiple effect estimates per paper (primary + sensitivity): use the primary

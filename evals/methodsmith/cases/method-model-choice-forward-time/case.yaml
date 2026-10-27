@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.0",
+  "id": "method-model-choice-forward-time",
+  "target": {
+    "kind": "skill",
+    "name": "method-model-choice",
+    "source": "plugins/methodsmith/skills/method-model-choice/SKILL.md"
+  },
+  "mode": "forward",
+  "prompt_path": "evals/methodsmith/cases/method-model-choice-forward-time/prompt.md",
+  "fixtures": [],
+  "required_behaviors": [
+    "period-transport-is-forward-validation",
+    "review-outcome-maturation-gap",
+    "group-patient-encounters"
+  ],
+  "prohibited_behaviors": [
+    "uses-future-training"
+  ],
+  "criteria": [
+    {
+      "id": "uses-future-training",
+      "description": "uses future training",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "uses_future_training",
+      "expected": false,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "period-transport-is-forward-validation",
+      "description": "period transport is forward validation",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "period_transport_is_forward_validation",
+      "expected": false,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "review-outcome-maturation-gap",
+      "description": "review outcome maturation gap",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "review_outcome_maturation_gap",
+      "expected": true,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "group-patient-encounters",
+      "description": "group patient encounters",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "group_patient_encounters",
+      "expected": true,
+      "weight": 2,
+      "hard_gate": true
+    }
+  ],
+  "threshold": 1,
+  "limitations": [
+    "Synthetic advisory behavior checks bounded scientific decisions, not clinical validity or comprehensive statistical reliability. Numeric helper behavior is checked separately by executable regression tests."
+  ]
+}

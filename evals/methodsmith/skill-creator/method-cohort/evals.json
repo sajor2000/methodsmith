@@ -30,14 +30,13 @@
     },
     {
       "id": 3,
-      "prompt": "Make me a cohort of 'heart failure patients' from our claims data and then run the Cox model for SGLT2 vs DPP4 on readmission. I don't have a code list yet, just use whatever ICD codes make sense.",
-      "expected_output": "Elicits the missing cohort facts (vocabulary and pinned version, index event, windows, code list) one question at a time instead of inventing codes or locking a vague population, and declines to run the Cox model.",
+      "prompt": "Use method-cohort to review this synthetic eligibility rule, without SQL execution or patient data: require 365 days of insurance observation before a qualifying drug initiation, then require continuous enrollment for the full following year. One person satisfies all baseline criteria but disenrolls on day90. We want the inception cohort eligible at initiation, with one-year outcome followup when observable. Write workspace/advice.json with booleans eligible_at_index, requires_full_future_enrollment, review_informative_censoring. Explain followup handling and why the outcome's observability differs from baseline eligibility in response.md. No network or package installation.",
+      "expected_output": "A source-bound assessment preserving the requested estimand and identifying unsupported validation rather than inventing evidence.",
       "files": [],
       "expectations": [
-        "Does not invent an unpinned ICD code list or present the vague 'heart failure patients' population as a locked cohort",
-        "Asks for a pinned vocabulary version (e.g. ICD-10-CM year) and the index event before generating SQL",
-        "Asks one decision-changing question at a time",
-        "Does not run the Cox model or any statistical analysis, routing that to later workflow (method-work after method-data-qa)"
+        "eligible_at_index is true in the requested structured advice, consistent with the explanation",
+        "requires_full_future_enrollment is false in the requested structured advice, consistent with the explanation",
+        "review_informative_censoring is true in the requested structured advice, consistent with the explanation"
       ]
     }
   ]

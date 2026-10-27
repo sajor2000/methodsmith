@@ -1,5 +1,5 @@
 [
-  {"query": "Define our study cohort in OMOP: adults with incident atrial fibrillation 2016-2022, index = first AF diagnosis, exclude prior anticoagulant use in 365 days, require 1 year continuous observation. Need concept sets, SQL, and a CONSORT waterfall.", "should_trigger": true},
+  {"query": "Use method-cohort to review this synthetic eligibility rule, without SQL execution or patient data: require 365 days of insurance observation before a qualifying drug initiation, then require continuous enrollment for the full following year. One person satisfies all baseline criteria but disenrolls on day90. We want the inception cohort eligible at initiation, with one-year outcome followup when observable.", "should_trigger": true},
   {"query": "build cohort for new users of GLP-1 RAs in MarketScan, washout 180d, continuous enrollment 365d prior, ICD-10-CM 2024 + NDC lists. give me the waterfall counts too", "should_trigger": true},
   {"query": "We need a reproducible, version-pinned definition of our sepsis ICU cohort with explicit inclusion/exclusion windows before data QA starts.", "should_trigger": true},
   {"query": "The OMOP vocabulary was refreshed to 2024-Q2. Replay the existing T2DM-statin cohort definition against the new vocab and regenerate the waterfall.", "should_trigger": true},

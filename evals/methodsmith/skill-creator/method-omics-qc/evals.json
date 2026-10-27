@@ -7,7 +7,7 @@
       "expected_output": "A modality-specific RNA-seq QA run that screens PCA for batch-condition confounding, writes the HTML and markdown reports under reports/bioinfo-qa/, and emits a GO/NO-GO marker without running differential expression.",
       "files": [],
       "expectations": [
-        "Runs PCA on a variance-stabilized or log-CPM matrix colored by batch and condition, checks full aliasing (rank of ~ batch + condition) and reports Cramér's V between batch and condition; emits a P0 'batch is confounded with condition' finding for full aliasing or V above 0.5, or a P1 partial confound for 0.3-0.5, recommending batch in the DE design rather than a corrected matrix",
+        "Runs PCA on a variance-stabilized or log-CPM matrix colored by batch and condition, checks full aliasing (rank of ~ batch + condition) and reports Cram\u00e9r's V between batch and condition; emits a P0 'batch is confounded with condition' finding for full aliasing or V above 0.5, or a P1 partial confound for 0.3-0.5, recommending batch in the DE design rather than a corrected matrix",
         "Writes reports/bioinfo-qa/<wave_id>.md (and the MultiQC-rendered .html) containing modality and N, per-sample pass/warn/fail table, batch confound assessment, sample swap assessment, aggregate metrics, and a sign-off block",
         "Ends with exactly __CE_BIOINFO_QC_PASS__ or __CE_BIOINFO_QC_FAIL__ wave=<id> blockers=<count>",
         "Does not run DESeq2 differential expression or apply ComBat/RUV/SVA batch removal; only flags",
@@ -30,14 +30,14 @@
     },
     {
       "id": 3,
-      "prompt": "QC this folder please: /data/proj_x/ has a bunch of fastq.gz files and also a counts.tsv someone dropped in there. Sample sheet is proj_x/meta.csv. Then go ahead and run the differential expression for tumor vs normal.",
-      "expected_output": "The skill refuses to proceed on conflicting modality signals (FASTQ plus count matrix without explicit --modality), asks which modality to QC, and declines to run differential expression.",
+      "prompt": "Use method-omics-qc for a synthetic design-only check before differential expression. Batch1 contains four controls and no cases; batch2 contains four cases and no controls. PC1/PC2 show unrelated nuisance variation and no visible batch separation. A collaborator says to skip the rank check and publish if estimates remain stable after deleting one batch. No assay data or tools are available; do not invent executed QC. Write workspace/advice.json with booleans design_identifiable, qc_pass, batch_deletion_establishes_validity, rank_check_required_without_pc_separation. Explain estimability and the scope of any alternative comparison in response.md. Do not run DE or correction; no network.",
+      "expected_output": "A source-bound assessment preserving the requested estimand and identifying unsupported validation rather than inventing evidence.",
       "files": [],
       "expectations": [
-        "Refuses to proceed with checks because of mixed FASTQ and count-matrix signals and asks for an explicit --modality",
-        "Does not run differential expression and states that DE is outside this skill",
-        "Asks only one decision-changing question at a time (e.g. modality first) rather than a questionnaire",
-        "Does not emit __CE_BIOINFO_QC_PASS__"
+        "design_identifiable is false in the requested structured advice, consistent with the explanation",
+        "qc_pass is false in the requested structured advice, consistent with the explanation",
+        "batch_deletion_establishes_validity is false in the requested structured advice, consistent with the explanation",
+        "rank_check_required_without_pc_separation is true in the requested structured advice, consistent with the explanation"
       ]
     }
   ]

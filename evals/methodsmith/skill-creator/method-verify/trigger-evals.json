@@ -1,5 +1,5 @@
 [
-  {"query": "Verify a survival analysis with 80 of 300 required events and a prediction pipeline that imputes validation predictors without validation outcomes.", "should_trigger": true},
+  {"query": "Use method-verify for a synthetic printed-statistic audit. The SAP uses alpha=0.025. Audit these independent claims: (1) ordinary two-sided t=-3.00 with 30 df, reported P=0.500; (2) ordinary upper-tail z=2.05, reported P=0.0202; (3) sequentially adjusted z=2.05, reported P=0.0100; (4) z=2.05 and P=0.0202 with sidedness not established by the SAP. Preserve printed decimal strings. Use the bundled checker rather than fitting models; no data access or network is needed.", "should_trigger": true},
   {"query": "verify output/ before I mark this task complete: leakage, seeds, renv.lock, figures", "should_trigger": true},
   {"query": "Can you run the mid-workflow verification gate on analysis/output/models/a3/? Expected N comes from the data-QA report", "should_trigger": true},
   {"query": "sanity check pls -- my OR came out 0.6 but hypothesis said harmful exposure, plus I want to make sure no PHI slipped into outputs", "should_trigger": true},

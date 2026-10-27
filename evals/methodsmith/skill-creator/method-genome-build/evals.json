@@ -28,14 +28,14 @@
     },
     {
       "id": 3,
-      "prompt": "half our VCFs are hg19 and half hg38, just liftover everything to hg38 with CrossMap and re-run the annotation so I can merge them today",
-      "expected_output": "Does not run liftover or re-annotation without explicit workflow scope; audits and records the build mismatch, and asks for confirmation of the liftover workflow scope (chain file, target build, validation) before any pipeline run.",
+      "prompt": "Use method-genome-build to check this synthetic header-only example against declared GRCh38: ##reference=GRCh37 and ##contig=<ID=1,length=249250621,assembly=GRCh37>. There is no MD5. A second file has only ##contig=<ID=1>, and a BAM could not be inspected because samtools is absent. No patient or genomic sequence data are supplied. Decide whether a clean audit is justified for each. Write workspace/advice.json with mismatch_status, no_evidence_status, unavailable_tool_status and ready (boolean). Do not install tools or infer a build from the chr prefix. Save the full explanation in response.md.",
+      "expected_output": "A source-bound assessment preserving the requested estimand and identifying unsupported validation rather than inventing evidence.",
       "files": [],
       "expectations": [
-        "Does not execute CrossMap/liftover or re-annotation as part of this skill",
-        "Identifies and reports the mixed hg19/hg38 builds as a P0 mismatch",
-        "Asks for explicit workflow scope (chain file source, target manifest, post-liftover validation) before any liftover is run",
-        "Does not download chain files or references automatically"
+        "mismatch_status is \"incompatible\" in the requested structured advice, consistent with the explanation",
+        "no_evidence_status is \"unknown\" in the requested structured advice, consistent with the explanation",
+        "unavailable_tool_status is \"uninspected\" in the requested structured advice, consistent with the explanation",
+        "ready is false in the requested structured advice, consistent with the explanation"
       ]
     }
   ]

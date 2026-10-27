@@ -1,5 +1,5 @@
 [
-  {"query": "Declare the reference genome for our WGS project: refs/Homo_sapiens.GRCh38.dna.primary_assembly.fa and gencode.v44 GTF. Write a manifest with md5s that we commit.", "should_trigger": true},
+  {"query": "Use method-genome-build to check this synthetic header-only example against declared GRCh38: ##reference=GRCh37 and ##contig=<ID=1,length=249250621,assembly=GRCh37>. There is no MD5. A second file has only ##contig=<ID=1>, and a BAM could not be inspected because samtools is absent. No patient or genomic sequence data are supplied. Decide whether a clean audit is justified for each.", "should_trigger": true},
   {"query": "reviewer asks 'what genome build did you use' - audit all our bams/vcfs and make a supplementary traceability table proving it", "should_trigger": true},
   {"query": "Some of our BED files use 'chr1' and others use '1' and bedtools intersect returns nothing. Check contig naming consistency against the declared build.", "should_trigger": true},
   {"query": "Our counts matrix was built with GENCODE 36 but the manifest says 44. How bad is that and what else drifted? Audit the whole project.", "should_trigger": true},

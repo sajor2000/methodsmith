@@ -31,14 +31,16 @@
     },
     {
       "id": 3,
-      "prompt": "What effect size should I assume for the SAP power section on statins and post-op delirium? Just give me a pooled OR.",
-      "expected_output": "Finds no methods CSV path and no __CE_METHOD_EXTRACT__ signal, so it stops and asks the user to run method-extract first or pass a CSV path instead of inventing an estimate.",
+      "prompt": "Use method-meta-analysis to review uncertainty extraction only; do not pool or install packages. Population, estimand, adjustment, outcome horizon, units and independence have already been reconciled. Five synthetic source records are available: A is an MD with a symmetric 90% normal-Wald CI, level and source table confirmed; B is an MD with a symmetric 95% t-Wald CI and 9 df, source and rounding confirmed; C is an HR whose CI level and construction are unknown; D is an asymmetric profile-likelihood HR interval without a reported SE; E reports the log-HR SE directly as 0.12 with its source. Determine which records have a supported uncertainty-extraction path, not whether they should form a common pool. Write workspace/advice.json with booleans normal90_eligible, t9_eligible, unknown_eligible, profile_eligible, reported_log_se_eligible, and invent_symmetric_interval. Explain required input fields and source checks in response.md. No network.",
+      "expected_output": "A source-bound assessment preserving the requested estimand and identifying unsupported validation rather than inventing evidence.",
       "files": [],
       "expectations": [
-        "Checks for an explicit CSV argument and a __CE_METHOD_EXTRACT__ signal in recent chat before proceeding",
-        "Asks the user to load method-extract first or provide a methods CSV path",
-        "Does not fabricate a pooled OR or cite effect estimates from memory",
-        "Does not write files under analysis/effect-size/ without an input table"
+        "normal90_eligible is true in the requested structured advice, consistent with the explanation",
+        "t9_eligible is true in the requested structured advice, consistent with the explanation",
+        "unknown_eligible is false in the requested structured advice, consistent with the explanation",
+        "profile_eligible is false in the requested structured advice, consistent with the explanation",
+        "reported_log_se_eligible is true in the requested structured advice, consistent with the explanation",
+        "invent_symmetric_interval is false in the requested structured advice, consistent with the explanation"
       ]
     }
   ]

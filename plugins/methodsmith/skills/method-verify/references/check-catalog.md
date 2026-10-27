@@ -172,10 +172,10 @@ SKILL_DIR="<absolute path of the directory containing this SKILL.md>";
 python3 "$SKILL_DIR/scripts/verify_stats.py" check analysis/numbers/stat-claims.json --out qc/stat_check.json
 ```
 
-The script recomputes the two-sided P value from t, F, chi2 and z statistics using std-lib incomplete beta and gamma functions (no scipy needed), compares the reported P against the rounding envelope of the recomputation at the declared alpha, and runs GRIM checks that look for an integer count reproducing each mean or percentage at its printed rounding. A claims item that cannot be parsed fails closed rather than being skipped.
+For ordinary reference-distribution tests, the script uses the declared t/z `alternative` (`two-sided`, `greater`, `less`) and the upper tail for F/chi2, preserving signed statistic rounding. Each item records `p_method`; adjusted, exact, permutation and sequential P values need their actual method and are WARN/not checked here. Set `alternative="unknown"` when the SAP does not establish it. Never infer sidedness from significance or halve a reported P to make it agree. Legacy items without these fields retain ordinary two-sided t/z or upper-tail F/chi2 behavior; new extractions must declare them. Pass the SAP alpha with `--alpha`. The std-lib calculation needs no scipy. GRIM separately checks integer-count compatibility at the printed rounding. Malformed supported-test items fail closed.
 
 **Pass:** The reported P lies inside the recomputed rounding envelope (or a statistic has no reported P, in which case the recomputed P is attached); an integer count reproduces the mean or percentage.
-**Warn:** The reported P is inconsistent but stays on the same side of alpha; a mean or percentage is impossible only under an inferred granularity (confirm the measurement scale before failing it).
+**Warn:** The P method or sidedness is unsupported/unknown (not checked, requiring analyst resolution); the reported P is inconsistent but stays on the same side of alpha; a mean or percentage is impossible only under an inferred granularity (confirm the measurement scale before failing it).
 **Fail:** The reported and recomputed P values fall on opposite sides of the declared alpha (a decision error); a mean or percentage is arithmetically impossible under the declared granularity or the printed denominator; or a claims item is malformed.
 
 **When to skip:** No inferential statistics (t/F/chi2/z with P values) and no means or percentages with N appear in the outputs or tables.

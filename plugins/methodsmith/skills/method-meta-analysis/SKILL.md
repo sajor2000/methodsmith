@@ -27,7 +27,7 @@ Bridges `method-extract` (which collects what prior studies REPORTED) and `metho
 
 ## Prerequisites
 
-- A methods CSV with at minimum: pmid, year, sample_size, effect_size_reported (and ideally lo / hi 95% CI)
+- A methods CSV with pmid, year, sample_size and effect_size_reported; pooling additionally needs source-reported uncertainty or a reconstructible declared Wald interval per `references/effect-parser.md`.
 - Select a protocol-compatible target: population/comparison, outcome/horizon, effect scale/unit, adjustment specification, study design and independent contribution. A modal metric is not evidence of compatibility; resolve unknowns before fitting.
 
 ## Evidence access
@@ -48,6 +48,8 @@ If neither an explicit path nor the signal is present, ask the user to load the 
 
 Read the methods CSV. Parse the `effect_size_reported` field: extract metric type (OR/HR/RR/MD/SMD), point, lo, hi. Use `references/effect-parser.md` patterns, normalise adjusted labels (`aHR` -> `HR`) while keeping the `adjusted` flag (adjusted and unadjusted OR/HR are not interchangeable; see that reference), and write `analysis/effect-size/<query>-parsed.csv` plus the parsing script next to it (the parsed-CSV contract is in that reference; `scripts/pool_effects.R` reads the parsed CSV, not the raw methods table). Drop rows where parsing fails; report count of dropped rows. Where a row's effect, CI, or metric is ambiguous and the paper is lawfully available, read the results section (see Evidence access) rather than guess, and note the row's `evidence_level` (`full_text` or `abstract`) in the included-studies CSV.
 
+Validate each row's uncertainty before selection: use a source-reported SE on the correct analysis scale, or the declared Wald confidence level/method/df and source-rounding tolerance in `references/effect-parser.md`. Do not reconstruct unknown or asymmetric non-Wald intervals as normal 95% intervals. Resolve or explicitly exclude an unsupported row under the protocol, retaining its reason; never silently create its variance or hand off its numeric anchor.
+
 ### Step 2: Filter to comparable studies
 
 Filter to the selected scientific target first; read the complete parsed contract in `references/effect-parser.md`. Resolve adjusted/marginal differences, units and overlapping cohorts before any fit. Save the selection code and excluded-study reasons. Write only the selected compatible rows to `analysis/effect-size/<query>-selected.csv`; retain the full parsed CSV and exclusions for audit. Then filter:
@@ -67,7 +69,7 @@ SKILL_DIR="<absolute path of the directory containing this SKILL.md>";
 Rscript "$SKILL_DIR/scripts/pool_effects.R" --in analysis/effect-size/<query>-selected.csv --metric HR --out analysis/effect-size/<query>-pooled.md
 ```
 
-Requires R with current CRAN `meta` and `ggplot2` (`install.packages(c("meta", "ggplot2"))`).
+Requires the project's R environment with `meta` and `ggplot2`; report missing packages rather than installing them from this skill.
 
 If N ≥ 3:
 - For OR / HR / RR: log-transform → random-effects REML (use an explicitly configured R `meta::metagen` or `metafor::rma`; Python statsmodels Paule-Mandel is a different method)
@@ -147,7 +149,7 @@ Both forms carry the selected compatibility artifact in `contract=`. `method-pow
 ## What this skill does NOT do
 
 - Does not do a full systematic-review meta-analysis (no risk-of-bias scoring, no PRISMA flow); that's a separate study type, use the `method-checklist` skill to register it as PRISMA
-- Does not impute missing CIs (drops studies with missing CI rather than guessing)
+- Does not invent missing uncertainty; source-reported SEs are usable without a CI, while unresolved SE/CI construction blocks that row's numeric use.
 - Does not handle network meta-analysis (use `netmeta` package directly)
 - Does not compute power (that's `method-power`)
 

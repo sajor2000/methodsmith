@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.0",
+  "id": "method-omics-qc-hidden-aliasing",
+  "target": {
+    "kind": "skill",
+    "name": "method-omics-qc",
+    "source": "plugins/methodsmith/skills/method-omics-qc/SKILL.md"
+  },
+  "mode": "forward",
+  "prompt_path": "evals/methodsmith/cases/method-omics-qc-hidden-aliasing/prompt.md",
+  "fixtures": [],
+  "required_behaviors": [
+    "qc-pass",
+    "batch-deletion-establishes-validity",
+    "rank-check-required-without-pc-separation"
+  ],
+  "prohibited_behaviors": [
+    "design-identifiable"
+  ],
+  "criteria": [
+    {
+      "id": "design-identifiable",
+      "description": "design identifiable",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "design_identifiable",
+      "expected": false,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "qc-pass",
+      "description": "qc pass",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "qc_pass",
+      "expected": false,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "batch-deletion-establishes-validity",
+      "description": "batch deletion establishes validity",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "batch_deletion_establishes_validity",
+      "expected": false,
+      "weight": 2,
+      "hard_gate": true
+    },
+    {
+      "id": "rank-check-required-without-pc-separation",
+      "description": "rank check required without pc separation",
+      "type": "json_equals",
+      "path": "workspace/advice.json",
+      "json_path": "rank_check_required_without_pc_separation",
+      "expected": true,
+      "weight": 2,
+      "hard_gate": true
+    }
+  ],
+  "threshold": 1,
+  "limitations": [
+    "Synthetic advisory behavior checks bounded scientific decisions, not clinical validity or comprehensive statistical reliability. Numeric helper behavior is checked separately by executable regression tests."
+  ]
+}

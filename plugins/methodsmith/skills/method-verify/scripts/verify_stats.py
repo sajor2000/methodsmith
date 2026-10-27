@@ -3,8 +3,8 @@
 
 Input is a claims file: the printed statistics (value, df, reported P) and the
 summary statistics (means, percentages with N) extracted from analysis
-outputs or a manuscript table. The script recomputes two-sided P values from
-t, F, chi2 and z statistics, compares each reported P against the rounding
+outputs or a manuscript table. The script recomputes ordinary reference-distribution
+P values from t, F, chi2 and z statistics, compares each reported P against the rounding
 envelope of the recomputation, and runs GRIM checks on means and percentages.
 It never opens data files: the arithmetic runs on the printed numbers only.
 
@@ -15,6 +15,7 @@ Exit codes: 0 no FAIL, 1 input error, 2 at least one FAIL.
 """
 
 import argparse
+from decimal import Decimal, InvalidOperation
 import json
 import math
 import os
@@ -156,19 +157,15 @@ def p_from_z(z):
 
 def printed_decimals(value):
     """Decimal places a value was printed with, from its string form."""
-    if isinstance(value, str):
-        text = value.strip()
-        if "." in text:
-            return len(text.split(".", 1)[1])
+    if not isinstance(value, str) and float(value).is_integer():
         return 0
-    if isinstance(value, int):
-        return 0
-    text = repr(float(value))
-    if text.endswith(".0"):
-        return 0
-    if "." in text:
-        return len(text.split(".", 1)[1])
-    return 0
+    try:
+        printed = Decimal(str(value).strip())
+    except InvalidOperation:
+        raise InputError("value %r is not a number" % (value,))
+    if not printed.is_finite():
+        raise InputError("value must be finite")
+    return -printed.as_tuple().exponent
 
 
 def half_ulp(value):
@@ -179,24 +176,39 @@ def half_ulp(value):
 def as_number(value):
     """Parse a printed value into a float, or raise InputError."""
     try:
-        return float(str(value).strip())
+        number = float(str(value).strip())
     except (TypeError, ValueError):
         raise InputError("value %r is not a number" % (value,))
+    if not math.isfinite(number):
+        raise InputError("value must be finite")
+    return number
 
 
 # ------------------------------------------------------------ P recomputation
 
 
-def recompute_p(statistic, value, df):
+def recompute_p(statistic, value, df, alternative=None):
     """Recompute the P value for one printed statistic."""
+    alternative = alternative or ("greater" if statistic in ("F", "chi2") else "two-sided")
+    if alternative not in ("two-sided", "greater", "less"):
+        raise InputError("alternative must be two-sided, greater or less")
+    if statistic in ("F", "chi2") and alternative != "greater":
+        raise InputError("ordinary F/chi2 tests require the greater (upper) tail")
     if statistic == "t":
-        if not isinstance(df, (int, float)) or isinstance(df, bool) or df <= 0:
+        if not isinstance(df, (int, float)) or isinstance(df, bool) or not math.isfinite(df) or df <= 0:
             raise InputError("statistic t needs a positive scalar df")
-        return p_from_t(abs(value), float(df))
+        two_sided = p_from_t(abs(value), float(df))
+        if alternative == "two-sided":
+            return two_sided
+        small_tail = (alternative == "greater" and value >= 0) or (alternative == "less" and value <= 0)
+        return two_sided / 2 if small_tail else 1 - two_sided / 2
     if statistic == "z":
-        return p_from_z(value)
+        if alternative == "two-sided":
+            return p_from_z(value)
+        signed = value if alternative == "greater" else -value
+        return math.erfc(signed / math.sqrt(2.0)) / 2
     if statistic == "chi2":
-        if not isinstance(df, (int, float)) or isinstance(df, bool) or df <= 0:
+        if not isinstance(df, (int, float)) or isinstance(df, bool) or not math.isfinite(df) or df <= 0:
             raise InputError("statistic chi2 needs a positive scalar df")
         if value < 0:
             raise InputError("statistic chi2 must be non-negative")
@@ -206,7 +218,7 @@ def recompute_p(statistic, value, df):
             raise InputError("statistic F needs df1 and df2 as a two-item list")
         df1, df2 = df
         for name, number in (("df1", df1), ("df2", df2)):
-            if not isinstance(number, (int, float)) or isinstance(number, bool) or number <= 0:
+            if not isinstance(number, (int, float)) or isinstance(number, bool) or not math.isfinite(number) or number <= 0:
                 raise InputError("statistic F needs positive %s" % name)
         if value < 0:
             raise InputError("statistic F must be non-negative")
@@ -214,12 +226,17 @@ def recompute_p(statistic, value, df):
     raise InputError("unknown statistic %r (expected t, F, chi2, or z)" % (statistic,))
 
 
-def p_envelope(statistic, value, df):
+def p_envelope(statistic, value, df, alternative=None):
     """P interval the printed value's rounding can produce."""
     step = half_ulp(value)
-    low = max(0.0, value - step)
-    high = value + step
-    endpoints = [recompute_p(statistic, low, df), recompute_p(statistic, high, df)]
+    number = as_number(value)
+    low = number - step
+    high = number + step
+    if statistic in ("F", "chi2"):
+        low = max(0.0, low)
+    endpoints = [recompute_p(statistic, low, df, alternative), recompute_p(statistic, high, df, alternative)]
+    if low <= 0.0 <= high:
+        endpoints.append(recompute_p(statistic, 0.0, df, alternative))
     return min(endpoints), max(endpoints)
 
 
@@ -231,13 +248,24 @@ def check_p_item(item, alpha):
             "unknown statistic %r (expected t, F, chi2, or z)" % (statistic,)
         )
     value = as_number(item.get("value"))
-    recomputed = recompute_p(statistic, value, item.get("df"))
-    envelope = p_envelope(statistic, value, item.get("df"))
+    alternative = item.get("alternative", "greater" if statistic in ("F", "chi2") else "two-sided")
+    method = item.get("p_method", "ordinary")
+    if alternative not in ("two-sided", "greater", "less", "unknown"):
+        raise InputError("alternative must be two-sided, greater, less or unknown")
+    if not isinstance(method, str) or not method:
+        raise InputError("p_method must name the P-value construction")
+    if method != "ordinary" or alternative == "unknown":
+        return {"check": "p_recompute", "statistic": statistic, "verdict": "WARN",
+                "reasons": ["not checked: establish sidedness and a supported ordinary reference-distribution P method"]}
+    recomputed = recompute_p(statistic, value, item.get("df"), alternative)
+    envelope = p_envelope(statistic, item.get("value"), item.get("df"), alternative)
     record = {
         "check": "p_recompute",
         "statistic": statistic,
         "value": item.get("value"),
         "df": item.get("df"),
+        "alternative": alternative,
+        "p_method": method,
         "recomputed_p": recomputed,
         "envelope": [envelope[0], envelope[1]],
     }
@@ -247,6 +275,8 @@ def check_p_item(item, alpha):
         record["reasons"] = ["no reported P to compare; recomputed P attached"]
         return record
     reported_p = as_number(reported)
+    if not 0.0 <= reported_p <= 1.0:
+        raise InputError("reported P must be between 0 and 1")
     rstep = half_ulp(reported)
     reported_low = reported_p - rstep
     reported_high = reported_p + rstep

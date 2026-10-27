@@ -29,14 +29,13 @@
     },
     {
       "id": 3,
-      "prompt": "Research question: what proportion of adult ED visits for syncope at our 4 hospitals in 2022 resulted in admission, and how did it vary by site? Purely descriptive. Make the YAML, then go ahead and pull the PubMed papers and draft the SAP too while you're at it.",
-      "expected_output": "Produces the research-question YAML with comparator recorded as null for the descriptive design, flags any FINER dimension scored 2 or below, test-runs the suggested query only for its hit count, and declines to run the literature search or write the SAP, pointing to method-pubmed and method-plan as next steps.",
+      "prompt": "Use method-question to correct the exposure and outcome definitions for an adult sepsis cohort. The supplied official SCCM bundle defines fluids for hypotension or lactate >=4 mmol/L, vasopressors for hypotension during/after fluid resuscitation, and immediate initiation; every action need not finish in the first hour. We have confirmed 30-day vital status after discharge through a linked mortality source. Our draft calls anyone without all five actions completed in one hour nonadherent. Review a normotensive patient with low lactate who appropriately receives no vasopressors. Work offline using this supplied source excerpt; do not invent novelty evidence or query counts. Write workspace/advice.json with booleans unindicated_pressors_fail_adherence, requires_all_five_completed_one_hour, and string mortality_endpoint. Give the revised PICO/exposure rules and ascertainment in response.md.",
+      "expected_output": "A source-bound assessment preserving the requested estimand and identifying unsupported validation rather than inventing evidence.",
       "files": [],
       "expectations": [
-        "Records the comparator slot explicitly as null because the design is descriptive",
-        "Surfaces plainly any FINER dimension scored 2 or below (e.g., novelty) as a flag to acknowledge, not a refusal",
-        "Runs at most a hit-count test of the suggested query; does not run the literature search or extract papers, and hands off to method-pubmed via the __CE_RESEARCH_QUESTION__ signal",
-        "Does not draft the SAP; names method-plan as the next step for SAP writing"
+        "unindicated_pressors_fail_adherence is false in the requested structured advice, consistent with the explanation",
+        "requires_all_five_completed_one_hour is false in the requested structured advice, consistent with the explanation",
+        "mortality_endpoint is \"30-day all-cause mortality\" in the requested structured advice, consistent with the explanation"
       ]
     }
   ]
