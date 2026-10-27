@@ -1040,25 +1040,25 @@ describe("limit 1c: the guard reads method-safe-run temp roots and in-progress r
   test("during a live run, an outputs.txt changed since the run started makes every project file data", () => {
     const root = project(SCHEMA_ONLY)
     for (const dir of ["results", "notes"]) mkdirSync(path.join(root, dir))
-    writeFileSync(path.join(root, "results", "earlier.csv"), "FAKE0001,synthetic\n")
+    writeFileSync(path.join(root, "results", "earlier.txt"), "FAKE0001,synthetic\n")
     writeFileSync(path.join(root, "notes", "before.txt"), "synthetic note\n")
     mkdirSync(runs(root), { recursive: true })
-    writeFileSync(path.join(runs(root), "outputs.txt"), "results/earlier.csv\n")
+    writeFileSync(path.join(runs(root), "outputs.txt"), "results/earlier.txt\n")
     pause()
     const start = fsNow()
     pause()
     marker(root, `${process.pid}.json`, liveMarker(start), { outputs_lines: 1 })
     // Untouched since the run started: the list is trusted, the earlier output is data, other files read.
-    expectAll(root, "deny", [["Read", { file_path: "results/earlier.csv" }]])
+    expectAll(root, "deny", [["Read", { file_path: "results/earlier.txt" }]])
     expectAll(root, "allow", [["Read", { file_path: "notes/before.txt" }]])
     writeFileSync(path.join(runs(root), "outputs.txt"), "") // the run's own code erased it
     expectAll(root, "deny", [
-      ["Read", { file_path: "results/earlier.csv" }],
-      ["Bash", bash("cat results/earlier.csv")],
+      ["Read", { file_path: "results/earlier.txt" }],
+      ["Bash", bash("cat results/earlier.txt")],
       ["Read", { file_path: "notes/before.txt" }],
     ])
     rmSync(path.join(runs(root), "outputs.txt"))
-    expectAll(root, "deny", [["Read", { file_path: "results/earlier.csv" }]])
+    expectAll(root, "deny", [["Read", { file_path: "results/earlier.txt" }]])
     // Empty at the start, but another run may record outputs into it later: any change is untrusted too.
     marker(root, `${process.pid}.json`, liveMarker(start), { outputs_lines: 0 })
     expectAll(root, "deny", [["Read", { file_path: "notes/before.txt" }]])
