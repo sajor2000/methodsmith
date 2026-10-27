@@ -232,6 +232,79 @@ describe("limit 1a: agent-written scripts that read data (schema-only)", () => {
     expectAll(root, "allow", [["Bash", bash("R --version")], ["Bash", bash("R -f analysis/clean.R")]])
     expectAll(launchProject(APPROVED), "allow", [["Bash", bash("ipython analysis/run.py")], ["Bash", bash("R -f analysis/run.R")]])
   })
+
+  // Code that runs another file or module: literal targets are followed and scanned, the rest denied (R7, R8).
+  function sourceProject(config = SCHEMA_ONLY) {
+    const root = project(config)
+    withFile(root, "R/x.R", "x <- c(1, 2, 3)\nprint(mean(x))\n")
+    withFile(root, "R/bad.R", "d <- read.csv('data/cohort.csv')\nprint(d)\n")
+    withFile(root, "s.py", "print(1 + 1)\n")
+    withFile(root, "pkg/__init__.py", "")
+    withFile(root, "pkg/ok.py", "print('ok')\n")
+    withFile(root, "pkg/bad.py", "import pandas as pd\nprint(pd.read_csv('data/cohort.csv'))\n")
+    mkdirSync(path.join(root, "sub"), { recursive: true })
+    return root
+  }
+  const calls = (commands: string[]) => commands.map((c) => ["Bash", bash(c)] as [string, Record<string, unknown>])
+  const DYNAMIC_SOURCE_DENIES = [
+    `Rscript -e 'source(file.path("R","bad.R"))'`,
+    `Rscript -e 'source(paste0("R/", step, ".R"))'`,
+    `Rscript -e 'invisible(lapply(list.files("R", full.names=TRUE), source))'`,
+    `Rscript -e 'f<-"R/x.R"' -e 'source(f)'`,
+    `python3 -c "exec(open(p).read())"`,
+    `Rscript -e 'sys.source(f)'`,
+    `Rscript -e 'eval(parse(f))'`,
+    `Rscript -e 'eval(parse(file = f))'`,
+    `python3 -c "exec(compile(open(p).read(), p, 'exec'))"`,
+    `python3 -c "import importlib; importlib.import_module(m)"`,
+    `python3 -c "exec(Path(p).read_text())"`,
+    `python3 -c "import runpy; runpy.run_module(name)"`,
+    `python3 -c "import runpy; runpy.run_module('pkg.bad')"`,
+    `Rscript -e 'source("R/missing.R")'`,
+    `Rscript -e 'setwd("sub"); source("R/x.R")'`,
+  ]
+
+  test("inline code that runs a file whose target cannot be resolved, or reads data, is denied (R7, R8)", () => {
+    const root = sourceProject()
+    expectAll(root, "deny", calls(DYNAMIC_SOURCE_DENIES))
+    const reason = runGuard(root, "Bash", bash(`Rscript -e 'source(paste0("R/", step, ".R"))'`)).reason
+    expect(reason).toContain("method-safe-run")
+    const results = py(DYNAMIC_SOURCE_DENIES.map((c) => ({ fn: "classify" as const, call: { cwd: root, tool_name: "Bash", tool_input: bash(c) } })))
+    for (const [i, result] of results.entries()) {
+      const text = JSON.stringify(result)
+      expect({ command: DYNAMIC_SOURCE_DENIES[i], named: text.includes("method-safe-run"), leaked: ["Zed", "Testperson", "FAKE0001"].some((v) => text.includes(v)) })
+        .toEqual({ command: DYNAMIC_SOURCE_DENIES[i], named: true, leaked: false })
+    }
+  })
+
+  test("inline code that runs a statically resolvable clean file is followed and allowed (R8)", () => {
+    const root = sourceProject()
+    expectAll(root, "allow", calls([
+      `Rscript -e 'source(file.path("R","x.R"))'`,
+      `Rscript -e 'source(file="R/x.R")'`,
+      `Rscript -e 'source(here::here("R","x.R"))'`,
+      `python3 -c "import runpy; runpy.run_path('s.py')"`,
+      `python3 -c "import runpy; runpy.run_module('pkg.ok')"`,
+    ]))
+  })
+
+  test("scanned script files follow literal sourced scripts and deny unresolvable ones (R7, R8)", () => {
+    const root = sourceProject()
+    withFile(root, "analysis/count.R", "df <- data.frame(source = c('a', 'b', 'a'))\nprint(dplyr::count(df, source))\n")
+    withFile(root, "analysis/main.R", "fs <- list.files('R', full.names = TRUE)\nfor (f in fs) source(f)\n")
+    withFile(root, "analysis/follow-bad.R", "source(\"R/bad.R\")\n")
+    withFile(root, "analysis/follow-ok.R", "source(\"R/x.R\")\n")
+    expectAll(root, "allow", calls(["Rscript analysis/count.R", "Rscript analysis/follow-ok.R"]))
+    expectAll(root, "deny", calls(["Rscript analysis/main.R", "Rscript analysis/follow-bad.R"]))
+    expect(runGuard(root, "Bash", bash("Rscript analysis/main.R")).reason).toContain("method-safe-run")
+  })
+
+  test("unresolvable run-a-file code is allowed under the plugin's method-safe-run and in approved projects", () => {
+    expectAll(sourceProject(), "allow", calls([`${safeRun} -- Rscript -e 'source(f)'`]))
+    const approved = sourceProject(APPROVED)
+    withFile(approved, "analysis/main.R", "fs <- list.files('R', full.names = TRUE)\nfor (f in fs) source(f)\n")
+    expectAll(approved, "allow", calls([...DYNAMIC_SOURCE_DENIES.filter((c) => !c.includes("bad")), "Rscript analysis/main.R"]))
+  })
 })
 
 describe("wildcards and find patterns (schema-only)", () => {

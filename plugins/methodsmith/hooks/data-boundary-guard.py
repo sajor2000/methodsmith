@@ -149,9 +149,21 @@ YARN_BUILTINS = {"add", "install", "remove", "upgrade", "up", "init", "info", "w
 PY_WORKFLOW_MODULES = {"pytest", "tox", "nox", "invoke", "papermill", "snakemake", "unittest", "kedro", "dbt"}
 R_WORKFLOW = re.compile(r"\b(?:targets::)?tar_make\w*\s*\(|\b(?:rmarkdown::)?render(?:_site)?\s*\(|"
                         r"\bquarto::quarto_render\s*\(|\bbookdown::render_book\s*\(|\bknitr::(?:knit|purl)\s*\(")
-# Inline code that runs a script file: R source()/sys.source(), Python runpy.run_path() and exec(open(...)).
-SOURCED = re.compile(r"\b(?:sys\.)?source\s*\(\s*['\"]([^'\"]+)['\"]|\brun_path\s*\(\s*['\"]([^'\"]+)['\"]|"
-                     r"\bexec\s*\(\s*open\s*\(\s*['\"]([^'\"]+)['\"]")
+# Code that runs another file or module (sink table, R7). The group name says how the target is read.
+R_SINKS = re.compile(r"(?<![\w.$@])(?:base::)?(?P<source>sys\.source|source)\s*\(|"
+                     r"(?<![\w.$@])(?:base::)?eval\s*\(\s*(?:base::)?(?P<parse>parse)\s*\(")
+PY_SINKS = re.compile(r"(?<![\w.])(?:runpy\.)?(?P<run_path>run_path)\s*\(|"
+                      r"(?<![\w.])(?:runpy\.|importlib\.)?(?P<module>run_module|import_module|__import__)\s*\(|"
+                      r"(?<![\w.])(?:importlib\.)?(?:util\.)?(?P<spec>spec_from_file_location)\s*\(|"
+                      r"(?<![\w.])(?:builtins\.)?(?P<exec>exec|eval)\s*\(")
+# R higher-order calls that can take source/sys.source as a function value (a bare `source` elsewhere is a name).
+R_HIGHER_ORDER = re.compile(r"(?<![\w.$@])(?:purrr::|base::)?(?:[lsvmt]?apply|Map|Reduce|Filter|do\.call|"
+                            r"[ip]?walk\w*|[ip]?map\w*)\s*\(")
+R_SOURCE_VALUE = re.compile(r"^(?:(?:base::)?(?:sys\.)?source|['\"](?:sys\.)?source['\"])$")
+# A working-directory change before a sink makes its relative target unresolvable.
+CHDIR_CALL = re.compile(r"(?<![\w.$@])(?:base::)?setwd\s*\(|(?<![\w])os\.chdir\s*\(|(?<![\w.])chdir\s*\(")
+SINK_LANGS = {"r": ("r",), "rmd": ("r", "py-file"), "qmd": ("r", "py-file"), "py": ("py",), "pyw": ("py",),
+              "ipynb": ("py",)}
 FIND_EXEC = ("-exec", "-execdir", "-ok", "-okdir")
 SEPARATORS = {";", "&", "&&", "||", "|", "|&", "(", ")", ";;"}
 REDIRECTS = {"<", ">", ">>", "<>", ">|", "&>", "&>>", ">&", "<&"}
@@ -1604,12 +1616,206 @@ def script_reads_data(path, cwd, mode, kind=None):
             _SCANNING.discard(path)
     if lists_dataish_dir(text, cwd, mode):
         return True
+    if ext in SINK_LANGS and run_problem(text, SINK_LANGS[ext], cwd, mode):
+        return True  # runs a file it cannot resolve, or one that reads data
     if any(first not in ("'", '"', "") for first in READ_CALL.findall(text)):
         return True  # reads a path held in a variable or argument
     for literal in (a or b for a, b in LITERAL.findall(text)):
         if is_data_path(literal, cwd, mode):  # aggregate tables too: the script reads them later than this check
             return True
     return False
+
+
+_ARG_TOKEN = re.compile(r"'(?:\\.|[^'\\\n])*'|\"(?:\\.|[^\"\\\n])*\"|[()\[\]{},]|[^'\"()\[\]{},]+")
+_NAMED_ARG = re.compile(r"^([A-Za-z_.][\w.]*)\s*=(?!=)\s*(.*)$", re.S)
+_R_STRING = re.compile(r"'([^'\\\n]*)'|\"([^\"\\\n]*)\"")
+_PY_STRING = re.compile(r"[rRuUbB]{0,2}(?:'([^'\\\n]*)'|\"([^\"\\\n]*)\")")
+_CALL_WINDOW = 4000
+UNRESOLVED = ("unresolved", None)
+
+
+def _call_args(text, start):
+    """(positional, named, end) for the call whose `(` ends just before start, or None when it does not close.
+
+    Splits top-level commas outside strings and brackets; looks at most _CALL_WINDOW characters ahead.
+    """
+    parts, current, depth = [], [], 0
+    for m in _ARG_TOKEN.finditer(text, start, min(len(text), start + _CALL_WINDOW)):
+        token = m.group()
+        if token in ("(", "[", "{"):
+            depth += 1
+        elif token in (")", "]", "}"):
+            if depth == 0:
+                parts.append("".join(current).strip())
+                positional, named = [], {}
+                for part in filter(None, parts):
+                    found = _NAMED_ARG.match(part)
+                    if found:
+                        named[found.group(1)] = found.group(2).strip()
+                    else:
+                        positional.append(part)
+                return positional, named, m.end()
+            depth -= 1
+        elif token == "," and depth == 0:
+            parts.append("".join(current).strip())
+            current = []
+            continue
+        current.append(token)
+    return None
+
+
+def _whole_call(expr, pattern):
+    """(positional, named) when expr is exactly one call matching pattern at its start, else None."""
+    head = re.match(pattern, expr)
+    parsed = head and _call_args(expr, head.end())
+    if not parsed or expr[parsed[2]:].strip():
+        return None
+    return parsed[0], parsed[1]
+
+
+def _r_value(expr, root):
+    """The string an R expression evaluates to when it is built from literals only, else None.
+
+    Literals, and file.path / paste0 / paste(sep=) / here() / here::here() over literals (here() is relative to
+    the project root).
+    """
+    expr = expr.strip()
+    literal = _R_STRING.fullmatch(expr)
+    if literal:
+        return literal.group(1) if literal.group(1) is not None else literal.group(2)
+    head = re.match(r"(?:base::)?(file\.path|paste0|paste|(?:here::)?here)\s*\(", expr)
+    call = head and _whole_call(expr, re.escape(head.group(0)))
+    if not call:
+        return None
+    positional, named = call
+    func = head.group(1)
+    seps = {"file.path": ("fsep", "/"), "paste0": (None, ""), "paste": ("sep", " ")}.get(func, (None, "/"))
+    if set(named) - {seps[0]}:
+        return None
+    sep = _r_value(named[seps[0]], root) if seps[0] in named else seps[1]
+    values = [_r_value(p, root) for p in positional]
+    if sep is None or None in values:
+        return None
+    joined = sep.join(values)
+    return os.path.join(root, joined) if func.endswith("here") else joined
+
+
+def _py_value(expr):
+    """The string a Python literal holds (no f-strings), else None."""
+    literal = _PY_STRING.fullmatch(expr.strip())
+    if not literal or "f" in expr.strip()[:2].lower():
+        return None
+    return literal.group(1) if literal.group(1) is not None else literal.group(2)
+
+
+def _py_code_file(expr):
+    """For exec/eval: ("code", None) for a string literal, ("file", path) for open(LIT).read(),
+    Path(LIT).read_text(), or compile(<either>, ...); None otherwise."""
+    expr = expr.strip()
+    if _py_value(expr) is not None:
+        return "code", None
+    compiled = _whole_call(expr, r"(?:builtins\.)?compile\s*\(")
+    if compiled:
+        return _py_code_file(compiled[0][0]) if compiled[0] else None
+    reader = re.match(r"(?:io\.)?open\s*\(|(?:pathlib\.)?Path\s*\(", expr)
+    parsed = reader and _call_args(expr, reader.end())
+    if not parsed or not parsed[0]:
+        return None
+    method = "read_text" if "Path" in reader.group(0) else "read"
+    if not re.fullmatch(r"\s*\.\s*" + method + r"\s*\(\s*\)\s*", expr[parsed[2]:]):
+        return None
+    path = _py_value(parsed[0][0])
+    return ("file", path) if path is not None else None
+
+
+def _sink_target(lang, kind, positional, named, root):
+    """("file", path), ("module", name), ("code", None), ("none", None), or UNRESOLVED for one sink call."""
+    if lang == "r":
+        if kind == "source":
+            if named.get("chdir", "FALSE") not in ("FALSE", "F"):
+                return UNRESOLVED  # nested relative paths resolve against the sourced file's directory
+            expr = named.get("file", positional[0] if positional else None)
+        else:  # eval(parse(...)): a file, or text that is code
+            if "file" not in named and not positional and "text" in named:
+                return ("code", None) if _r_value(named["text"], root) is not None else UNRESOLVED
+            expr = named.get("file", positional[0] if positional else None)
+        if expr is None:
+            return "none", None
+        value = _r_value(expr, root)
+        return ("file", value) if value is not None else UNRESOLVED
+    if kind == "exec":
+        expr = positional[0] if positional else named.get("source", named.get("expression"))
+        if expr is None:
+            return "none", None
+        return _py_code_file(expr) or UNRESOLVED
+    if kind == "module":
+        expr = named.get("mod_name", named.get("name", positional[0] if positional else None))
+        value = _py_value(expr) if expr is not None else None
+        if expr is None:
+            return "none", None
+        return ("module", value) if value and re.fullmatch(r"[A-Za-z_][\w.]*", value) else UNRESOLVED
+    if kind == "spec":
+        expr = named.get("location", positional[1] if len(positional) > 1 else None)
+    else:  # run_path
+        expr = named.get("path_name", named.get("path", positional[0] if positional else None))
+    if expr is None:
+        return "none", None
+    value = _py_value(expr)
+    return ("file", value) if value is not None else UNRESOLVED
+
+
+def run_problem(code, langs, cwd, mode, env=()):
+    """None, UNRESOLVED, or ("reads", shown) for code that runs another file or module (R7, R8).
+
+    A literal target (see _r_value / _py_value) is followed and scanned with script_reads_data; a target that is
+    not built from literals, a file that does not exist, a working-directory change before the call, or R's
+    source passed as a function value to an apply/map-style call cannot be checked and is unresolved. A literal
+    module name that resolves to no project file is an installed module and is not scanned.
+    """
+    code = re.sub(r"(?m)^[ \t]*#.*$", "", code)  # whole-line comments (and Quarto/R Markdown headings)
+    root = (mode.get("roots") or [cwd])[0]
+    moved = CHDIR_CALL.search(code)
+    moved_at = moved.start() if moved else len(code) + 1
+    for lang in langs:
+        sinks = R_SINKS if lang == "r" else PY_SINKS
+        for m in sinks.finditer(code):
+            kind = m.lastgroup
+            if lang == "py-file" and m.group(kind) == "eval":
+                continue  # R's eval() in a mixed document; Python exec() is still checked
+            if m.start() > moved_at:
+                return UNRESOLVED
+            parsed = _call_args(code, m.end())
+            if parsed is None:
+                return UNRESOLVED
+            what, target = _sink_target("r" if lang == "r" else "py", kind, parsed[0], parsed[1], root)
+            if what == "unresolved":
+                return UNRESOLVED
+            if what == "module":
+                paths = [(target, path) for path in module_files(target, cwd, env)]
+            elif what == "file":
+                path = _resolve(target, cwd)
+                if not os.path.isfile(path):
+                    return UNRESOLVED
+                paths = [(target, path)]
+            else:
+                continue
+            for shown, path in paths:
+                if path in _SCANNING:
+                    continue
+                if len(_SCANNING) >= 8:
+                    return UNRESOLVED  # too deep to follow
+                _SCANNING.add(path)
+                try:
+                    if script_reads_data(path, cwd, mode, "r" if lang == "r" else "py"):
+                        return "reads", shown
+                finally:
+                    _SCANNING.discard(path)
+        if lang == "r":
+            for m in R_HIGHER_ORDER.finditer(code):
+                parsed = _call_args(code, m.end())
+                if parsed and any(R_SOURCE_VALUE.match(v) for v in parsed[0] + list(parsed[1].values())):
+                    return UNRESOLVED
+    return None
 
 
 AGGREGATE_EXTS = {"csv": ",", "tsv": "\t", "tab": "\t", "md": None}
@@ -1970,14 +2176,22 @@ def judge(cmd, cwd, mode, tainted, written, fed=(), env=()):
     refs = any(token_ref(t, cwd, mode, tainted) for t in cmd)
     inline_index = next((i for i, t in enumerate(args) if INLINE_FLAG.match(t)), None)
     if INTERPRETERS.match(verb) and inline_index is not None and args[inline_index] != "-":  # `-`: code on stdin
-        code = " ".join(args[inline_index + 1:inline_index + 2])
+        # Every code argument (`Rscript -e A -e B` runs both), in order, as one program.
+        code = "\n".join(args[i + 1] for i in range(inline_index, len(args) - 1)
+                         if INLINE_FLAG.match(args[i]) and args[i] != "-")
         if refs or text_ref(code, cwd, mode) or lists_dataish_dir(code, cwd, mode):
             return f"inline `{verb}` code that opens data returns its values", False
         if verb in ("rscript", "r") and R_WORKFLOW.search(code):
             return workflow_reason(f"{cmd[0]} -e"), False
-        for target in (a or b or c for a, b, c in SOURCED.findall(code)):
-            if script_reads_data(_resolve(target, cwd), cwd, mode):
-                return f"the script `{target}` reads data and can print its values", False
+        langs = ("r",) if verb in ("rscript", "r") else ("py",) if re.match(r"^(?:i?python|pypy)", verb) else ()
+        problem = run_problem(code, langs, cwd, mode, env)
+        if problem == UNRESOLVED:
+            return (f"inline `{verb}` code runs a file or module whose path is only known when it runs (or after "
+                    "a working-directory change), so the guard cannot check it; run it as "
+                    f"`method-safe-run -- {cmd[0]} ...` so its output stays in the run log"), False
+        if problem:
+            return (f"the script `{problem[1]}` reads data and can print its values; run it as "
+                    f"`method-safe-run -- {cmd[0]} ...` so its output stays in the run log"), False
         return None, False
     runner = next((t for t in args if not t.startswith("-")), "") if re.match(r"^python", verb) else cmd[0]
     if os.path.basename(runner) == "method-aggregate-read" and is_plugin_script(runner, cwd, AGGREGATE_READER):
@@ -1998,7 +2212,8 @@ def judge(cmd, cwd, mode, tainted, written, fed=(), env=()):
         return workflow_reason(workflow), False
     for shown, path, kind in launched_scripts(cmd, cwd, fed, env):
         if not token_ref(shown, cwd, mode, tainted) and script_reads_data(path, cwd, mode, kind):
-            return f"the script `{shown}` reads data and can print its values", False
+            return (f"the script `{shown}` reads data, or runs a file it names only at run time, and can print "
+                    f"its values; run it as `method-safe-run -- {cmd[0]} ...` so its output stays in the run log"), False
     if verb == "find":
         reason, unrestricted = find_exec_violation(args, cwd, mode)
         if reason or not refs:
