@@ -15,7 +15,8 @@ argument-hint: "[task, file, or clifpy function name]"
 - **Do not do:** Do not write `clifpy` calls from memory, copy examples from the upstream README or validation guide without checking them, or reimplement a capability `clifpy` already ships.
 - **Interaction:** Check repo/config/chat evidence first. Ask one decision-changing question at a time; use the current harness's blocking question UI when available, otherwise present numbered choices and wait.
 
-The references were verified against `clifpy` 2.1.0 source (2026-10-14) and the
+The references were verified against `clifpy` GitHub commit `c4a1eeb` (2026-10-14),
+diffed against the published 2.1.0 package, and checked against the
 public docs at `https://common-longitudinal-icu-data-format.github.io/clifpy/`.
 `https://clif-icu.com/` remains authoritative for the data dictionary and mCIDE.
 
@@ -49,8 +50,9 @@ public docs at `https://common-longitudinal-icu-data-format.github.io/clifpy/`.
    - `_convert_status == "success"` share after dose conversion, with failures filtered or reported;
    - every category literal in filters exists in the selected family's vocabulary (2.1 `IMV` versus 3.0 `imv`);
    - datetime columns carry the expected zone after each step that can strip it.
-6. **Keep outputs in the boundary.** Set `output_directory` to the approved
-   restricted area or a gitignored path. Treat `clifpy` logs, validation CSVs,
+6. **Keep outputs in the boundary.** Set `output_directory`, DuckDB
+   `temp_directory`, and log locations to an approved restricted location;
+   gitignore is an extra safeguard, not a substitute for approval. Treat `clifpy` logs, validation CSVs,
    DQA JSON/PDF, ECDF and summary files, and DuckDB spill files as restricted
    until reviewed; several contain row-level values or sample IDs. Shared
    results still go only to `output/final_no_phi/` under the CLIF small-cell rule
@@ -91,7 +93,14 @@ CLIF 2.1 spellings. On 3.0 data, ventilated patients can silently miss
 respiratory SOFA points and room-air or HFNC rules never fire. For a 3.0 project,
 either confirm the installed version fixed this or map the affected
 `device_category` values to the 2.1 spellings for the analytic call only, record
-the mapping, and never write the mapped values back as CLIF data.
+the mapping, and never write the mapped values back as CLIF data. In-memory
+mapping works for functions that take a frame (legacy `compute_sofa`, the
+waterfall). SOFA-2 and `compute_sofa_polars` read tables from files, so give
+them a mapped copy of `respiratory_support` in a temporary dataset directory in
+the approved restricted area, with its own config pointing there, and delete it
+after the run. On the published 2.1.0 package, validate 3.0 data with table
+classes (`Table.from_file(..., clif_version="3.0")`); `ClifOrchestrator` has no
+`clif_version` argument there.
 
 ## Reviewing existing clifpy code
 

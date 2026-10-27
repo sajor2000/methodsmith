@@ -75,8 +75,8 @@ defects in an October 2026 review of the consortium's project repositories.
 ## G. Outputs and disclosure
 
 - **CA-60 Export gate.** Every write to `output/final_no_phi/` passes through one function that enforces the small-cell rule and fails closed (raises, does not warn or `assert`). B if absent while counts are shared; B if suppression can be switched off in config.
-- **CA-61 Threshold.** Suppress any count of 10 or fewer (clif-icu.com FAQ: more than 10 patients per cell), or a stricter site or DUA rule. B for thresholds below 10 or "no suppression"; W for the template's `< 10`.
-- **CA-62 Complements.** Totals, percentages, or differences cannot back-calculate a suppressed cell. W.
+- **CA-61 Threshold.** Suppress any cell with 10 or fewer distinct patients (clif-icu.com FAQ: more than 10 patients per cell), or a stricter site or DUA rule. B for any gate that can release a cell of 10 (including the template's `< 10`), for thresholds below 10, and for "no suppression". B when the gate counts encounters, rows, or events instead of distinct `patient_id` per cell.
+- **CA-62 Complements.** Totals, percentages, or differences cannot back-calculate a suppressed cell; complementary suppression is applied. B for any reconstructable suppressed cell.
 - **CA-63 Extremes.** No min, max, or other single-patient values in shared outputs (`describe()` output, ranges). B.
 - **CA-64 Identifiers and dates.** No `*_id`, `*_dttm`, `birth_date`, or row-level columns in shared outputs. B.
 - **CA-65 Committed data.** `git ls-files` shows no Parquet, CSV, Feather, RDS, `.RData`, or `.Rhistory` with patient data, and no executed notebooks whose outputs show row-level frames. B. Report paths only; public demo data (`clif_demo`, CLIF-MIMIC demo) passes when labelled.

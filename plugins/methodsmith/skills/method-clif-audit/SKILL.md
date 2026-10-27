@@ -57,8 +57,9 @@ consortium rules; `CLIF-Project-Template` is authoritative for layout; current
   known wrong-number path.
 - The CLIF small-cell rule is the stricter of the project's declared rule, the
   site or DUA rule, and the clif-icu.com FAQ ("more than 10 patients per cell",
-  so suppress any count of 10 or fewer). The template README's `n >= 10` is one
-  looser; report a project that follows it as a warning, not a pass.
+  so suppress any cell with 10 or fewer distinct patients). The template
+  README's `n >= 10` releases cells of 10, so a project that follows it gets a
+  block (CA-61).
 - Distribution readiness requires zero blocks and a passing
   `BUDDY_TEST_REPORT.md` (or the template's buddy-test report) from an
   independent site.
@@ -82,8 +83,8 @@ Verdict: <ready | not ready: N blocks, M warnings>
 Not certified: data quality, cohort validity, disclosure safety, consortium approval.
 ```
 
-Write the report to chat, or to a path the user names. When saved inside the
-audited repo, keep it outside `output/final_no_phi/`.
+Write the report to chat, or to a path the user names outside the audited
+repository. Refuse a path inside it: the audit never modifies the audited repo.
 
 ## Boundaries and routing
 

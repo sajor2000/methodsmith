@@ -7,8 +7,12 @@
 - 2.1 `ClifOrchestrator`
 - 2.2 Table classes
 
-Verified against `clifpy` 2.1.0 (GitHub `Common-Longitudinal-ICU-data-Format/clifpy`,
-2026-10-14). Citations are `path:line` in that repository. Utility functions are in
+Verified against GitHub commit `c4a1eeb` of `Common-Longitudinal-ICU-data-Format/clifpy`
+(2026-10-14; reports version 2.1.0) and diffed against the published `clifpy` 2.1.0 wheel.
+The published wheel differs in three ways: `ClifOrchestrator` has no `clif_version` argument
+(the orchestrator always validates against 2.1), the 24 CLIF 3.0-only table classes (`Mcs`,
+`Input`, `Output`, and the rest) are absent, and `check_medication_dose_units` is absent.
+Everything else below matches. Citations are `path:line` in the GitHub repository. Utility functions are in
 `utilities-reference.md`. Re-check with `inspect.signature` when the project pins
 another version.
 

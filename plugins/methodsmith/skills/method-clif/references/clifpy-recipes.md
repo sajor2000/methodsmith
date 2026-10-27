@@ -29,7 +29,7 @@ needs before calling `validate_all()`. IDs are strings.
 ```python
 from clifpy import ClifOrchestrator
 
-co = ClifOrchestrator(config_path="config/config.json", clif_version="2.1")
+co = ClifOrchestrator(config_path="config/config.json")  # published 2.1.0 validates against CLIF 2.1
 ids = [str(x) for x in cohort_ids]
 co.initialize(
     tables=["hospitalization", "vitals", "labs"],
@@ -46,7 +46,9 @@ co.validate_all()   # returns None; errors are in co.<table>.errors
 ```
 
 Category examples here are CLIF 2.1 spellings; CLIF 3.0 values are lowercase
-snake_case. An unquoted YAML `clif_version: 3.0` silently disables validation.
+snake_case. An unquoted YAML `clif_version: 3.0` silently disables validation. On
+the published `clifpy` 2.1.0, `ClifOrchestrator` has no `clif_version` argument;
+validate 3.0 data with table classes (`Labs.from_file(..., clif_version="3.0")`).
 
 ## 2. Create a wide dataset, then aggregate only if needed
 
@@ -110,15 +112,37 @@ dobutamine; a missing input column raises a DuckDB `BinderException`.
 `co.wide_df`.
 
 ```python
-preferred_units = {m: "mcg/kg/min"
-                   for m in ["norepinephrine", "epinephrine", "dopamine", "dobutamine"]}
+import numpy as np
+PRESSORS = ["norepinephrine", "epinephrine", "dopamine", "dobutamine"]
 co.convert_dose_units_for_continuous_meds(
-    preferred_units=preferred_units,
+    preferred_units={m: "mcg/kg/min" for m in PRESSORS},
     hospitalization_ids=ids,
 )
-mac = co.medication_admin_continuous
-failed_share = (mac.df_converted["_convert_status"] != "success").mean()
-sofa = co.compute_sofa_scores(id_name="hospitalization_id")
+mac = co.medication_admin_continuous.df_converted
+bad = mac[mac["med_category"].isin(PRESSORS) & (mac["_convert_status"] != "success")]
+if len(bad):   # unconverted pressor rows would be scored as absent
+    raise RuntimeError(f"{len(bad)} pressor rows failed conversion; resolve before scoring")
+
+co.create_wide_dataset(
+    tables_to_load=["vitals", "labs", "patient_assessments",
+                    "medication_admin_continuous", "respiratory_support"],
+    category_filters={
+        "labs": ["creatinine", "platelet_count", "po2_arterial", "bilirubin_total"],
+        "vitals": ["map", "spo2"],
+        "patient_assessments": ["gcs_total"],
+        "medication_admin_continuous": PRESSORS,
+        "respiratory_support": ["device_category", "fio2_set"],
+    },
+    hospitalization_ids=ids,
+)
+wide = co.wide_df
+for col in [f"{m}_mcg_kg_min" for m in PRESSORS] + [
+        "fio2_set", "creatinine", "bilirubin_total", "map", "spo2",
+        "po2_arterial", "platelet_count", "gcs_total"]:
+    if col not in wide.columns:   # a drug or lab absent from the cohort has no column
+        wide[col] = np.nan
+sofa = co.compute_sofa_scores(wide_df=wide, id_name="hospitalization_id",
+                              create_new_wide_df=False)
 ```
 
 ## 5. Run the DQA API explicitly
@@ -136,7 +160,7 @@ from clifpy.utils.validator import run_full_dqa
 from clifpy.utils.report_generator import generate_text_report
 
 os.makedirs("output/intermediate_phi/dqa", exist_ok=True)
-results = run_full_dqa(co.labs.df, table_name="labs", clif_version=co.clif_version)
+results = run_full_dqa(co.labs.df, table_name="labs", clif_version=co.labs.clif_version)
 generate_text_report(results, "labs", "output/intermediate_phi/dqa/labs_dqa.txt")
 ```
 

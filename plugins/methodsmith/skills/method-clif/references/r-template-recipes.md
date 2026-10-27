@@ -314,8 +314,15 @@ flow$adult <- nrow(cohort)
 cohort <- cohort |> filter(icu_los_hours >= 24)
 flow$icu_24h <- nrow(cohort)
 
-# Save as CSV alongside the analysis; suppress any step count of 10 or fewer (CLIF floor: n >= 11) before sharing
-flow_df <- tibble(step = names(flow), n = unlist(flow))
+# Suppress before sharing: counts of 10 or fewer (CLIF floor: n >= 11), plus any step whose
+# exclusion count (difference from the previous step) is 10 or fewer, which would reveal it.
+flow_df <- tibble(step = names(flow), n = unlist(flow)) |>
+  mutate(excluded = lag(n) - n,
+         small = n <= 10 | (!is.na(excluded) & excluded <= 10),
+         n = if_else(small, NA_integer_, as.integer(n)),
+         n_display = if_else(small, "<=10 or suppressed", as.character(n))) |>
+  select(step, n_display)
+stopifnot(!any(grepl("^([0-9]|10)$", flow_df$n_display)))   # fail closed
 write_csv(flow_df, file.path("output", "final_no_phi", "cohort_flow.csv"))
 ```
 
