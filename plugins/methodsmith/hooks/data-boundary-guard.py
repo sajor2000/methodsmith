@@ -384,7 +384,11 @@ def _has_state(path):
 
 
 def _locate(anchor, cache):
-    """Return (ce_root, main_root) for the project containing anchor, or None."""
+    """Return (ce_root, main_root) for the project containing anchor, or None.
+
+    cache maps every directory visited on an upward walk to its result, and ("git", top) to the
+    main checkout of a linked worktree, so many anchors cost one walk and one `git rev-parse`.
+    """
     probe = anchor
     while probe and not os.path.isdir(probe):
         parent = os.path.dirname(probe)
@@ -393,11 +397,14 @@ def _locate(anchor, cache):
         probe = parent
     if probe in cache:
         return cache[probe]
-    ce_root, top, main = None, None, None
-    walk = probe
+    visited, states, top, walk, inherited = [], [], None, probe, False
     while True:
-        if ce_root is None and _has_state(walk):
-            ce_root = walk
+        if walk in cache and not states:
+            inherited = True  # nothing below has state, so everything below shares this answer
+            break
+        visited.append(walk)
+        if _has_state(walk):
+            states.append(walk)
         if os.path.exists(os.path.join(walk, ".git")):
             top = walk
             break
@@ -405,15 +412,27 @@ def _locate(anchor, cache):
         if parent == walk:
             break
         walk = parent
+    if inherited:
+        result = cache[walk]
+        for path in visited:
+            cache[path] = result
+        return result
+    main = None
     if top and os.path.isfile(os.path.join(top, ".git")):
-        common = _git_common_dir(top)
-        if common and os.path.basename(common.rstrip(os.sep)) == ".git":
-            main = os.path.dirname(common.rstrip(os.sep))
-    if ce_root is None and main and _has_state(main):
-        ce_root = top
-    result = (ce_root, main) if ce_root else None
-    cache[probe] = result
-    return result
+        key = ("git", top)
+        if key not in cache:
+            common = _git_common_dir(top)
+            cache[key] = (os.path.dirname(common.rstrip(os.sep))
+                          if common and os.path.basename(common.rstrip(os.sep)) == ".git" else None)
+        main = cache[key]
+    fallback = top if main and _has_state(main) else None
+    nearest = None
+    for path in reversed(visited):  # top-down, so each directory sees the nearest state at or above it
+        if path in states:
+            nearest = path
+        ce_root = nearest or fallback
+        cache[path] = (ce_root, main) if ce_root else None
+    return cache[probe]
 
 
 def _scalar(raw):
@@ -570,32 +589,110 @@ def _project_mode(ce_root, main):
 RANK = {"off": 0, "approved": 1, "no-sensitive-data": 1, "schema-only": 2}
 
 
+DIR_OPTIONS = {"-C": ("git", "make", "gmake"), "--directory": ("make", "gmake", "uv"), "--project": ("uv",)}
+
+
+def _add_anchor(anchors, path):
+    anchors.setdefault(path, None)
+    anchors.setdefault(os.path.realpath(path), None)
+
+
+def _command_anchors(command, cwd, anchors, depth=0):
+    """Add every path a shell command may touch, resolved against the directory it runs in.
+
+    Tracks cd/pushd (and subshells), git/make -C and make/uv --directory/--project; recurses into
+    inner shell code, command substitutions, and heredoc bodies. A chunk counts when it contains
+    `/`, names a data file, or exists on disk, so a bare project folder name anchors too.
+    """
+    if depth > 3:
+        return
+    shell, bodies = scan_shell(command)
+    for inner in substitutions(shell):
+        _command_anchors(inner, cwd, anchors, depth + 1)
+    for _, body in bodies:
+        _command_anchors(body, cwd, anchors, depth + 1)
+    for chunk in re.findall(r"(?:^|[\s'\"=:(<>@])((?:/|~/)[^\s'\";|&<>()`]+)", command):
+        _add_anchor(anchors, _resolve(chunk, cwd))
+    tokens, _ = tokenize(shell)
+    cur, stack, seg = cwd, [], []
+    for token in tokens + [";"]:
+        if token not in SEPARATORS:
+            seg.append(token)
+            continue
+        if seg:
+            cur = _segment_anchors(seg, cur, anchors, depth)
+        seg = []
+        if token == "(":
+            stack.append(cur)
+        elif token == ")" and stack:
+            cur = stack.pop()
+
+
+def _segment_anchors(seg, cur, anchors, depth):
+    """Anchor one simple command's paths; return the directory later commands run in."""
+    _, cmd = unwrap(seg)
+    bases, seen = [cur], set()
+    for i, token in enumerate(seg):
+        seen.add(program(token))
+        key, _, value = token.partition("=") if token.startswith("--") else (token, "", "")
+        if not value and i + 1 < len(seg):
+            value = seg[i + 1]
+        if key in DIR_OPTIONS and value and seen.intersection(DIR_OPTIONS[key]):
+            base = _resolve(value, cur)
+            _add_anchor(anchors, base)
+            bases.append(base)
+    inner = shell_code(cmd) if cmd else None
+    if inner is not None:
+        _command_anchors(inner, cur, anchors, depth + 1)
+    for token in seg:
+        for chunk in _chunks(token):
+            if not chunk or chunk.startswith("-"):
+                continue
+            pathish = "/" in chunk or DATA_REF.search(chunk)
+            for base in bases:
+                path = _resolve(chunk, base)
+                if pathish or os.path.lexists(path):
+                    _add_anchor(anchors, path)
+    if cmd and program(cmd[0]) in ("cd", "pushd"):
+        target = next((t for t in cmd[1:] if not t.startswith("-")), None)
+        if target:
+            return _resolve(target, cur)
+    return cur
+
+
 def _anchors(context):
     cwd = context.get("cwd") or os.getcwd()
     tool_input = context.get("tool_input") or {}
     if not isinstance(tool_input, dict):
         raise TypeError("tool_input is not an object")
-    anchors = [cwd]
+    anchors = {}
+    _add_anchor(anchors, cwd)
     for key in ("file_path", "notebook_path", "path"):
         value = tool_input.get(key)
         if isinstance(value, str) and value:
-            anchors.append(_resolve(value, cwd))
+            _add_anchor(anchors, _resolve(value, cwd))
+    glob = tool_input.get("glob")
+    if isinstance(glob, str) and glob:  # Grep searches under path; the glob's literal folder prefix names a target too
+        base = _resolve(tool_input["path"], cwd) if isinstance(tool_input.get("path"), str) and tool_input["path"] else cwd
+        literal = re.split(r"[*?\[{]", glob, 1)[0]
+        if "/" in literal:
+            _add_anchor(anchors, _resolve(literal.rsplit("/", 1)[0] or "/", base))
     command = tool_input.get("command")
     if isinstance(command, str):
-        for chunk in re.findall(r"(?:^|[\s'\"=:(<>@])((?:/|~/)[^\s'\";|&<>()`]+)", command)[:20]:
-            anchors.append(_resolve(chunk, cwd))
-    return cwd, anchors
+        _command_anchors(command, cwd, anchors)
+    return cwd, list(anchors)
 
 
 def resolve_mode(context):
     """Resolve the boundary for a tool call from cwd and the paths it targets. Strictest project wins."""
     cwd, anchors = _anchors(context)
-    cache, best, data_roots, roots, aggregate, index_paths, output_lists = {}, None, set(), [], set(), [], []
+    cache, projects = {}, {}
+    best, data_roots, roots, aggregate, index_paths, output_lists = None, set(), [], set(), [], []
     for anchor in anchors:
         found = _locate(anchor, cache)
-        if not found:
+        if not found or found in projects:
             continue
-        project = _project_mode(*found)
+        project = projects[found] = _project_mode(*found)
         data_roots.update(project["data_roots"])
         aggregate.update(project["aggregate_dirs"])
         index_paths.extend(p for p in project["index_paths"] if p not in index_paths)
@@ -1030,12 +1127,18 @@ def _is_code_glob(value):
     return True
 
 
-def git_violation(args, cwd, mode, tainted):
+def _git_sub(args):
+    """git's arguments from the subcommand on, past global options and their values (`-C dir`)."""
     rest = list(args)
     while rest and rest[0].startswith("-"):
         flag = rest.pop(0)
         if flag in ("-C", "-c", "--git-dir", "--work-tree") and rest:
             rest.pop(0)
+    return rest
+
+
+def git_violation(args, cwd, mode, tainted):
+    rest = _git_sub(args)
     if not rest:
         return None
     sub, sub_args = rest[0], rest[1:]
@@ -1251,7 +1354,7 @@ def judge(cmd, cwd, mode, tainted, written):
         return grep_violation(verb, args, cwd, mode, tainted), False
     if verb == "git":
         refs = any(token_ref(t, cwd, mode, tainted) for t in args)
-        sub = [t for t in args if not t.startswith("-")][:1]
+        sub = _git_sub(args)[:1]
         if sub == ["grep"]:
             return git_violation(args, cwd, mode, tainted), False
         return (git_violation(args, cwd, mode, tainted) if refs else None), refs

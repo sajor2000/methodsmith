@@ -90,6 +90,90 @@ describe("resolve_mode: one authority for the boundary", () => {
     ])
     expect(runGuard(outside, "Read", { file_path: target }).decision).toBe("deny")
   })
+
+  // A parent folder P (no project) holding a schema-only project `proj`, an approved sibling,
+  // a harmless notes file, and a symlink into the project's data folder.
+  function parentFolder() {
+    const parent = tempDir("method-parent-")
+    const nested = (name: string, config: string) => {
+      const root = path.join(parent, name)
+      for (const dir of [".git", ".methodsmith", "data", "src", "analysis"]) mkdirSync(path.join(root, dir), { recursive: true })
+      writeFileSync(path.join(root, ".methodsmith", "config.local.yaml"), config)
+      writeFileSync(path.join(root, "data", "cohort.csv"), SYNTH_ROWS)
+      writeFileSync(path.join(root, "src", "load.py"), "import pandas as pd\ndf = pd.read_csv('data/cohort.csv')\n")
+      writeFileSync(path.join(root, "analysis", "run.py"), "print('ok')\n")
+    }
+    nested("proj", SCHEMA_ONLY)
+    nested("approved", APPROVED)
+    writeFileSync(path.join(parent, "notes.md"), "meeting notes\n")
+    symlinkSync(path.join(parent, "proj", "data"), path.join(parent, "link"))
+    return parent
+  }
+
+  test("relative, cd, -C, inner-shell, and symlinked targets resolve the project from a parent folder (R4, R5)", () => {
+    const parent = parentFolder()
+    expect(resolve(parent).mode).toBe("off")
+    const harmless = Array.from({ length: 25 }, (_, i) => `notes${i}/readme.md`).join(" ")
+    expectAll(parent, "deny", [
+      ["Bash", bash("cat proj/data/cohort.csv")],
+      ["Bash", bash("cd proj && cat data/cohort.csv")],
+      ["Bash", bash("(cd proj; head data/cohort.csv)")],
+      ["Bash", bash("pushd proj && cat data/cohort.csv")],
+      ["Bash", bash("git -C proj grep Testperson")],
+      ["Bash", bash("rg Testperson proj")],
+      ["Bash", bash("grep -rn Testperson proj")],
+      ["Bash", bash(`python3 -c "print(open('proj/data/cohort.csv').read())"`)],
+      ["Bash", bash("bash -c 'cd proj && cat data/cohort.csv'")],
+      ["Bash", bash(`cat ${harmless} proj/data/cohort.csv`)],
+      ["Bash", bash("cat link/cohort.csv")],
+      ["Bash", bash("cat approved/src/load.py proj/data/cohort.csv")],
+      ["Read", { file_path: "proj/data/cohort.csv" }],
+      ["Grep", { glob: "proj/data/*.csv", output_mode: "content", pattern: "x" }],
+      ["Grep", { path: "proj", output_mode: "content", pattern: "Testperson" }],
+    ])
+    expect(runGuard(parent, "Bash", bash("cd proj && cat data/cohort.csv")).decision).toBe("deny")
+    // Workflow runners are judged by another check; here only the mode they resolve is pinned.
+    for (const command of ["make -C proj", "make --directory=proj", "uv run --directory proj python analysis/run.py",
+      "uv run --project proj python analysis/run.py"]) {
+      expect({ command, mode: resolve(parent, "Bash", bash(command)).mode }).toEqual({ command, mode: "schema-only" })
+    }
+    expect(resolve(parent, "Bash", bash("cat approved/src/load.py proj/src/load.py")).mode).toBe("schema-only")
+    expect(resolve(parent, "Bash", bash("cat approved/src/load.py")).mode).toBe("approved")
+    expectAll(parent, "allow", [
+      ["Bash", bash("ls proj")],
+      ["Bash", bash("cd proj && cd .. && cat notes.md")],
+    ])
+  })
+
+  test("many relative paths decide within the latency budget, plain and in a linked worktree (R9)", () => {
+    const paths = (root: string) => {
+      const names: string[] = []
+      for (let i = 0; i < 200; i++) {
+        const dir = path.join(root, `d${i % 40}`, `sub${i % 7}`)
+        if (i % 3 === 0) mkdirSync(dir, { recursive: true })
+        names.push(`d${i % 40}/sub${i % 7}/f${i}.md`)
+      }
+      return names.join(" ")
+    }
+    const median = (cwd: string, command: string) => {
+      const times = [0, 1, 2].map(() => {
+        const start = performance.now()
+        const result = runGuard(cwd, "Bash", bash(command))
+        expect(result.exitCode).toBe(0)
+        return performance.now() - start
+      })
+      return times.sort((a, b) => a - b)[1]
+    }
+    const plain = project(SCHEMA_ONLY)
+    expect(median(plain, `wc -l ${paths(plain)}`)).toBeLessThan(1000)
+    const main = project(SCHEMA_ONLY, { git: "real" })
+    writeFileSync(path.join(main, ".gitignore"), ".methodsmith/\ndata/\n")
+    git(main, "add", ".gitignore", "src")
+    git(main, "commit", "-q", "-m", "init")
+    const linked = path.join(tempDir(), "wt")
+    git(main, "worktree", "add", "-q", linked)
+    expect(median(linked, `wc -l ${paths(linked)}`)).toBeLessThan(1000)
+  })
 })
 
 describe("classify: schema-only data access", () => {
