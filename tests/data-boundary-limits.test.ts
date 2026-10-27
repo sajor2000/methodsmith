@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, utimesSync, writeFileSync } from "fs"
+import os from "os"
 import path from "path"
 import { APPROVED, SCHEMA_ONLY, bash, expectAll, guard, helper, pluginRoot, project, py, runGuard, tempDir, verdicts } from "./data-boundary-harness"
 
@@ -331,7 +332,7 @@ describe("limit 1b: method-safe-run keeps script output out of the context", () 
     expect(out).toContain("exit code: 3")
     expect(out).not.toContain("Zed Testperson")
     expect(out).not.toContain("FAKE0001")
-    const logs = readdirSync(path.join(root, ".methodsmith", "runs"))
+    const logs = readdirSync(path.join(root, ".methodsmith", "runs")).filter((f) => f.endsWith(".log"))
     expect(logs).toHaveLength(1)
     expect(logs[0]).toMatch(/^\d{8}T\d{6}Z-\d+\.log$/)
     expect(out).toContain(`.methodsmith/runs/${logs[0]}`)
@@ -502,6 +503,198 @@ describe("limit 1b: method-safe-run keeps script output out of the context", () 
     ])
     expectAll(root, "allow", [["Bash", bash("ls .methodsmith/runs")], ["Read", { file_path: ".methodsmith/config.local.yaml" }]])
   })
+
+  // --- per-run temp directory and in-progress run markers (R4-R6) ---
+  const runsDir = (root: string) => path.join(root, ".methodsmith", "runs")
+  const listFile = (file: string) => (existsSync(file) ? readFileSync(file, "utf8").split("\n").filter(Boolean) : [])
+  const outputsOf = (root: string) => listFile(path.join(runsDir(root), "outputs.txt"))
+  const tempRootsOf = (root: string) => listFile(path.join(runsDir(root), "temp-roots.txt"))
+  const markersOf = (root: string) => {
+    const dir = path.join(runsDir(root), "active")
+    return existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".json")) : []
+  }
+  const markerJson = (root: string, name: string) => JSON.parse(readFileSync(path.join(runsDir(root), "active", name), "utf8"))
+  // macOS reports /var/... and /private/var/... for the same directory.
+  const norm = (p: string) => p.trim().replace(/^\/private(?=\/)/, "")
+  const underTempRoot = (root: string, p: string) => tempRootsOf(root).some((r) => norm(p).startsWith(norm(r) + "/") || norm(p) === norm(r))
+  function runStdout(root: string) {
+    const log = readdirSync(runsDir(root)).filter((f) => f.endsWith(".log")).sort().at(-1)!
+    const text = readFileSync(path.join(runsDir(root), log), "utf8")
+    return text.slice(text.indexOf("== stdout ==\n") + 13, text.indexOf("\n== stderr =="))
+  }
+  const FAST_ENV = { ...process.env, METHOD_SAFE_RUN_HEARTBEAT_SECONDS: "0.2" }
+  const startSafe = (cwd: string, ...cmd: string[]) =>
+    Bun.spawn([safeRun, "--", ...cmd], { cwd, env: FAST_ENV, stdout: "pipe", stderr: "pipe" })
+  async function waitFor(check: () => boolean, ms = 10000) {
+    const end = Date.now() + ms
+    while (!check()) {
+      if (Date.now() > end) throw new Error("timed out waiting for the run")
+      await Bun.sleep(50)
+    }
+  }
+  const killGroup = (pgid: number) => Bun.spawnSync(["kill", "-KILL", "--", `-${pgid}`])
+  const deadPid = () => {
+    const proc = Bun.spawnSync(["true"])
+    return proc.pid
+  }
+
+  test("a child's tempfile.mkstemp() file lies under a temp dir registered in runs/temp-roots.txt", () => {
+    const root = project(SCHEMA_ONLY)
+    const { code } = runSafe(root, "python3", "-c",
+      "import os, tempfile\nfd, p = tempfile.mkstemp()\nos.write(fd, b'synthetic')\nos.close(fd)\nprint(p)")
+    expect(code).toBe(0)
+    const made = runStdout(root).trim()
+    expect(made).not.toBe("")
+    expect(underTempRoot(root, path.dirname(made))).toBe(true)
+  })
+
+  test.skipIf(!Bun.which("Rscript"))("Rscript tempdir() under the runner lies under a registered temp root", () => {
+    const root = project(SCHEMA_ONLY)
+    const { code } = runSafe(root, "Rscript", "-e", "cat(tempdir())")
+    expect(code).toBe(0)
+    expect(underTempRoot(root, runStdout(root))).toBe(true)
+  }, 30000)
+
+  test("the run's temp dir is owner-only (0700), set as TMPDIR/TMP/TEMP, and removed after a normal finish", () => {
+    const root = project(SCHEMA_ONLY)
+    const { code } = runSafe(root, "python3", "-c",
+      "import os, tempfile\nd = tempfile.gettempdir()\nprint(oct(os.stat(d).st_mode & 0o777))\nprint(d)\n" +
+      "print(os.environ['TMPDIR'].rstrip('/') == os.environ['TMP'].rstrip('/') == os.environ['TEMP'].rstrip('/'))")
+    expect(code).toBe(0)
+    const [mode, dir, same] = runStdout(root).trim().split("\n")
+    expect(mode).toBe("0o700")
+    expect(same).toBe("True")
+    expect(path.basename(dir)).toStartWith("msr-")
+    expect(tempRootsOf(root).map(norm)).toContain(norm(dir))
+    expect(existsSync(dir)).toBe(false)
+    expect(markersOf(root)).toEqual([])
+  })
+
+  test("a SIGTERM to the runner is forwarded to the child; its outputs are recorded and its marker removed", async () => {
+    const root = withFile(project(SCHEMA_ONLY), "analysis/term.py",
+      "import signal, sys, time\n" +
+      "def stop(signum, frame):\n    open('results/got_term.txt', 'w').write('synthetic\\n')\n    sys.exit(0)\n" +
+      "signal.signal(signal.SIGTERM, stop)\nopen('results/partial.txt', 'w').write('synthetic\\n')\ntime.sleep(60)\n")
+    mkdirSync(path.join(root, "results"))
+    const proc = startSafe(root, "python3", "analysis/term.py")
+    await waitFor(() => existsSync(path.join(root, "results", "partial.txt")) && markersOf(root).length === 1)
+    const marker = markerJson(root, markersOf(root)[0])
+    expect(marker.pid).toBe(proc.pid)
+    expect(typeof marker.pid_start).toBe("string")
+    expect(marker.host).toBe(os.hostname())
+    expect(typeof marker.start).toBe("number")
+    proc.kill("SIGTERM")
+    await proc.exited
+    expect(existsSync(path.join(root, "results", "got_term.txt"))).toBe(true)
+    expect(outputsOf(root)).toEqual(expect.arrayContaining([path.join("results", "got_term.txt"), path.join("results", "partial.txt")]))
+    expect(markersOf(root)).toEqual([])
+    expect(await new Response(proc.stdout).text()).not.toContain("synthetic")
+  }, 30000)
+
+  test("a background writer that outlives the SIGTERM keeps the marker until it exits, and its late file is recorded", async () => {
+    const root = project(SCHEMA_ONLY)
+    withFile(root, "analysis/writer.py",
+      "import os, signal, sys, time\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\n" +
+      "open('results/writer_ready.txt', 'w').write('synthetic\\n')\n" +
+      "while not os.path.exists(sys.argv[1]):\n    time.sleep(0.05)\nopen('results/late.txt', 'w').write('synthetic\\n')\n")
+    withFile(root, "analysis/bg.py",
+      "import subprocess, sys, time\nsubprocess.Popen([sys.executable, 'analysis/writer.py', sys.argv[1]])\ntime.sleep(60)\n")
+    mkdirSync(path.join(root, "results"))
+    const release = path.join(tempDir(), "release")
+    const proc = startSafe(root, "python3", "analysis/bg.py", release)
+    await waitFor(() => existsSync(path.join(root, "results", "writer_ready.txt")) && markersOf(root).length === 1)
+    proc.kill("SIGTERM")
+    await Bun.sleep(800)
+    expect(proc.exitCode).toBeNull()
+    expect(markersOf(root)).toHaveLength(1)
+    writeFileSync(release, "")
+    await proc.exited
+    expect(outputsOf(root)).toContain(path.join("results", "late.txt"))
+    expect(markersOf(root)).toEqual([])
+  }, 30000)
+
+  // A run whose runner and process group were SIGKILLed: the marker stays behind.
+  async function crashedRun(root: string) {
+    withFile(root, "analysis/slow.py", "import time\nopen('results/written.txt', 'w').write('synthetic\\n')\ntime.sleep(60)\n")
+    mkdirSync(path.join(root, "results"), { recursive: true })
+    const proc = startSafe(root, "python3", "analysis/slow.py")
+    await waitFor(() => existsSync(path.join(root, "results", "written.txt")) && markersOf(root).length === 1
+      && typeof markerJson(root, markersOf(root)[0]).pgid === "number")
+    await Bun.sleep(500) // at least one heartbeat after the write
+    const { pgid } = markerJson(root, markersOf(root)[0])
+    proc.kill("SIGKILL")
+    killGroup(pgid)
+    await proc.exited
+    await Bun.sleep(200)
+    expect(markersOf(root)).toHaveLength(1)
+  }
+
+  test("after a SIGKILL, --reconcile records the dead run's file but not a file edited after its last heartbeat", async () => {
+    const root = project(SCHEMA_ONLY)
+    await crashedRun(root)
+    expect(outputsOf(root)).not.toContain(path.join("results", "written.txt"))
+    await Bun.sleep(2600) // past the last heartbeat plus the 2 s margin
+    writeFileSync(path.join(root, "results", "later.txt"), "synthetic later\n")
+    const proc = Bun.spawnSync([safeRun, "--reconcile"], { cwd: root })
+    const out = proc.stdout.toString() + proc.stderr.toString()
+    expect(proc.exitCode).toBe(0)
+    expect(out).toMatch(/reconciled 1 stale run/)
+    expect(out.trim().split("\n")).toHaveLength(1)
+    expect(outputsOf(root)).toContain(path.join("results", "written.txt"))
+    expect(outputsOf(root)).not.toContain(path.join("results", "later.txt"))
+    expect(markersOf(root)).toEqual([])
+  }, 30000)
+
+  test("a dead run's marker is reconciled by the next run: its written file is recorded and the marker removed", async () => {
+    const root = project(SCHEMA_ONLY)
+    await crashedRun(root)
+    const { code, out } = runSafe(root, "true")
+    expect(code).toBe(0)
+    expect(out).not.toMatch(/reconcil/i)
+    expect(outputsOf(root)).toContain(path.join("results", "written.txt"))
+    expect(markersOf(root)).toEqual([])
+  }, 30000)
+
+  test("staleness: a mismatched start time is stale; a live runner, a live group, or another host is not", async () => {
+    const root = project(SCHEMA_ONLY)
+    const active = path.join(runsDir(root), "active")
+    mkdirSync(active, { recursive: true })
+    const now = BigInt(Date.now()) * 1000000n
+    const lstart = (pid: number) => Bun.spawnSync(["ps", "-o", "lstart=", "-p", String(pid)], { env: { ...process.env, LC_ALL: "C" } })
+      .stdout.toString().trim().replace(/\s+/g, " ")
+    const group = Bun.spawn(["python3", "-c", "import os, time\nos.setsid()\ntime.sleep(30)\n"])
+    await Bun.sleep(400)
+    const marker = (name: string, pid: number, pidStart: string, pgid: number, host: string) =>
+      writeFileSync(path.join(active, name),
+        `{"pid": ${pid}, "pid_start": ${JSON.stringify(pidStart)}, "pgid": ${pgid}, "host": ${JSON.stringify(host)}, "start": ${now}}`)
+    try {
+      marker("1.json", process.pid, "Thu Jan 1 00:00:00 1970", deadPid(), os.hostname()) // pid reused: stale
+      marker("2.json", process.pid, lstart(process.pid), deadPid(), os.hostname()) // runner alive
+      marker("3.json", deadPid(), "Thu Jan 1 00:00:00 1970", group.pid, os.hostname()) // group alive
+      marker("4.json", deadPid(), "Thu Jan 1 00:00:00 1970", deadPid(), "elsewhere.invalid") // another host
+      const proc = Bun.spawnSync([safeRun, "--reconcile"], { cwd: root })
+      expect(proc.exitCode).toBe(0)
+      expect(proc.stdout.toString()).toMatch(/reconciled 1 stale run/)
+      expect(markersOf(root).sort()).toEqual(["2.json", "3.json", "4.json"])
+    } finally {
+      group.kill("SIGKILL")
+    }
+  }, 30000)
+
+  test("two concurrent runs: both written files land in outputs.txt and both temp dirs in temp-roots.txt", async () => {
+    const root = project(SCHEMA_ONLY)
+    mkdirSync(path.join(root, "results"))
+    const writer = (name: string) => `import tempfile, time\nopen('results/${name}.txt', 'w').write(tempfile.gettempdir())\ntime.sleep(1.5)\n`
+    const a = startSafe(root, "python3", "-c", writer("a"))
+    const b = startSafe(root, "python3", "-c", writer("b"))
+    expect(await a.exited).toBe(0)
+    expect(await b.exited).toBe(0)
+    expect(outputsOf(root)).toEqual(expect.arrayContaining([path.join("results", "a.txt"), path.join("results", "b.txt")]))
+    const dirs = ["a", "b"].map((n) => norm(readFileSync(path.join(root, "results", `${n}.txt`), "utf8")))
+    expect(dirs[0]).not.toBe(dirs[1])
+    expect(tempRootsOf(root).map(norm)).toEqual(expect.arrayContaining(dirs))
+    expect(markersOf(root)).toEqual([])
+  }, 30000)
 })
 
 describe("limit 2a: method-identifier-index stores salted hashes of identifier values", () => {
