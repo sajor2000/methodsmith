@@ -48,15 +48,28 @@ Relative, cd, -C, symlinked, and inline-code paths anchor the project they
 reach, so a call from outside a project gets that project's boundary (strictest
 wins). Unquoted shell wildcards are expanded (bounded) and checked match by
 match; an over-cap expansion is data in schema-only access checks.
+Code that runs another file (R source/sys.source/eval(parse()), source passed to
+apply-style functions, Python runpy, exec/eval of computed code, import_module,
+__import__) follows literal targets and denies computed, missing, or
+setwd/chdir-relative ones. Database MCP tools (named with a database word, or
+carrying SQL/Cypher statement text) deny in schema-only unless the call only
+inspects the schema (list/describe tools, or one DESCRIBE, SHOW TABLES|COLUMNS,
+PRAGMA table_info, or plain information_schema select).
 Inside method-safe-run only the copy rule still applies (output stays in the log),
-and files a run wrote (runs/outputs.txt) are data afterwards. Tables under
+and files a run wrote (runs/outputs.txt) are data afterwards, as are its temp
+directories (runs/temp-roots.txt) and, while a run is live or was never
+reconciled (runs/active/*.json), project files changed since it started. Those
+state files can only be changed by method-safe-run itself. Tables under
 phi_environment.aggregate_dirs print through the plugin's method-aggregate-read,
 which reads once and checks the bytes it prints (no identifier headers or
 indexed cells, no counts 1-10, at most 500 rows); a hook-time check of a later
 shell or script read could be raced. Markdown tables, which are not data
 files, are also checked on Read and cat. Limits: the script check is
-heuristic; obfuscation the parser cannot see is out of scope; this is defense
-in depth, not a sandbox.
+heuristic; obfuscation the parser cannot see is out of scope; writes to
+hard-coded paths outside the project and the run's temp directory, processes
+that leave the run's process group, database servers with no database word and
+no SQL text, and MCP resources are not covered; this is defense in depth, not a
+sandbox.
 
 Fail mode: config problems resolve to schema-only. An unexpected internal error
 denies only calls that mention a data-like path or an upload; anything else is

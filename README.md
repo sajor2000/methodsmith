@@ -620,7 +620,12 @@ denies:
   and `pdm run`; a direct path with a script extension or interpreter
   shebang; a script fed on stdin; `source`; `python -m` for a project module;
   `Rscript -e "source(...)"`; and code inside `sh -c`, `bash -c`, or `eval`.
-  The hook reads the script itself, up to 1 MB. Scripts that do not touch
+  A script that runs another file the hook cannot resolve before it runs
+  (`source(f)`, `eval(parse(f))`, `source` passed to `lapply`, `runpy`,
+  `exec`/`eval` of a computed string, `importlib.import_module(name)`) is
+  denied too; literal paths, including `file.path(...)` and `here(...)` over
+  literals, are followed and checked. The hook reads the script itself, up to
+  1 MB. Scripts that do not touch
   data, or that only read aggregate tables that pass the check below, run as
   before.
 - Workflow runners (`make`, `snakemake`, `nextflow`, `dvc repro`, `pytest`,
@@ -637,6 +642,16 @@ strictest wins. Unquoted shell wildcards are expanded (up to 256 matches) and
 checked like the files they name; in schema-only mode a wildcard that matches
 more than that is treated as data.
 
+Database MCP tools (Postgres, DuckDB, SQLite, Snowflake, BigQuery, MongoDB,
+Neo4j, and similar, recognized by a database word in the tool name or by SQL
+or Cypher statement text in the arguments) return query results straight
+into the context, so in schema-only mode they are denied unless the call only
+inspects the schema: a tool that lists or describes tables, or a single
+`DESCRIBE`, `SHOW TABLES`/`COLUMNS`, `PRAGMA table_info`, or plain select from
+`information_schema.tables`/`columns`. Run real queries in a script through
+the safe runner, write an aggregate table, and read it with
+`method-aggregate-read`. Literature and search connectors are not affected.
+
 **Safe runner.** `scripts/method-safe-run -- <command>` runs the command and writes
 its full stdout and stderr to `.methodsmith/runs/<UTC-timestamp>-<pid>.log`
 (gitignored). It prints only the exit code, the duration, the files created or
@@ -646,7 +661,13 @@ timestamps), and a stderr summary that keeps only traceback file and line
 frames and exception type names, plus a count of withheld lines; identifier
 values in file names are masked. It never prints stdout or other stderr text:
 open the log yourself. It refuses to run when no `.methodsmith/` or `.git` is
-found above the working directory.
+found above the working directory. The command gets its own temp directory
+(`TMPDIR`, `TMP`, `TEMP`) outside the project, which counts as data and is
+removed when the run finishes. While a run, or anything it started, is still
+going, project files changed since it began count as data; a run that was
+killed before recording its outputs keeps that rule in force until the next
+run or `method-safe-run --reconcile` records what it wrote. Processes a
+command leaves running are stopped about 10 seconds after it exits.
 The hook's deny message gives the runner's full path. It accepts only the
 plugin's own runner (or a byte-identical copy) and still checks uploads inside
 it.
@@ -722,7 +743,14 @@ If it is missing, the launcher prints a warning and exits successfully, so the
 guard is inactive and calls are not blocked. The script check is heuristic
 static analysis: a script that builds a data path at run time, or reads data
 through a function the hook does not recognize, can still print values, and
-programs it cannot parse (deliberate obfuscation) are out of scope. Values
+programs it cannot parse (deliberate obfuscation) are out of scope. Files a
+safe-runner command writes to hard-coded paths outside the project and its
+temp directory (`/tmp/x.csv`, Java's `java.io.tmpdir`, Spark's local
+directory), and processes that leave the run's process group with `setsid`,
+are not tracked. A database server whose tools have no database word in
+their names and take no SQL text is not recognized, and MCP resources are not
+checked. Editing a file while a safe-runner command is still running makes
+that file data until the run ends. Values
 that are not in identifier columns, such as free-text notes, are not indexed,
 and the identifier patterns catch common shapes, not every one. A patient who
 shares a full name with an author you search for blocks that name. A config
