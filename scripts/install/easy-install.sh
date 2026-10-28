@@ -446,6 +446,9 @@ install_droid() {
         echo "Could not identify the registered Droid marketplace for $marketplace_source" >&2
         exit 2
       fi
+    elif [ "$source_explicit" = "yes" ]; then
+      echo "Could not list the registered Droid marketplaces for $marketplace_source" >&2
+      exit 2
     fi
   fi
   run_or_echo droid plugin install "$PLUGIN_NAME@$install_marketplace" --scope "$scope"
