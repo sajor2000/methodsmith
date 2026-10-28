@@ -12,7 +12,7 @@ import sys
 
 
 def git(root: str, *args: str) -> bytes:
-    return subprocess.check_output(["git", "-C", root, *args], stderr=subprocess.DEVNULL)
+    return subprocess.check_output(["git", "-C", root, *args], stderr=subprocess.DEVNULL, timeout=300)
 
 
 def inventory(root: str, base: str | None) -> dict:
@@ -52,7 +52,7 @@ def main() -> int:
             value["status"] = "awaiting-human-disclosure-review"
         print(json.dumps(value))
         return 0 if args.approval else 1
-    except (OSError, ValueError, subprocess.CalledProcessError):
+    except (OSError, ValueError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
         print(json.dumps({"status": "blocked", "reason": "Git scope unavailable, unmerged index, or disclosure review missing/stale"}))
         return 1
 

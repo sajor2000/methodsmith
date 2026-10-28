@@ -123,10 +123,11 @@ def load(root: Path, study_id: str) -> dict:
 def execution_inputs(record: dict, key: str) -> dict:
     """Bind declared inputs before execution, never reconstruct them at attachment."""
     item = record["artifacts"][key]
-    require(status(record)["artifacts"][key]["freshness"] == "current", "execution inputs need reconciliation")
+    current = status(record)["artifacts"][key]
+    require(current["freshness"] == "current", "execution inputs need reconciliation")
     return {"study_id": record["study_id"], "artifact_id": key,
             "source_digest": item["digest"],
-            "dependencies_complete": status(record)["artifacts"][key]["coverage"] == "declared",
+            "dependencies_complete": current["coverage"] == "declared",
             "dependencies": {d: evidence_binding(record, d) for d in item["dependencies"]}}
 
 
