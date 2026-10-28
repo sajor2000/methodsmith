@@ -11,8 +11,10 @@ permissions:
   issues: write
 
 concurrency:
+  # Serialized, never cancelled: cancelling a main-branch run would kill its
+  # validate-candidate job and leave a fully validated commit unreleased.
   group: release-pr-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   validate-candidate:
