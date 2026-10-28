@@ -339,6 +339,9 @@ def classify(entry: dict, lookup: dict) -> dict:
     if not entry.get("fields_trustworthy", True):
         return {
             "verdict": "OK",
+            # Identifier resolved, but title and year were never compared:
+            # identity stays unverified until a human compares the record.
+            "identity": "unverified",
             "reasons": [
                 "identifier resolved via %s" % lookup.get("source", "lookup"),
                 "free-text entry: title and year were not compared",
@@ -517,7 +520,7 @@ def audit(entries: list, cache: dict, offline: bool) -> list:
                 "title": entry.get("title"),
                 "claimed_year": entry.get("year"),
                 "verdict": verdict["verdict"],
-                "identity_status": {"OK": "verified", "MISMATCH": "mismatch", "FABRICATED": "not-found", "UNVERIFIED": "unverified"}[verdict["verdict"]],
+                "identity_status": verdict.get("identity") or {"OK": "verified", "MISMATCH": "mismatch", "FABRICATED": "not-found", "UNVERIFIED": "unverified"}[verdict["verdict"]],
                 "claim_support": "unverified",
                 "access_level": "metadata-only",
                 "reasons": verdict["reasons"],
@@ -616,7 +619,7 @@ def main(argv=None) -> int:
                         "index": entry.get("index"),
                         "identifier": entry.get("identifier"),
                         "verdict": verdict["verdict"],
-                "identity_status": {"OK": "verified", "MISMATCH": "mismatch", "FABRICATED": "not-found", "UNVERIFIED": "unverified"}[verdict["verdict"]],
+                "identity_status": verdict.get("identity") or {"OK": "verified", "MISMATCH": "mismatch", "FABRICATED": "not-found", "UNVERIFIED": "unverified"}[verdict["verdict"]],
                 "claim_support": "unverified",
                 "access_level": "metadata-only",
                         "reasons": verdict["reasons"],

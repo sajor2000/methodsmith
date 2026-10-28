@@ -98,9 +98,9 @@ The script resolves every DOI through CrossRef then OpenAlex and every PMID thro
 - `OK` — the identifier resolves and the claimed title, year, and first author match;
 - `MISMATCH` — the identifier resolves but a claimed field differs; the record's true values travel in the report for the author to compare;
 - `UNVERIFIED` — no identifier, or no record could be fetched; carry that status into the ledger, never a silent OK;
-- `FABRICATED` — the DOI or PMID is registered nowhere. A fabricated reference blocks delivery: the script exits 2.
+- `FABRICATED` — the DOI or PMID was not found by the consulted resolvers (legacy wire label; not proof of fabrication or search completeness). Such a reference blocks delivery: the script exits 2.
 
-Entries parsed from free prose carry a guessed title and year, so the script compares their identifier only and attaches the resolved record for a human to compare; do not mark such an entry MISMATCH on the parser's guess.
+Entries parsed from free prose carry a guessed title and year, so the script compares their identifier only and attaches the resolved record for a human to compare; do not mark such an entry MISMATCH on the parser's guess. Their `identity_status` stays `unverified` until that human comparison happens.
 
 Use `--lookup-cache <file>` to reuse or record lookups across runs, and `--offline` to classify from a populated cache when the network is unavailable. Add `--strict` to also fail on MISMATCH.
 
