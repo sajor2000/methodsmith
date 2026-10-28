@@ -40,6 +40,15 @@ type CodexMarketplaceManifest = {
   }>
 }
 
+type FactoryMarketplaceManifest = {
+  name: string
+  plugins: Array<{
+    name: string
+    description?: string
+    source?: string | Record<string, unknown>
+  }>
+}
+
 type SyncOptions = {
   root?: string
   componentVersions?: Partial<Record<ReleaseComponent, string>>
@@ -157,6 +166,7 @@ export async function syncReleaseMetadata(options: SyncOptions = {}): Promise<Me
   const codingTutorCursorPath = path.join(root, "plugins", "coding-tutor", ".cursor-plugin", "plugin.json")
   const marketplaceClaudePath = path.join(root, ".claude-plugin", "marketplace.json")
   const marketplaceCursorPath = path.join(root, ".cursor-plugin", "marketplace.json")
+  const marketplaceFactoryPath = path.join(root, ".factory-plugin", "marketplace.json")
 
   const compoundClaude = await readJson<ClaudePluginManifest>(compoundClaudePath)
   const compoundCursor = await readJson<CursorPluginManifest>(compoundCursorPath)
@@ -164,6 +174,10 @@ export async function syncReleaseMetadata(options: SyncOptions = {}): Promise<Me
   const codingTutorCursor = await readJson<CursorPluginManifest>(codingTutorCursorPath)
   const marketplaceClaude = await readJson<MarketplaceManifest>(marketplaceClaudePath)
   const marketplaceCursor = await readJson<MarketplaceManifest>(marketplaceCursorPath)
+  const marketplaceFactory = await readJson<FactoryMarketplaceManifest>(marketplaceFactoryPath)
+  if (marketplaceFactory.name !== "methodsmith") {
+    errors.push(`${marketplaceFactoryPath}: marketplace name "${marketplaceFactory.name}" must be "methodsmith"`)
+  }
   const expectedCompoundVersion = resolveExpectedVersion(
     versions["methodsmith"],
     compoundClaude.version,
@@ -251,6 +265,20 @@ export async function syncReleaseMetadata(options: SyncOptions = {}): Promise<Me
 
   updates.push({ path: marketplaceCursorPath, changed })
   if (write && changed) await writeJson(marketplaceCursorPath, marketplaceCursor)
+
+  changed = false
+  const factoryMethodsmith = marketplaceFactory.plugins.find((plugin) => plugin.name === "methodsmith")
+  if (!factoryMethodsmith) {
+    errors.push(`${marketplaceFactoryPath}: methodsmith plugin entry is missing`)
+  } else {
+    if (factoryMethodsmith.source !== "./plugins/methodsmith") {
+      errors.push(`${marketplaceFactoryPath}: methodsmith source must be "./plugins/methodsmith"`)
+    }
+    if (factoryMethodsmith.description !== compoundMarketplaceDescription) {
+      factoryMethodsmith.description = compoundMarketplaceDescription
+      changed = true
+    }
+  }
 
   // Codex manifests. Unlike Claude/Cursor, the Codex plugin.json is a
   // different schema at `.codex-plugin/plugin.json` and the marketplace lives
@@ -360,6 +388,18 @@ export async function syncReleaseMetadata(options: SyncOptions = {}): Promise<Me
       throw err
     }
   }
+
+  // Droid reads the Factory catalog when present. It uses the Claude plugin
+  // layout as its source and translates agents to droids during installation.
+  const claudeNames = [...marketplaceClaude.plugins.map((plugin) => plugin.name)].sort()
+  const factoryNames = [...marketplaceFactory.plugins.map((plugin) => plugin.name)].sort()
+  if (claudeNames.join("|") !== factoryNames.join("|")) {
+    errors.push(
+      `${marketplaceFactoryPath}: plugin list [${factoryNames.join(", ")}] does not match ${marketplaceClaudePath} [${claudeNames.join(", ")}]`,
+    )
+  }
+  updates.push({ path: marketplaceFactoryPath, changed })
+  if (write && changed) await writeJson(marketplaceFactoryPath, marketplaceFactory)
 
   return { updates, errors }
 }

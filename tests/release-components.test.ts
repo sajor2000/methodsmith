@@ -49,6 +49,7 @@ describe("release component detection", () => {
     expect(components.get("marketplace")).toEqual([])
     expect(components.get("methodsmith")).toEqual([])
   })
+
 })
 
 describe("release intent parsing", () => {

@@ -49,6 +49,7 @@ async function makeFixtureRoot(): Promise<string> {
   })
   await mkdir(path.join(root, ".claude-plugin"), { recursive: true })
   await mkdir(path.join(root, ".cursor-plugin"), { recursive: true })
+  await mkdir(path.join(root, ".factory-plugin"), { recursive: true })
   await mkdir(path.join(root, ".agents", "plugins"), { recursive: true })
 
   await writeFile(
@@ -139,6 +140,17 @@ async function makeFixtureRoot(): Promise<string> {
       2,
     ),
   )
+  await writeFile(
+    path.join(root, ".factory-plugin", "marketplace.json"),
+    JSON.stringify(
+      {
+        name: "methodsmith",
+        plugins: [{ name: "methodsmith", source: "./plugins/methodsmith", description: "old" }, { name: "coding-tutor", source: "./plugins/coding-tutor", description: "old" }],
+      },
+      null,
+      2,
+    ),
+  )
 
   return root
 }
@@ -173,6 +185,7 @@ describe("release metadata", () => {
     expect(changedPaths).toContain(path.join(root, "plugins", "methodsmith", ".cursor-plugin", "plugin.json"))
     expect(changedPaths).toContain(path.join(root, ".claude-plugin", "marketplace.json"))
     expect(changedPaths).toContain(path.join(root, ".cursor-plugin", "marketplace.json"))
+    expect(changedPaths).toContain(path.join(root, ".factory-plugin", "marketplace.json"))
   })
 
   test("reports Codex plugin.json version drift without auto-correcting", async () => {
@@ -343,6 +356,21 @@ describe("release metadata", () => {
         (err) => err.includes(".agents/plugins/marketplace.json") && err.includes("does not match"),
       ),
     ).toBe(true)
+  })
+
+  test("reports Factory marketplace plugin-list or source mismatch", async () => {
+    const root = await makeFixtureRoot()
+    await writeFile(
+      path.join(root, ".factory-plugin", "marketplace.json"),
+      JSON.stringify({
+        name: "methodsmith",
+        plugins: [{ name: "methodsmith", source: "../outside" }],
+      }, null, 2),
+    )
+    const result = await syncReleaseMetadata({ root, write: false })
+
+    expect(result.errors.some((err) => err.includes(".factory-plugin/marketplace.json") && err.includes("source must"))).toBe(true)
+    expect(result.errors.some((err) => err.includes(".factory-plugin/marketplace.json") && err.includes("does not match"))).toBe(true)
   })
 
   test("happy path: fixture with matching Codex manifests produces no Codex errors", async () => {

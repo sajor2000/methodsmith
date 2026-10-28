@@ -22,17 +22,18 @@ usage() {
 Usage:
   bash install.sh claude [options]
   bash install.sh codex [options]
+  bash install.sh droid [options]
   bash install.sh doctor [options]
   bash scripts/install/easy-install.sh --target claude [options]
   bash scripts/install/easy-install.sh --target codex [options]
 
 Options:
-  --target claude|codex  Agent platform to configure
-  --source PATH          Repo root, unpacked offline package, plugin folder, or plugin ZIP.
-                         Without it, Claude and Codex install from the GitHub
-                         marketplace so updates reach you.
+  --target claude|codex|droid  Agent platform to configure
+  --source PATH          Source path; Droid requires a repo root with .factory-plugin/marketplace.json.
+                         Without it, Claude, Codex, and Droid install from the
+                         GitHub marketplace so updates reach you.
   --no-auto-update       Claude: do not turn on background auto-update
-  --scope user|project   Claude marketplace/alias scope (default: user)
+  --scope user|project   Plugin installation scope (default: user)
   --aliases              Also install safe bare /method-* Claude aliases
   --codex-home PATH      Codex profile root (default: $CODEX_HOME or ~/.codex)
   --agents-home PATH     Codex .agents root for marketplace.json (default: $AGENTS_HOME or ~/.agents)
@@ -44,12 +45,13 @@ Examples:
   bash install.sh claude --aliases
   bash install.sh codex --codex-home "${CODEX_HOME:-$HOME/.codex}"
   bash install.sh codex --source /approved/path/methodsmith-codex-local
+  bash install.sh droid
 USAGE
 }
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    claude|codex|doctor)
+    claude|codex|droid|doctor)
       target="$1"
       shift
       ;;
@@ -104,9 +106,9 @@ while [ "$#" -gt 0 ]; do
 done
 
 case "$target" in
-  claude|codex|doctor) ;;
-  "") echo "Choose a target: bash install.sh claude, bash install.sh codex, or bash install.sh doctor" >&2; usage >&2; exit 2 ;;
-  *) echo "--target must be claude, codex, or doctor" >&2; exit 2 ;;
+  claude|codex|droid|doctor) ;;
+  "") echo "Choose a target: bash install.sh claude, bash install.sh codex, bash install.sh droid, or bash install.sh doctor" >&2; usage >&2; exit 2 ;;
+  *) echo "--target must be claude, codex, droid, or doctor" >&2; exit 2 ;;
 esac
 
 case "$scope" in
@@ -178,11 +180,13 @@ print_doctor() {
   echo "Source type: $(source_status)"
   echo "Claude Code CLI: $(command_status claude)"
   echo "Codex CLI: $(command_status codex)"
+  echo "Droid CLI: $(command_status droid)"
   echo "Bun (optional for Codex agent bridge): $(command_status bun)"
   echo ""
   echo "Standard laptop:"
   echo "  bash install.sh claude --aliases"
   echo "  bash install.sh codex"
+  echo "  bash install.sh droid"
   echo ""
   echo "Locked-down or corporate laptop:"
   echo "  Claude: claude --plugin-dir /approved/path/methodsmith.zip"
@@ -411,8 +415,35 @@ install_codex() {
   exit 2
 }
 
+install_droid() {
+  if [ ! -f "$source_root/.factory-plugin/marketplace.json" ] || [ ! -d "$source_root/plugins/$PLUGIN_NAME" ]; then
+    echo "Could not find a Methodsmith Factory marketplace and plugin at $source_root" >&2
+    exit 2
+  fi
+
+  require_command droid
+  local marketplace_source="$source_root"
+  if [ "$source_explicit" = "no" ]; then
+    marketplace_source="$GITHUB_REPO"
+  fi
+
+  run_or_echo droid plugin marketplace add "$marketplace_source"
+  run_or_echo droid plugin install "$PLUGIN_NAME@$MARKETPLACE_NAME" --scope "$scope"
+  echo ""
+  echo "Droid install prepared. Restart Droid and invoke /method-setup in your project."
+  if [ "$source_explicit" = "yes" ]; then
+    echo "This marketplace uses the local checkout. Update with git pull in $source_root, then run:"
+    echo "  droid plugin marketplace update $MARKETPLACE_NAME"
+    echo "  droid plugin update $PLUGIN_NAME@$MARKETPLACE_NAME --scope $scope"
+  else
+    echo "Update later with: droid plugin marketplace update $MARKETPLACE_NAME"
+    echo "Then run: droid plugin update $PLUGIN_NAME@$MARKETPLACE_NAME --scope $scope"
+  fi
+}
+
 case "$target" in
   claude) install_claude ;;
   codex) install_codex ;;
+  droid) install_droid ;;
   doctor) print_doctor ;;
 esac

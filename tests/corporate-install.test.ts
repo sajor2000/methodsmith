@@ -96,6 +96,11 @@ describe("corporate install artifacts", () => {
     expect(codex.stdout).toContain(codexHome)
     expect(codex.stdout).toContain("Restart Codex, open /plugins, install Methodsmith")
 
+    const droid = await run(["bash", installer, "droid", "--dry-run"])
+    expect(droid.stdout).toContain("droid plugin marketplace add sajor2000/methodsmith")
+    expect(droid.stdout).toContain("droid plugin install methodsmith@methodsmith --scope user")
+    expect(droid.stdout).toContain("invoke /method-setup")
+
     const windowsCodex = await run([
       "bash",
       installer,

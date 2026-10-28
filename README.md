@@ -5,7 +5,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="website/static/brand/hero-dark.svg">
-  <img src="website/static/brand/hero-light.svg" width="100%" alt="The Methodsmith hallmark. Rigorous methods for statistics, machine learning, and meta-analysis, from question to paper. Every study compounds. A plugin for Claude Code and Codex. The loop: /method-plan, /method-work, /method-review, /method-compound, with learnings feeding the next plan.">
+  <img src="website/static/brand/hero-light.svg" width="100%" alt="The Methodsmith hallmark. Rigorous methods for statistics, machine learning, and meta-analysis, from question to paper. Every study compounds. A plugin for Claude Code, Codex, and Factory Droid. The loop: /method-plan, /method-work, /method-review, /method-compound, with learnings feeding the next plan.">
 </picture>
 
 [![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fsajor2000%2Fmethodsmith%2Fmain%2Fplugins%2Fmethodsmith%2F.claude-plugin%2Fplugin.json&query=%24.version&label=version&color=1B1F27)](https://github.com/sajor2000/methodsmith/releases)
@@ -15,7 +15,7 @@
 
 </div>
 
-**Methodsmith** is a plugin for Claude Code and Codex that brings <!-- rebrand:keep -->
+**Methodsmith** is a plugin for Claude Code, Codex, and Factory Droid that brings <!-- rebrand:keep -->
 the habits of a careful methods team to your coding agent. It plans the analysis
 before it runs, reviews it before anyone reads the results, and records what each
 study taught you, so the next one starts ahead. Clinical statistics, Python and ML
@@ -25,7 +25,7 @@ papers, and meta-analysis; R or Python.
 approve the plan and judge the findings. Methodsmith does the drafting, running
 and checking that make the work reproducible and grounded: pre-specified SAPs,
 reviewed code, reporting checklists and numbers traced to the analysis.
-**70 skills, 55 specialist agents, and 49 reporting standards.**
+**72 skills, 55 specialist agents, and 49 reporting standards.**
 
 ```bash
 # Install in Claude Code (2.1.292 or later), then set up a project
@@ -79,6 +79,7 @@ the work; it does not make the scientific decisions for you. See the
 | **Claude Code**, 2.1.292 or later | `claude plugin install methodsmith --marketplace sajor2000/methodsmith` |
 | **Claude Code**, inside a running session (2.1.275+) | `/plugin install methodsmith --marketplace sajor2000/methodsmith` |
 | **Codex** | `git clone https://github.com/sajor2000/methodsmith.git ~/methodsmith` then `bash ~/methodsmith/install.sh codex` |
+| **Factory Droid** | `droid plugin marketplace add sajor2000/methodsmith` then `droid plugin install methodsmith@methodsmith --scope user` |
 | **Pi** | [Pi, generated install](#pi-generated-install) |
 | **Gemini CLI, OpenCode, Kiro, Qwen Code** | [Also works with Codex, Pi, Gemini, and more](#also-works-with-codex-pi-gemini-and-more) |
 | **Locked-down or offline laptop** | [Locked-down or demo laptop](#locked-down-or-demo-laptop) |
@@ -129,6 +130,8 @@ next safe step.
 | `/method-table1` traceable Table 1 | `/method-marimo` reactive, reproducible notebooks | `/method-checklist` PRISMA 2020 and its extensions |
 | `/method-numbers` every reported number traced to the analysis | `/method-figure` calibration, ROC and forest plots | `/method-write` evidence-bound manuscript drafts |
 
+Try the [rerunnable BCG meta-analysis example](demo/bcg-meta-analysis/) for code, outputs, and stated limitations.
+
 ## Why you can check its work
 
 - **49 reporting standards**, covering reporting guidelines, appraisal tools,
@@ -136,13 +139,12 @@ next safe step.
   (CONSORT, STROBE, PRISMA, TRIPOD+AI, TARGET and more). Only the newest version
   of each guideline can load, and a test enforces it. Sources are listed in
   [Guideline sources](https://sajor2000.github.io/methodsmith/docs/guideline-sources).
-- **A PHI guard.** A pre-tool hook keeps data values out of the model in
-  schema-only projects and checks identifiers in supported web, MCP, and shell
-  egress calls in every mode. Outputs are aggregate, with small cells
-  suppressed. Details in [Sensitive-data boundary](#sensitive-data-boundary).
-- **55 specialist reviewers**: methods, causal inference, multiplicity, leakage,
-  calibration, fairness, reproducibility, PHI and more, run in parallel and
-  deduplicated before you see them.
+- **A Claude Code data-boundary hook**, requiring Python, checks supported
+  tool paths for prohibited data reads and identifier disclosure. Other hosts
+  rely on workflow instructions; this is not universal PHI detection or a sandbox.
+  See [Sensitive-data boundary](#sensitive-data-boundary) for prerequisites and limits.
+- **55 specialist agents**, including reviewers and researchers. Relevant
+  reviewers are selected for each task; findings are deduplicated.
 - **Numbers locked to raw data.** `/method-numbers` has manuscripts, tables,
   captions and abstracts cite numbers from a registry written by the analysis
   code, and a fail-closed gate traces each one to its SAP output, script commit
@@ -158,7 +160,7 @@ From each project's public documentation, checked 2026-10-19.
 | Plan -> review -> compound loop | Yes | Yes | Plans and TDD | No | Router plus defined chains; no compound step |
 | SAP with estimands | Yes | No | No | Power only | Analysis plan, no estimands |
 | Reporting checklists | 49, item IDs, newest version only | No | No | Writing aids | 49 stated (guidelines and risk-of-bias tools) |
-| PHI guard hook | Yes | No | No | No | De-identification skill |
+| PHI guard hook | Claude Code only; requires Python | No | No | No | De-identification skill |
 | Hosts | Claude Code, Codex, Pi, more | 14 hosts | 16 hosts | Many | Claude Code, Codex, Cursor, Copilot |
 
 The reporting-checklist row is not a count race: MedSci Skills states a similar
@@ -174,7 +176,7 @@ Use Methodsmith to set up this project, then help me plan a study of
 to make before we analyze any data.
 ```
 
-![Skill map: 30 key skills across six phases (Frame, Design, Data, Plan, Execute, Review), with guardrails for ICH E9(R1) estimands, 49 reporting checklists, 55 specialist reviewers, and PHI-safe outputs](docs/workflow-diagram.png)
+![Skill map: 30 key skills across six phases (Frame, Design, Data, Plan, Execute, Review), with guardrails for ICH E9(R1) estimands, 49 reporting checklists, 55 specialist agents, and aggregate-output guidance](docs/workflow-diagram.png)
 
 ## How the package works
 
@@ -699,10 +701,10 @@ identifier (an identifier shape, or a value in the identifier index).
 
 #### What external tools receive
 
-PubMed, Paperclip, and every other MCP tool receive search terms, MeSH terms,
-PMIDs, DOIs, and paper titles. They never receive data values, identifiers,
-row text, or data files. This holds in **every mode, including after you
-approve the endpoint**: approving the model endpoint does not cover
+The workflow permits research tools such as PubMed and Paperclip to receive
+non-sensitive search terms, MeSH terms, PMIDs, DOIs, and paper titles. It prohibits
+sending data values, identifiers, row text, or data files. This policy applies
+in **every mode, including after you approve the endpoint**: approving the model endpoint does not cover
 third-party services such as NCBI or Paperclip.
 
 Claude Code `WebSearch` queries, `WebFetch` URLs and prompts, MCP tool
@@ -1075,6 +1077,7 @@ Run generated installs from the repo root (`cd "$CE_DS_REPO"`). Use
 | Claude Code, offline | `claude --plugin-dir /approved/path/methodsmith.zip` |
 | Claude bare aliases | `bash scripts/install/install-claude-aliases.sh --plugin-dir "$CE_DS_REPO/plugins/methodsmith" --scope user` |
 | Codex, one-command setup | `bash install.sh codex` then install Methodsmith from `/plugins` |
+| Factory Droid, one-command setup | `bash install.sh droid`, then restart Droid and run `/method-setup` |
 | Codex, Windows PowerShell | `.\install.ps1 codex` then install Methodsmith from `/plugins` |
 | Codex native + agent bridge | `bun run src/index.ts install ./plugins/methodsmith --to codex --codex-home "$CODEX_HOME"` |
 | Codex offline local marketplace | `bash install-codex-offline.sh --source /approved/path/methodsmith-codex-local --codex-home "$CODEX_HOME"` |
@@ -1109,7 +1112,7 @@ Codex installs have two supported modes:
 Managed Codex hooks are tagged with plugin metadata so upgrades can replace this plugin's hook entries without deleting manual hooks or hooks owned by another plugin. If an existing `hooks.json` is malformed, the installer backs it up before writing a managed replacement.
 
 See [Codex profile and hook installation](docs/solutions/integrations/codex-profile-and-hook-installation.md) for the profile, standalone, and recovery details.
-See [the setup guide](docs/setup.md) for exact Claude, Codex, OpenCode, Gemini, Kiro, Pi, and Qwen walkthroughs.
+See [the setup guide](docs/setup.md) for exact Claude, Codex, Droid, OpenCode, Gemini, Kiro, Pi, and Qwen walkthroughs.
 
 ---
 
@@ -1122,6 +1125,7 @@ How a new version reaches you depends on the agent.
 | Claude Code | Yes, once auto-update is on for the `methodsmith` marketplace. `bash install.sh claude` and `.\install.ps1 claude` turn it on (add `--no-auto-update` or `-NoAutoUpdate` to skip). After a one-line `claude plugin install ... --marketplace sajor2000/methodsmith`, turn it on yourself: run `/plugin`, open **Marketplaces**, select `methodsmith`, and choose **Enable auto-update**. | `claude plugin update methodsmith@methodsmith`, then `/reload-plugins` |
 | GitHub CLI skills-only install | No. | Re-run your `gh skill install` command after a new release. |
 | Codex | No. Codex has no documented automatic plugin update. | `codex plugin marketplace upgrade methodsmith`, then restart Codex. Refresh the generated agents with `bunx github:sajor2000/methodsmith install methodsmith --to codex` |
+| Factory Droid | No. | `droid plugin marketplace update methodsmith`, then `droid plugin update methodsmith@methodsmith --scope user`; restart Droid |
 | OpenCode, Pi, Gemini CLI, Kiro | No. These use generated files. | `bunx github:sajor2000/methodsmith install methodsmith --to opencode` (or `--to pi`, `--to gemini`, `--to kiro`; add `--output <workspace>` for a project install) |
 | Qwen Code | No. | `qwen extensions update methodsmith` |
 | Local checkout or offline package | No. | `git pull` in the checkout (or unpack the new package), then re-run the installer |
@@ -1221,7 +1225,7 @@ bun run package:corporate
 
 | | Count |
 |---|---|
-| Skills | 67 |
+| Skills | 72 |
 | Agents | 55 |
 | Reporting checklists | 49 |
 
@@ -1268,3 +1272,21 @@ cross-platform converter come from that work. Also influenced by [BMAD Method](h
 ## License
 
 [MIT](LICENSE) — Copyright (c) 2026 Juan Carlos Rojas. Original compound-engineering Copyright (c) 2025 Every.
+
+
+## Collaborative study records and peer review
+
+These new workflows are under validation; full lifecycle release acceptance is pending.
+
+Use `/method-study` to inventory a new or inherited study, connect code and outputs,
+check stale dependencies, preserve submission snapshots and produce a reviewed
+status card. Jupyter, marimo, R Markdown and Quarto remain native choices.
+Use `/method-revision` to retain reviewer comments under stable IDs, link shared
+analysis changes and draft evidence-bound responses across rounds.
+
+Full records and outputs stay in approved protected storage. Shared cards contain
+reviewed identifiers and statuses. Word/Zotero and source-led manuscripts use one
+explicit master with preserved handoffs. A matching digest, successful render or
+validator pass is not human scientific approval. Notebook engines and Word/Zotero
+application checks require their local runtimes; unavailable checks stay pending.
+These workflows do not automatically upload data, push Git changes or submit papers.
