@@ -37,3 +37,7 @@ argument-hint: "[new|edit|validate|export]"
 - Do not gate output rendering behind unnecessary conditional cells.
 - Surface missing files, invalid schemas, and failed assertions directly with the failed boundary and recovery options.
 - Persisted study output must identify the real source location or registered extract ID/hash and the validation evidence used; synthetic test/demo output must instead identify its synthetic fixture or generator and remain clearly labeled non-study.
+
+## Lifecycle evidence
+
+When collaborating through a study record, use `method-study` to connect this notebook to plans, source/configuration dependencies, runs and figures. `marimo check` is structural evidence; reactive/cached output is not automatically a clean successful run. Record execution and stale descendants separately, and keep exported HTML, outputs and logs inside the approved data boundary. Explain changed cell dependencies and scientific rationale to the PI without exposing raw values.

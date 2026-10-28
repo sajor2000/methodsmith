@@ -1,5 +1,5 @@
 [
-  {"query": "Build me a marimo notebook for exploring the sepsis cohort parquet - dropdown for site, slider for lactate cutoff, and a reactive table of outcomes by group.", "should_trigger": true},
+  {"query": "Build me a marimo notebook for exploring the sepsis cohort parquet - dropdown for site, slider for lactate cutoff, and a reactive table of outcomes by group. in a study with a protected lifecycle record", "should_trigger": true},
   {"query": "marimo check is failing on analysis/eda.py with 'multiple definitions of df' - can you fix the cells so the reactive graph is clean?", "should_trigger": true},
   {"query": "I want a reactive python notebook (not jupyter) for our readmission analysis where changing the lookback window re-runs everything downstream. Use PEP 723 deps inline.", "should_trigger": true},
   {"query": "Export analysis/notebooks/km_curves.py (it's a marimo app) to HTML for the lab meeting and make sure it runs non-interactively first.", "should_trigger": true},

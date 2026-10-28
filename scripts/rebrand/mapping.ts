@@ -8,6 +8,7 @@ export type RenameMap = {
   agents: Record<string, string>
   scripts: Record<string, string>
   pending: string[]
+  postRebrandSkills: string[]
   /** Paths copied (not moved) so old links keep working for one release. */
   keepOldCopies: string[]
   upstream: { skills: string[]; agents: string[] }
@@ -31,6 +32,7 @@ export function loadRenameMap(): RenameMap {
     agents,
     scripts,
     pending: raw.pending.skills,
+    postRebrandSkills: raw.postRebrandSkills,
     keepOldCopies: raw.keepOldCopies.paths,
     upstream: raw.upstreamCompoundEngineering,
     allPairs,

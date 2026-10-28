@@ -1,6 +1,6 @@
 ---
 name: method-journal-select
-description: "Matches a finished manuscript or abstract to candidate journals by sourced scope fit, indexing, and access policy, returning a ranked target with backups. Use when choosing where to submit."
+description: "Selects journals using sourced scope and author requirements. Use when targeting or transferring a paper."
 argument-hint: "[path/to/manuscript or abstract] [optional: --constraints indexing=medline,access=hybrid]"
 ---
 
@@ -53,3 +53,7 @@ __CE_JOURNAL_SELECT__ target=<journal> backups=<n> candidates=<n> sourced_cells=
 ```
 
 The author makes the final choice; the ranking, the flags, and their sources travel with the recommendation.
+
+## Transfer and dated requirements
+
+Before adaptation, retrieve the chosen journal's official instructions for the selected article type. Record source URL, retrieval date, applicable structure, word/reference limits, figures/tables, supplements and declarations. Paraphrase copyrighted requirements; retain source documents locally. Unavailable or ambiguous rules stay unresolved. Use `method-submission-package` for a dated journal profile and `method-study` to preserve the previous submission. Changing journal style must not silently change scientific claims, numbers or citation associations.

@@ -1,0 +1,1 @@
+An inherited synthetic study has a manuscript and Jupyter notebook, but no credible execution history. Explain intake without running code or inventing provenance. The user wants marimo supported too, but has not requested conversion.

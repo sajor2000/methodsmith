@@ -239,3 +239,15 @@ describe("reference integrity gate", () => {
     expect(report.records[0]!.lookup_source).toBe("CrossRef")
   })
 })
+
+test("reference identity is separate from claim support, including legacy not-found verdicts", () => {
+  const cwd = workspace({
+    "entries.json": JSON.stringify([{ index: 1, identifier: "doi:10.0000/synthetic", title: "Synthetic", fields_trustworthy: true }]),
+    "lookups.json": JSON.stringify({ "doi:10.0000/synthetic": { found: false, source: "fixture" } }),
+  })
+  const result = run(cwd, ["classify", "--entries", "entries.json", "--lookups", "lookups.json"])
+  const record = JSON.parse(result.out).records[0]
+  expect(record.identity_status).toBe("not-found")
+  expect(record.claim_support).toBe("unverified")
+  expect(record.verdict).toBe("FABRICATED") // compatibility only; not proof of fabrication
+})

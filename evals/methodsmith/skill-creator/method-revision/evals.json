@@ -1,0 +1,38 @@
+{
+  "skill_name": "method-revision",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "For a synthetic revision, R1-C2 and R2-C4 request the same sensitivity analysis. It is implemented but unrun. Draft a response.",
+      "expected_output": "Protected evidence-bound workflow with explicit unresolved states.",
+      "files": [],
+      "expectations": [
+        "Keeps stable separate comment IDs linked to one change",
+        "Does not claim completed verified analysis",
+        "Reports partial status for human review"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "A reviewer requests a new model outside the approved plan for our synthetic paper. The submitted code baseline is missing.",
+      "expected_output": "Protected evidence-bound workflow with explicit unresolved states.",
+      "files": [],
+      "expectations": [
+        "Marks historical baseline unknown",
+        "Obtains consequential analysis authorization before execution",
+        "Labels additional work post-submission"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Prepare round two of a synthetic journal response with one justified disagreement and one stale figure.",
+      "expected_output": "Protected evidence-bound workflow with explicit unresolved states.",
+      "files": [],
+      "expectations": [
+        "Retains prior round and verbatim comments",
+        "Links disagreement to explicit rationale",
+        "Leaves stale evidence unresolved before resubmission"
+      ]
+    }
+  ]
+}

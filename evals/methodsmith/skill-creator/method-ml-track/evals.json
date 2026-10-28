@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "We just finished the cohort build for the sepsis early-warning model (Python, sklearn + xgboost). Before training starts I want proper tracking with MLflow using our approved_tracking_uri, project name sepsis-ews. SAP is analysis/sap.md.",
+      "prompt": "We just finished the cohort build for the sepsis early-warning model (Python, sklearn + xgboost). Before training starts I want proper tracking with MLflow using our approved_tracking_uri, project name sepsis-ews. SAP is analysis/sap.md. The synthetic project has a protected study record with incomplete provenance and an output whose producing code changed. Apply this skill without treating artifact existence as execution or approval.",
       "expected_output": "Sets up approved restricted mlflow storage, validation-aware schema and SAP linkage; only reviewed aggregate summaries may be committed.",
       "files": [],
       "expectations": [
@@ -11,7 +11,9 @@
         "Writes analysis/ml/run-schema.yaml listing required params (including random_seed and split_strategy), development metrics (log_loss_validation and auprc_validation with their scheme, n_events_train) with log loss as the selection metric and the bootstrap instability_mape of predictions, and artifacts, and restricts held-out test metrics (Brier, calibration intercept/slope, test AUC, net_benefit_test) to the locked final model logged once",
         "Adds the tracking/manuscript-run linkage sentence to analysis/sap.md referencing analysis/ml/manuscript-run.txt",
         "Keeps complete logs in approved restricted gitignored storage; runs/ contains only disclosure-reviewed suppressed aggregate summaries",
-        "Emits '__CE_ML_TRACK__ backend=mlflow uri=<uri> schema=<path>'"
+        "Emits '__CE_ML_TRACK__ backend=mlflow uri=<uri> schema=<path>'",
+        "Preserves incomplete provenance and does not infer historical approval",
+        "Identifies stale dependent evidence or routes to method-study without claiming a current verified result"
       ]
     },
     {

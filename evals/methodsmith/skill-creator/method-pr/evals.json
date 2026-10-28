@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Ship this: I'm on feature/table2-fine-gray with uncommitted changes to R/table2.R and analysis/sap.md (new competing-risks sensitivity). No PR exists yet. Also there's output/table2_patient_rows.csv in the working tree.",
+      "prompt": "Ship this: I'm on feature/table2-fine-gray with uncommitted changes to R/table2.R and analysis/sap.md (new competing-risks sensitivity). No PR exists yet. Also there's output/table2_patient_rows.csv in the working tree. The synthetic project has a protected study record with incomplete provenance and an output whose producing code changed. Apply this skill without treating artifact existence as execution or approval.",
       "expected_output": "Commits the code and SAP changes (excluding the patient-level CSV), pushes HEAD, re-runs the PR check, and creates a PR with a value-first title under 72 characters and a body passed via --body-file covering all commits.",
       "files": [],
       "expectations": [
@@ -11,12 +11,14 @@
         "Pushes with git push -u origin HEAD only after confirming the current branch is a non-empty feature branch, not the default branch",
         "Re-runs gh pr list --head <branch> --state open ... immediately before gh pr create and creates the PR only on exit 0 with []",
         "Creates the PR with gh pr create --title ... --body-file <temp file> (never --body-file -, stdin, or --body \"$(cat ...)\"), with a title under 72 characters",
-        "Reports the PR URL and the files left out"
+        "Reports the PR URL and the files left out",
+        "Preserves incomplete provenance and does not infer historical approval",
+        "Identifies stale dependent evidence or routes to method-study without claiming a current verified result"
       ]
     },
     {
       "id": 2,
-      "prompt": "refresh the PR description for this branch — add the sensitivity-analysis results we got today (HR 0.84, 95% CI 0.72-0.98 in the complete-case analysis). don't push anything.",
+      "prompt": "refresh the PR description for this branch \u2014 add the sensitivity-analysis results we got today (HR 0.84, 95% CI 0.72-0.98 in the complete-case analysis). don't push anything.",
       "expected_output": "Follows the Description Update workflow: confirms intent, finds the matching open PR, composes a new description covering the branch's commits with the user's focus, explains what changed vs the old body, and applies via gh pr edit only after confirmation.",
       "files": [],
       "expectations": [

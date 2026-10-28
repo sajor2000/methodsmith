@@ -1,5 +1,5 @@
 [
-  {"query": "Which skill should synthesize published calibration slopes and AUC estimates for our prediction project?", "should_trigger": true},
+  {"query": "Which skill should synthesize published calibration slopes and AUC estimates for our prediction project? in a study with a protected lifecycle record", "should_trigger": true},
   {"query": "where am i in the lifecycle for this project? what should i run next", "should_trigger": true},
   {"query": "Resuming the sepsis prediction project after vacation; show lifecycle status and the next safe step", "should_trigger": true},
   {"query": "We just finished the data QA gate. What comes after that -- SAP, model strategy, sprint?", "should_trigger": true},

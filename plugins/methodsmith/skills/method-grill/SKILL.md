@@ -17,11 +17,12 @@ argument-hint: "[project idea, or path to a brief, research-question.yaml, draft
 
 ## How the grill works
 
-Treat the project as a **decision tree** with six branches. Every decision unlocks the decisions that depend on it; the **frontier** is the set of open decisions whose prerequisites are already settled.
+Treat the project as a **decision tree** with seven branches. Every decision unlocks the decisions that depend on it; the **frontier** is the set of open decisions whose prerequisites are already settled.
 
 | Branch | The decision it forces |
 |---|---|
 | Goal | What decision, practice, or policy changes if the study succeeds, and for whom |
+| Task and deliverable | What to produce, for whom, under which constraints, and how success will be judged |
 | Hypothesis | The falsifiable question: population, exposure or intervention, comparator, outcome, time zero, and expected direction |
 | Data | Whether this source can answer it: provenance, grain, access and approvals, coverage, missingness, and measurement validity |
 | Proposed analysis | Design, estimand, confounding or causal assumptions, missing-data plan, multiplicity, sensitivity analyses, and sample size |
@@ -37,6 +38,18 @@ Before any literature lookup, read `references/evidence-access.md` (PubMed and P
 - **Look up here:** the facts the interview must never ask the user for: prior studies on the hypothesis, published event rates, validated exposure and outcome definitions (with their PPV or sensitivity), and the target journal's recent similar papers (search with the journal name). Journal author guidelines (scope, article types, limits, required checklists) come from web search, not PubMed.
 
 ## Workflow
+
+### Planning integration
+
+When `method-plan` invokes this skill, use the decision tree and question bank for decisions that affect the requested plan. First establish the user's goal, task and deliverable, question or hypothesis when applicable, data, and proposed methods from existing evidence. Check settled choices for consequential weaknesses, not just missing fields; explain the specific concern before asking a decision-changing question. Do not re-ask settled choices without a reason. For descriptive or exploratory work, clarify the aim without requiring a directional hypothesis. Journal and audience questions are conditional on their relevance to the task.
+
+Look up accessible facts within the sensitive-data boundary; ask the researcher only for decisions or facts unavailable to you. Ask one question at a time with a recommended answer and rationale, and recompute dependent questions after each answer. Stop when the planning-critical decisions are clear or the user stops. Summarize confirmed choices and unresolved risks to the user, then return them to `method-plan` for inclusion in its plan. Do not create a separate grill record or route back to `method-plan` as a new invocation. The user may request a standalone grill record separately. In non-interactive mode return unresolved choices as gaps without inventing answers.
+
+When comparing methods, state how each changes the population, time zero, estimand, and assumptions where relevant. Do not treat a landmark design as interchangeable with a baseline target-trial strategy or promise that a method eliminates bias. Aligning eligibility and time zero alone does not resolve treatment assignment over a grace period. Until the drug, comparator, treatment window, and relevant data are known, recommend clarifying those decisions rather than selecting a specific causal estimator. If the facts do not support a responsible recommendation, explain the uncertainty and ask for the information needed rather than inventing one.
+
+Preserve the outcome as stated: do not add all-cause, in-hospital, or other qualifiers unless supported or confirmed. An active comparator can improve comparability when clinically appropriate, but does not inherently reduce confounding; explain the assumptions and remaining confounding rather than promising an advantage.
+
+### Standalone interview
 
 1. **Gather facts before asking.** Read whatever exists: `analysis/research-question.yaml`, `docs/brainstorms/`, any SAP (`analysis/sap.md` or a file with `sap_version` frontmatter), `reports/data-qa/` or `analysis/data-qa-report.md`, and `.methodsmith/config.local.yaml`. Look up journal scope, article types, word limits, and required checklists from the journal's author guidelines with available search tools instead of asking. Look up literature facts (prior studies, event rates, validated definitions, the journal's recent similar papers) with the Evidence access tools above, reading each source before citing it. Use parallel subagents for independent lookups when the platform supports them. Never ask the user for something you can find.
 2. **Sensitive-data boundary.** Resolve `phi_environment.mode` in `.methodsmith/config.local.yaml` (worktree, then main checkout; legacy `compliant: true` = `approved`, `compliant: false` = `schema-only`, `sensitive_data: false` = `no-sensitive-data`; any schema-only signal wins; unreadable = `schema-only`). `approved` or `no-sensitive-data`: proceed silently and never mention the boundary again. `schema-only`: headings, types, counts, and aggregates only; never open, print, or paste data values; run data-reading scripts as `method-safe-run -- <command>` (path in the guard's deny message); save results as aggregate tables (counts under 11 suppressed) in `output/` or a `phi_environment.aggregate_dirs` entry. Unset, interactive: ask once with the blocking question tool (else a numbered list) offering `Approved endpoint: full access`, `Not approved or unsure: schema-only`, and `No sensitive data: public or synthetic`; save the answer as `phi_environment.mode` there once `git check-ignore -q .methodsmith/config.local.yaml` passes (else first add `.methodsmith/*.local.yaml` to `.gitignore`) so the guard hook sees it. Unset, headless: schema-only. In `schema-only`, ask about data by schema, counts, and definitions, never for pasted rows.

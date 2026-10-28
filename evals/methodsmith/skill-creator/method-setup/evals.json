@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "/method-setup -- new repo for an ICU cohort study. There's a pyproject.toml, uv.lock, analysis/explore.ipynb and a cohort.parquet in data/.",
+      "prompt": "/method-setup -- new repo for an ICU cohort study. There's a pyproject.toml, uv.lock, analysis/explore.ipynb and a cohort.parquet in data/. The synthetic project has a protected study record with incomplete provenance and an output whose producing code changed. Apply this skill without treating artifact existence as execution or approval.",
       "expected_output": "Asks the one sensitive-data boundary question before inspecting data, then infers a Python/Jupyter/uv/Parquet profile from evidence, shows exactly one Detected profile card with three choices, saves only confirmed values to .methodsmith/config.local.yaml, and runs the health check.",
       "files": [],
       "expectations": [
@@ -12,7 +12,9 @@
         "Lists evidence and confidence for each field (e.g., Python high: pyproject.toml; Environment uv high: uv.lock)",
         "Does not ask R package or R project-type questions for this Python-only evidence",
         "Writes only confirmed, non-null values to .methodsmith/config.local.yaml and emits a __CE_LANG__ handoff",
-        "Runs scripts/check-health and finishes by recommending method-workflow"
+        "Runs scripts/check-health and finishes by recommending method-workflow",
+        "Preserves incomplete provenance and does not infer historical approval",
+        "Identifies stale dependent evidence or routes to method-study without claiming a current verified result"
       ]
     },
     {

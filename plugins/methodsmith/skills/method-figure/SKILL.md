@@ -91,3 +91,7 @@ For QA-only requests (existing figures or manifest), start at step 6 and apply s
 @./references/figure-spec.md
 
 Loaded on demand: `references/figure-style-guide.md` (style rules and figure-type checklists), `references/r-and-python-recipes.md` (calls per figure type and environment), `references/figure-style-profiles.yaml` (profile settings), `assets/theme_clinical.R`, `assets/clinical_style.py`, `assets/clinical.mplstyle`.
+
+## Study freshness integration
+
+When a study record exists, use `method-study` to register the figure manifest, output and producing code/run dependencies. File existence is not content identity or fresh execution. Keep source locators protected and shared references opaque. A source change marks affected figures and manuscript uses for revalidation; never make a visual preview from sensitive output without disclosure review.

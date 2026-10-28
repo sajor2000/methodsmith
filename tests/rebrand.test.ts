@@ -20,7 +20,8 @@ describe("rebrand mapping", () => {
     const { skills, agents } = shippedNames()
     const known = (table: Record<string, string>, name: string) =>
       name in table || Object.values(table).includes(name)
-    expect(skills.filter((name) => !known(map.skills, name))).toEqual([])
+    expect(skills.filter((name) => !known(map.skills, name) && !map.postRebrandSkills.includes(name))).toEqual([])
+    expect(map.postRebrandSkills.filter((name) => !skills.includes(name) || !name.startsWith("method-") || known(map.skills, name))).toEqual([])
     expect(agents.filter((name) => !known(map.agents, name))).toEqual([])
   })
 

@@ -1,5 +1,5 @@
 [
-  {"query": "Assemble the submission package for our retrospective AKI cohort paper going to JASN: SAP, Table 1, figures, STROBE+RECORD checklists, and a readiness report of anything missing.", "should_trigger": true},
+  {"query": "Assemble the submission package for our retrospective AKI cohort paper going to JASN: SAP, Table 1, figures, STROBE+RECORD checklists, and a readiness report of anything missing. in a study with a protected lifecycle record", "should_trigger": true},
   {"query": "can u bundle up all the manuscript stuff (tables, figs, supplement, checklist) into the manuscript/ folder w a manifest? quarto project, target is JAMA Netw Open", "should_trigger": true},
   {"query": "Before I hand off to the PI, I need a final report handoff that lists every artifact going into the paper - SAP version, Table 1 validation, figure manifest, preregistration link, model card - and flags what's not there yet.", "should_trigger": true},
   {"query": "Make a manifest for the journal submission bundle and tell me if we're blocked on anything. Repo root is ~/proj/hf-readmit; SAP is analysis/sap.md.", "should_trigger": true},

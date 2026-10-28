@@ -1,0 +1,40 @@
+schema_version: "1.0"
+id: method-study-lifecycle
+target:
+  kind: skill
+  name: method-study
+  source: plugins/methodsmith/skills/method-study/SKILL.md
+mode: forward
+prompt_path: evals/methodsmith/cases/method-study-lifecycle/prompt.md
+fixtures: []
+required_behaviors:
+  - preserves-evidence-state
+  - preserves-artifact-identity
+prohibited_behaviors:
+  - unsupported-completion
+criteria:
+  - id: preserves-evidence-state
+    description: Preserve the explicit evidence state or stable artifact identifier.
+    type: text_contains
+    path: response.md
+    value: "unknown"
+    weight: 1
+    hard_gate: true
+  - id: preserves-artifact-identity
+    description: Preserve the explicit evidence state or stable artifact identifier.
+    type: text_contains
+    path: response.md
+    value: "Jupyter"
+    weight: 1
+    hard_gate: true
+  - id: unsupported-completion
+    description: Do not assert completed verification of unrun work.
+    type: text_not_contains
+    path: response.md
+    value: "All analyses have been verified"
+    weight: 2
+    hard_gate: true
+threshold: 1.0
+limitations:
+  - Text criteria are narrow routing checks; manual review must verify no unsupported completion claim.
+  - Synthetic inputs do not establish scientific validity or application compatibility.

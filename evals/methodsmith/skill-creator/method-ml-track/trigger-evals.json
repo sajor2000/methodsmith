@@ -1,5 +1,5 @@
 [
-  {"query": "Set up offline bootstrap validation run logs for a restricted study with seven events; which artifacts can go in Git?", "should_trigger": true},
+  {"query": "Set up offline bootstrap validation run logs for a restricted study with seven events; which artifacts can go in Git? in a study with a protected lifecycle record", "should_trigger": true},
   {"query": "we're moving from exploratory notebooks to manuscript-bound runs for the sepsis model. what should every run log and where? we use wandb", "should_trigger": true},
   {"query": "The leakage reviewer said our eval isn't reproducible because splits and seeds aren't recorded. Wire up run tracking with a required-field schema.", "should_trigger": true},
   {"query": "Add dvc-based experiment tracking that versions the model artifacts with the data for our ICU mortality XGBoost project.", "should_trigger": true},

@@ -156,3 +156,9 @@ __CE_CITATION_LEDGER__ path=<ledger-path> docx=<field-bearing-master> style=<sty
 - It does not write to a Zotero library without an explicit user request and a reversible procedure.
 - It does not treat Paperclip citation URLs, `pubmed_format_citations` output, or PubMed metadata strings as editable Word fields.
 - It does not claim that a citation supports a manuscript statement when only metadata or an abstract was reviewed.
+
+## Claim support and manuscript handoffs
+
+Record identity status separately from support for each manuscript claim. The verifier's additive `identity_status`, `claim_support` and `access_level` fields distinguish metadata checks from evidence review. Its legacy `FABRICATED` wire label means identifier not found by consulted resolvers; it does not prove fabrication or search completeness. A real DOI may still support the wrong claim. Record the consulted passage/location, source version, access level (metadata-only, abstract-only or full-text), and supported/unsupported/unverified outcome in the citation ledger. Abstract-only access cannot verify full-text-dependent claims; never invent a quotation.
+
+Use `method-study` for one manuscript master and explicit source/export digests. Never flatten Zotero fields in the master. Quarto CSL rendering does not guarantee editable Zotero fields. Structural DOCX checks and actual Zotero Refresh are distinct; leave the application check pending when unavailable. Preserve external edits and reconcile them before regeneration.

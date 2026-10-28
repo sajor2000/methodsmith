@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "We're ready to submit the ICU delirium cohort paper to JAMA Network Open. Repo has analysis/sap.md (sap_version 3, final), the Table 1 spec, figures manifest, STROBE checklist under reporting/, and the manuscript is Quarto (manuscript/manuscript.qmd). Please put together the submission package.",
+      "prompt": "We're ready to submit the ICU delirium cohort paper to JAMA Network Open. Repo has analysis/sap.md (sap_version 3, final), the Table 1 spec, figures manifest, STROBE checklist under reporting/, and the manuscript is Quarto (manuscript/manuscript.qmd). Please put together the submission package. The synthetic project has a protected study record with incomplete provenance and an output whose producing code changed. Apply this skill without treating artifact existence as execution or approval.",
       "expected_output": "Runs the package-manifest builder with Quarto format, writes manuscript/package-manifest.json and package-readiness-report.md, and reports readiness as ready-with-review (not submission-ready) pending named human review.",
       "files": [],
       "expectations": [
@@ -15,7 +15,9 @@
         "Runs the method-numbers number gate on the manuscript sources, rendered copies, and tables before the manifest, and never sets ready-for-signoff unless it printed PASS",
         "Collects per-author ICMJE COI disclosure data under manuscript/coi/ as form-ready data only, never signing a form for an author",
         "Cross-checks the manuscript's COI statement against the collected disclosures and every funder named in the manuscript, cover letter, or registry entry, and blocks the package on a missing or inconsistent statement",
-        "The builder itself executes the number gate and blocks when the helper is missing, no reportable numbers are checked, or a typed result fails"
+        "The builder itself executes the number gate and blocks when the helper is missing, no reportable numbers are checked, or a typed result fails",
+        "Preserves incomplete provenance and does not infer historical approval",
+        "Identifies stale dependent evidence or routes to method-study without claiming a current verified result"
       ]
     },
     {

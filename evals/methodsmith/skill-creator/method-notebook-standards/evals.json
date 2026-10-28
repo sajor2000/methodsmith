@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Starting the analysis notebooks for the ARDS proning cohort in Quarto. There'll be data validation, cohort build, primary Cox model, sensitivity analyses, and figures. Set up the structure before we write any chunks.",
+      "prompt": "Starting the analysis notebooks for the ARDS proning cohort in Quarto. There'll be data validation, cohort build, primary Cox model, sensitivity analyses, and figures. Set up the structure before we write any chunks. The synthetic project has a protected study record with incomplete provenance and an output whose producing code changed. Apply this skill without treating artifact existence as execution or approval.",
       "expected_output": "Asks the one-master-versus-multi-file topology question before creating chunks, records the decision with paths, responsibilities and execution order, and defines named, scoped chunks each preceded by narrative.",
       "files": [],
       "expectations": [
@@ -11,7 +11,9 @@
         "Records the topology decision (paths, single responsibility per file, execution order, master entry point) in the notebook introduction or project plan",
         "Specifies a narrative block immediately before every executable chunk stating purpose, inputs/assumptions, and output/decision",
         "Uses named Quarto chunks with deliberately set chunk-level execution options where behavior differs from document default",
-        "Targets fewer than 30 executable lines per chunk, with a stated reason for any larger cohesive chunk"
+        "Targets fewer than 30 executable lines per chunk, with a stated reason for any larger cohesive chunk",
+        "Preserves incomplete provenance and does not infer historical approval",
+        "Identifies stale dependent evidence or routes to method-study without claiming a current verified result"
       ]
     },
     {

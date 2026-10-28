@@ -1,6 +1,6 @@
 [
   {
-    "query": "This project is all R -- renv, Quarto, a _targets.R pipeline. Where should I start for fitting the primary Cox model and the sensitivity analyses?",
+    "query": "This project is all R -- renv, Quarto, a _targets.R pipeline. Where should I start for fitting the primary Cox model and the sensitivity analyses? in a study with a protected lifecycle record",
     "should_trigger": true
   },
   {

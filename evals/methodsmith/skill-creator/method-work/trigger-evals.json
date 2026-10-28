@@ -1,6 +1,6 @@
 [
   {
-    "query": "Execute the plan in docs/plans/2026-10-01-readmission-plan.md -- implement each unit with tests and commit as you go",
+    "query": "Execute the plan in docs/plans/2026-10-01-readmission-plan.md -- implement each unit with tests and commit as you go in a study with a protected lifecycle record",
     "should_trigger": true
   },
   {

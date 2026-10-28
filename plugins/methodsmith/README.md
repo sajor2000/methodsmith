@@ -8,8 +8,8 @@ numbers to their analysis code. Built for clinical statistics, machine learning,
 and meta-analysis. Your team keeps scientific judgment and responsibility for
 the results.
 
-**70 skills · 55 specialist agents · 49 reporting standards.** Works with Claude
-Code, Codex, Pi, Gemini CLI, OpenCode, Kiro, and Qwen Code.
+**72 skills · 55 specialist agents · 49 reporting standards.** Works with Claude
+Code, Codex, Factory Droid, Pi, Gemini CLI, OpenCode, Kiro, and Qwen Code.
 
 > **Research use only; not a medical device for clinical care.** Methodsmith
 > supports research workflows and is not intended to diagnose, treat, cure,
@@ -75,6 +75,7 @@ each harness it finds.
 |---|---|
 | Claude Code | `claude plugin uninstall ce-datascience@ce-datascience-plugin`, then `claude plugin marketplace remove ce-datascience-plugin`, `claude plugin marketplace add sajor2000/methodsmith`, `claude plugin install methodsmith@methodsmith`. If you used `--aliases`, re-run `bash install.sh claude --aliases`. |
 | Codex | `codex plugin marketplace remove ce-datascience-plugin`, then `codex plugin marketplace add sajor2000/methodsmith` and `bunx github:sajor2000/methodsmith install methodsmith --to codex`. Open `/plugins` and install Methodsmith. |
+| Factory Droid | `droid plugin marketplace add sajor2000/methodsmith`, then `droid plugin install methodsmith@methodsmith --scope user`. |
 | OpenCode | `bunx github:sajor2000/methodsmith install methodsmith --to opencode` |
 | Pi | `bunx github:sajor2000/methodsmith install methodsmith --to pi --pi-home ~/.pi/agent` |
 | Gemini CLI, Kiro | `bunx github:sajor2000/methodsmith install methodsmith --to gemini --output .` (or `--to kiro`) in each workspace |
@@ -169,7 +170,7 @@ Agents keep the rest of their name: `ce-methods-reviewer` is now `method-methods
 
 ## Getting Started
 
-For complete copy-paste setup across Claude Code, Codex, OpenCode, Gemini CLI,
+For complete copy-paste setup across Claude Code, Codex, Droid, OpenCode, Gemini CLI,
 Kiro, Pi, and Qwen Code, see [`../../docs/setup.md`](../../docs/setup.md).
 
 From a source checkout, run `bash install.sh doctor` (or
@@ -615,10 +616,10 @@ identifier (an identifier shape, or a value in the identifier index).
 
 ### What external tools receive
 
-PubMed, Paperclip, and every other MCP tool receive search terms, MeSH terms,
-PMIDs, DOIs, and paper titles. They never receive data values, identifiers,
-row text, or data files. This holds in **every mode, including after you
-approve the endpoint**: approving the model endpoint does not cover
+The workflow permits research tools such as PubMed and Paperclip to receive
+non-sensitive search terms, MeSH terms, PMIDs, DOIs, and paper titles. It prohibits
+sending data values, identifiers, row text, or data files. This policy applies
+in **every mode, including after you approve the endpoint**: approving the model endpoint does not cover
 third-party services such as NCBI or Paperclip.
 
 Claude Code `WebSearch` queries, `WebFetch` URLs and prompts, MCP tool
@@ -682,13 +683,13 @@ one-line warning, so a hook bug never blocks unrelated work.
 | Component | Count |
 |-----------|-------|
 | Agents | 55 |
-| Skills | 70 |
+| Skills | 72 |
 
 Publication workflows use shared artifact registries and publication profiles so tables, figures, manuscript packages, registry exports, review packs, and signoff ledgers stay consistent. The initial publication profiles are JAMA and generic biomedical.
 
 ## Platform Support
 
-The plugin is authored once and distributed across Claude Code, Codex, Pi, Gemini CLI, OpenCode, Kiro, and Qwen Code.
+The plugin is authored once and distributed across Claude Code, Codex, Factory Droid, Pi, Gemini CLI, OpenCode, Kiro, and Qwen Code.
 
 - Claude Code loads the plugin directly from `plugins/methodsmith`.
 - Claude Code plugin commands and skills are namespaced as `/methodsmith:method-*`; install optional local aliases for bare `/method-*` demo UX.
@@ -1037,3 +1038,21 @@ cross-platform converter come from that work.
 ## License
 
 MIT
+
+
+## Collaborative study records and peer review
+
+These new workflows are under validation; full lifecycle release acceptance is pending.
+
+Use `/method-study` to inventory a new or inherited study, connect code and outputs,
+check stale dependencies, preserve submission snapshots and produce a reviewed
+status card. Jupyter, marimo, R Markdown and Quarto remain native choices.
+Use `/method-revision` to retain reviewer comments under stable IDs, link shared
+analysis changes and draft evidence-bound responses across rounds.
+
+Full records and outputs stay in approved protected storage. Shared cards contain
+reviewed identifiers and statuses. Word/Zotero and source-led manuscripts use one
+explicit master with preserved handoffs. A matching digest, successful render or
+validator pass is not human scientific approval. Notebook engines and Word/Zotero
+application checks require their local runtimes; unavailable checks stay pending.
+These workflows do not automatically upload data, push Git changes or submit papers.

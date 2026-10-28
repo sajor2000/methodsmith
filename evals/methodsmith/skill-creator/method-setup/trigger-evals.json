@@ -1,6 +1,6 @@
 [
   {
-    "query": "/method-setup -- fresh clone of our readmission repo, infer the stack and save the project profile",
+    "query": "/method-setup -- fresh clone of our readmission repo, infer the stack and save the project profile in a study with a protected lifecycle record",
     "should_trigger": true
   },
   {

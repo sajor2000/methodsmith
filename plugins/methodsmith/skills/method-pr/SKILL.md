@@ -177,3 +177,7 @@ The new commits are already on the PR from Step 5. Report the PR URL, then ask w
 ### Step 8: Report
 
 Output the PR URL, plus any files left out in Step 4 and any unverified base freshness from `references/branch-creation.md`.
+
+## Study disclosure gate
+
+When a study record is active, load `method-study` and run its Git disclosure workflow before staging/publishing study artifacts. Review exact staged bytes and all newly exposed history against the actual destination ref, including notebook outputs, attachments, document metadata and paths. Require a matching reviewed inventory immediately before the operation; changes invalidate it. Preserve unrelated staged changes and protected originals. No scanner, ignore file or private repository alone establishes absence of sensitive data; unknown classification blocks disclosure. Do not rewrite history automatically.

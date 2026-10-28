@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "SAP was amended (v3) to add an E-value sensitivity analysis. Please insert it into analysis/primary_analysis.ipynb right after the Cox model cell - that cell is tagged sap-5-1. Don't mess with the other cells, the PI's comments are in there.",
+      "prompt": "SAP was amended (v3) to add an E-value sensitivity analysis. Please insert it into analysis/primary_analysis.ipynb right after the Cox model cell - that cell is tagged sap-5-1. Don't mess with the other cells, the PI's comments are in there. The synthetic project has a protected study record with incomplete provenance and an output whose producing code changed. Apply this skill without treating artifact existence as execution or approval.",
       "expected_output": "Writes the new Markdown and code bodies to small project files, runs the anchored notebook_edit.py script against the unique sap-5-1 tag, leaves a .bak backup and .edit-report.md, and reports the diff and run/verification status.",
       "files": [],
       "expectations": [
@@ -11,7 +11,9 @@
         "Writes the explanatory Markdown and code to separate project files (e.g. analysis/notebook-edits/) and passes them via --markdown-source and --source",
         "Invokes scripts/notebook_edit.py via an absolute SKILL_DIR path with --tag sap-5-1 and a repo-relative --notebook path",
         "Confirms analysis/primary_analysis.ipynb.bak exists and reviews the .edit-report.md and notebook diff",
-        "Does not rewrite, reorder, or delete existing cells"
+        "Does not rewrite, reorder, or delete existing cells",
+        "Preserves incomplete provenance and does not infer historical approval",
+        "Identifies stale dependent evidence or routes to method-study without claiming a current verified result"
       ]
     },
     {

@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Our Cox model script analysis/primary_cox.R estimates the hazard ratio for prone positioning (SAP output T2) from data/analytic.parquet. Wire it so the Results paragraph in manuscript/results.qmd never has a hand-typed HR, then check the manuscript.",
+      "prompt": "Our Cox model script analysis/primary_cox.R estimates the hazard ratio for prone positioning (SAP output T2) from data/analytic.parquet. Wire it so the Results paragraph in manuscript/results.qmd never has a hand-typed HR, then check the manuscript. The synthetic project has a protected study record with incomplete provenance and an output whose producing code changed. Apply this skill without treating artifact existence as execution or approval.",
       "expected_output": "Copies the method_numbers helpers into analysis/numbers/, adds register_number with kind estimate, ci, sources data/analytic.parquet, and sap_output T2 to the R script, cites the HR as a {{num:...}} placeholder, renders, and reports the check exit status with file:line problems.",
       "files": [],
       "expectations": [
@@ -14,7 +14,9 @@
         "Does not edit analysis/numbers/registry.json by hand",
         "Keeps the .numbers.json provenance sidecar with rendered text and rejects typed matching values and quoted result numbers",
         "Requires the SAP output catalog before a passing check and explicit update=True/update=TRUE for conflicting reruns",
-        "Supplies supporting denominators for percentages and preserves Suppressed markers for complementary disclosure protection"
+        "Supplies supporting denominators for percentages and preserves Suppressed markers for complementary disclosure protection",
+        "Preserves incomplete provenance and does not infer historical approval",
+        "Identifies stale dependent evidence or routes to method-study without claiming a current verified result"
       ]
     },
     {

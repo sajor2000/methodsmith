@@ -1,5 +1,5 @@
 [
-  {"query": "Insert the new sensitivity-analysis cell into analysis/primary.ipynb right after the cell tagged sap-5-2, and keep a backup - the notebook has outputs we need to preserve.", "should_trigger": true},
+  {"query": "Insert the new sensitivity-analysis cell into analysis/primary.ipynb right after the cell tagged sap-5-2, and keep a backup - the notebook has outputs we need to preserve. in a study with a protected lifecycle record", "should_trigger": true},
   {"query": "reviewer wants one extra markdown note + code cell in our existing jupyter notebook after the KM plot cell (tag fig-2). please don't reformat the whole ipynb", "should_trigger": true},
   {"query": "SAP amendment v4 adds a per-protocol analysis. Patch notebooks/05_primary.ipynb to include it after the ITT cell without touching cell metadata or execution history.", "should_trigger": true},
   {"query": "Last time someone edited our .ipynb with a text editor it corrupted the JSON. Can you safely add a Table 1 footnote cell to notebooks/table1.ipynb using an anchor?", "should_trigger": true},

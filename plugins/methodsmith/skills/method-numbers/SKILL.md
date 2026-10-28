@@ -81,3 +81,7 @@ Quoted and block-quoted numeric results are checked. Declare any verified quoted
 - Typed matching numbers fail. Text render maps bind each output to the placeholder source; Word uses `CE_NUM` fields. Provenance does not establish the scientific validity of an aggregate.
 - Images, embedded charts and PDFs require checking their source tables and captions. Word body, tables, headers, footers, comments and notes are checked; unsupported text-bearing XML structures and unclosed fields fail closed. Tracked deletions are excluded from the final-text policy. Numeric results of arbitrary computed or merge fields are checked as typed text.
 - Staleness compares file hashes, not semantics: a rerun on unchanged inputs keeps entries fresh.
+
+## Study freshness integration
+
+When `method-study` is active, register this number registry and its producing code/run evidence as artifacts with declared dependencies. A passing number match alone does not prove the upstream run is current. Preserve the registry as the source of numerical provenance; do not create a second number registry. Changes to source evidence require downstream manuscript revalidation and renewed affected human signoff.

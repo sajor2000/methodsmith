@@ -43,7 +43,7 @@ Apply the Skill Value interaction rule to every question below; never silently s
 
 **Implementation mode** — all other inputs; uses Phases 0-5 below.
 
-**Detection** (Phase 0, before Phase 1): 2+ keywords → announce "Entering SAP mode"; otherwise "Entering implementation mode". The user may override ("use SAP mode" / "use implementation mode") at any point; confirm if detection seems wrong. If the input also names code files, tests, or a repo feature, ask which mode to use.
+**Detection** (Phase 0, before Phase 1): an explicit request to write an SAP or 2+ keywords → announce "Entering SAP mode"; otherwise "Entering implementation mode". The user may override ("use SAP mode" / "use implementation mode") at any point; confirm if detection seems wrong. If the input also names code files, tests, or a repo feature, ask which mode to use.
 
 ### SAP Mode Workflow
 
@@ -62,10 +62,8 @@ SAP-mode gates that hold regardless of what the reference says:
 
 ## Core Principles
 
-1. **Requirements first; decisions, not code** — build from an existing requirements document. Capture approach, boundaries, files, dependencies, risks, and test scenarios; pseudo-code only as explicitly directional guidance.
-2. **Research before structuring; right-size the artifact** — compact for small work, more structure for large work.
-3. **Separate planning from execution discovery** — explicitly defer execution-time unknowns. Keep the plan portable (no tool-specific executor instructions) and carry implied test-first or characterization-first posture as a lightweight signal.
-4. **Honor user-named resources** — a named CLI, MCP server, URL, file, or artifact is authoritative. Discover it (`command -v`, fetch, read) before assuming it is unavailable; if it fails, say so instead of substituting.
+Read `references/planning-foundations.md` before planning for the four general planning principles.
+
 5. **Data shape before SAP, coding, or modeling** - With data available, inspect actual columns, grain, keys, dates, missingness, duplicates, and validity before SAP finalization or implementation planning (`method-data-qa` for tabular, `method-omics-qc` for omics). Without data, write an explicit data-profile prerequisite and keep SAP variable/model sections provisional.
 6. **Every new SAP gets a tabular workbook contract** - Not execution-ready without `analysis/sap-tables/01-overview.csv`, `02-outputs.csv`, `03-variables.csv`, and the rendered `<slug>-tabular-sap.xlsx` when `openpyxl` is available. If data QA is missing, keep the SAP in draft and list `method-data-qa` before `method-sap-workbook`.
 7. **Causal/observational analysis guardrail** - Make the estimand, causal assumptions, unit/grain, key fields, time zero, and success criteria explicit. Record an analyst-approved assumption only when the choice can be responsibly deferred; unresolved methodological choices block finalization rather than being silently inferred.
@@ -79,7 +77,8 @@ A plan is ready when an implementer can start confidently without the plan writi
 `OUTPUT_FORMAT` is `md` or `html`, never both. The repository root is pre-resolved at skill load:
 !`git rev-parse --show-toplevel 2>/dev/null || true`
 
-Use it as `<repo-root>` if absolute, else run `git rev-parse --show-toplevel`. Read `<repo-root>/.methodsmith/config.local.yaml` with the native file-read tool (in a linked worktree without it, try the main checkout from the absolute common Git directory). Read `references/output-mode.md` to resolve CLI `output:` > config `plan_output:` > default `md` (pipeline forces `md`). Then read `references/markdown-rendering.md` (md) or `references/html-rendering.md` plus `references/html-visuals.md` (html); both pair with `references/plan-sections.md`.
+Follow the output-mode resolution in `references/planning-foundations.md` using that pre-resolved value.
+
 
 ### 0.1 Resume Existing Plan Work When Appropriate
 
@@ -99,6 +98,10 @@ Prefer a matching unified artifact in `docs/plans/` (`artifact_contract: ce-unif
 
 - **Relevant origin found:** read `references/origin-document.md` and apply 0.3 (carry everything forward; drop nothing silently) and 0.5 (do not plan over true product blockers).
 - **No relevant origin, or unclear input:** read `references/planning-bootstrap.md` (0.4); it may recommend `method-brainstorm` or route a symptom without a root cause to the `method-debug` skill.
+
+### 0.5b Clarify the Research Decision
+
+For a study or analysis, read `references/research-decision.md` and apply it before structuring the plan: brief and `docs/brainstorms/*-grill.md` intake, the `method-grill` planning-integration interview for material unresolved decisions, gap handling when the interview stops or in pipeline mode, and the outcome-preservation rules that hold throughout the SAP. Reassess SAP versus implementation mode after the interview; if the appropriate mode changes, announce the switch and follow its gates.
 
 ### 0.6 Assess Plan Depth
 

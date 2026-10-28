@@ -9,7 +9,7 @@ The `method-setup` skill normally records the boundary. Apply this gate before o
 <!-- ask-and-save:start -->
 ## Ask once and save
 
-Ask exactly one question with the platform's blocking question tool (`AskUserQuestion` in Claude Code, loaded first with `ToolSearch` and `select:AskUserQuestion` when its schema is not loaded; `request_user_input` in Codex; `ask_user` in Gemini and Pi). If no blocking tool exists or the call errors, show the three options as a numbered list and wait.
+Ask exactly one question with the platform's blocking question tool (`AskUserQuestion` in Claude Code, loaded first with `ToolSearch` and `select:AskUserQuestion` when its schema is not loaded; `request_user_input` in Codex; `AskUser` in Droid; `question` in OpenCode; `ask_user` in Gemini and Pi). If no blocking tool exists or the call errors, show the three options as a numbered list and wait.
 
 - Stem: "Will this project use sensitive data (PHI, PII, or other restricted records)? If so, is the model endpoint the agent runs on approved for it, for example HIPAA-compliant under a BAA or approved by your institution?"
 - Options, in this order:

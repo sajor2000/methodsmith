@@ -125,3 +125,15 @@ describe("review-pack signoff ledger", () => {
     expect(report).toContain("Ledger required field 'study_id' is empty.")
   })
 })
+
+test("v2 approval binds to artifact bytes and fails when they change", async () => {
+ const root = await mkdtemp(path.join(os.tmpdir(), "signoff-binding-")); tempRoots.push(root)
+ await mkdir(path.join(root,"analysis/signoff"),{recursive:true})
+ await writeFile(path.join(root,"table.md"),"N=10")
+ const sha = new Bun.CryptoHasher("sha256").update("N=10").digest("hex")
+ await writeFile(path.join(root,"analysis/signoff/signoff-ledger.json"),JSON.stringify({version:2,ledger_id:"ledger",study_id:"study",entries:[{entry_id:"one",reviewer:"PI",artifact:"table",decision:"approved",timestamp:"2026-10-27T12:00:00Z",artifact_path:"table.md",artifact_sha256:sha}]}))
+ const run=async()=>{const p=Bun.spawn(["python3",scriptPath,"--project-root",root],{stdout:"pipe",stderr:"pipe"});return p.exited}
+ expect(await run()).toBe(0)
+ await writeFile(path.join(root,"table.md"),"N=11")
+ expect(await run()).toBe(1)
+})

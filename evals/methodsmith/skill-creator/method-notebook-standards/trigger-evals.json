@@ -1,5 +1,5 @@
 [
-  {"query": "We're about to create the analysis notebooks for the sepsis trial in Quarto - one master .qmd or separate notebooks per stage? Also what's the chunk structure standard?", "should_trigger": true},
+  {"query": "We're about to create the analysis notebooks for the sepsis trial in Quarto - one master .qmd or separate notebooks per stage? Also what's the chunk structure standard? in a study with a protected lifecycle record", "should_trigger": true},
   {"query": "Set the documentation contract for our new R Markdown analysis: every chunk needs narrative before it, named chunks, and size limits. Then scaffold the sections.", "should_trigger": true},
   {"query": "materially extending our jupyter notebook with a whole new secondary-analysis section (~10 cells). what structure should the new cells follow?", "should_trigger": true},
   {"query": "Our notebooks are unreviewable - 300-line cells, no markdown. For the new workflow we're starting, define a topology and cell contract the team will follow.", "should_trigger": true},

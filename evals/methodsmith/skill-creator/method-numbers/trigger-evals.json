@@ -1,5 +1,5 @@
 [
-  {"query": "Check results with a 7-patient cohort and a 2.4-fold increase; the protocol has a declared 28-day endpoint.", "should_trigger": true},
+  {"query": "Check results with a 7-patient cohort and a 2.4-fold increase; the protocol has a declared 28-day endpoint. in a study with a protected lifecycle record", "should_trigger": true},
   {"query": "set up a number registry so the results section pulls hazard ratios from the R script instead of me typing them", "should_trigger": true},
   {"query": "The abstract still says 0.81 but the rerun gives 0.78 -- how do I stop numbers drifting from the analysis?", "should_trigger": true},
   {"query": "Render the {{num:primary.hr } } placeholders in results.qmd with the registry values", "should_trigger": true},

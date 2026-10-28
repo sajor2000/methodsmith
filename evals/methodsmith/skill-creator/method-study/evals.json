@@ -1,0 +1,38 @@
+{
+  "skill_name": "method-study",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Onboard an inherited synthetic study with a Word manuscript and Jupyter notebook, no run history and no submitted code SHA. Do not run analysis.",
+      "expected_output": "Protected evidence-bound workflow with explicit unresolved states.",
+      "files": [],
+      "expectations": [
+        "Preserves originals and native notebook format",
+        "Marks historical provenance unknown",
+        "Does not invent execution or approval"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "In a synthetic study, code changed after a table was produced. Show the PI what is stale, with no raw values in the visual.",
+      "expected_output": "Protected evidence-bound workflow with explicit unresolved states.",
+      "files": [],
+      "expectations": [
+        "Identifies table and declared descendants as stale",
+        "Keeps protected paths and values out of shared output",
+        "Distinguishes current bytes from verified execution"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "A coauthor edited our Word export. Create a new handoff from the source master and prepare a journal revision snapshot.",
+      "expected_output": "Protected evidence-bound workflow with explicit unresolved states.",
+      "files": [],
+      "expectations": [
+        "Does not overwrite coauthor edits",
+        "Keeps a single explicit manuscript master",
+        "Preserves prior submission and requires reconciliation"
+      ]
+    }
+  ]
+}
