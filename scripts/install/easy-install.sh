@@ -126,7 +126,7 @@ fi
 abs_path() {
   case "$1" in
     /*|[A-Za-z]:/*|[A-Za-z]:\\*) printf '%s\n' "$1" ;;
-    *) printf '%s/%s\n' "$PWD" "$1" ;;
+    *) (cd -- "$1" 2>/dev/null && pwd -P) || printf '%s/%s\n' "$PWD" "$1" ;;
   esac
 }
 
