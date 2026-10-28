@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { mkdtemp, writeFile, readFile, rm } from "fs/promises"
+import { mkdtemp, writeFile, readFile, rm, access } from "fs/promises"
 import path from "path"
 import os from "os"
 function runtimeAvailable(args:string[]):boolean {
@@ -169,3 +169,55 @@ test("inherited Quarto projects block before execution rather than override excl
   expect(response.reason).toContain("inherited Quarto project")
  }finally{await rm(root,{recursive:true,force:true})}
 })
+
+test("uppercase .PY routes to the marimo adapter instead of Quarto",async()=>{
+ const root=await mkdtemp(path.join(os.tmpdir(),"study-py-case-"))
+ try{
+  const source=path.join(root,"source.PY"); await writeFile(source,"import marimo as mo\n")
+  const run=path.join(root,"run")
+  const p=Bun.spawn(["python3",script,"--source",source,"--run-dir",run,"--authorized-execution"],{stdout:"pipe",stderr:"pipe"})
+  await p.exited
+  const evidence=JSON.parse(await readFile(path.join(run,"run.json"),"utf8"))
+  expect(evidence.format).toBe(".py")
+  expect(evidence.quarto_project_mode).toBeUndefined()
+  expect(await access(path.join(run,"_quarto.yml")).then(()=>true,()=>false)).toBe(false)
+ }finally{await rm(root,{recursive:true,force:true})}
+})
+
+test("timeout kills stay portable: killpg when present, process.kill otherwise",async()=>{
+ const root=await mkdtemp(path.join(os.tmpdir(),"study-timeout-"))
+ try{
+  await writeFile(path.join(root,"slow.py"),"import marimo as mo\n")
+  const harness=[
+   "import json, os, shutil, subprocess, sys",
+   "skill_dir, root = sys.argv[1], sys.argv[2]",
+   "sys.path.insert(0, skill_dir)",
+   "import notebook_evidence",
+   "real_popen, real_which = subprocess.Popen, shutil.which",
+   "def fake_popen(command, **kwargs):",
+   "    return real_popen([sys.executable, '-c', 'import time; time.sleep(60)'], **kwargs)",
+   "subprocess.Popen = fake_popen",
+   "shutil.which = lambda name: '/usr/bin/marimo' if name == 'marimo' else real_which(name)",
+   "expected = (1, 'failed', 'timeout')",
+   "for label, keep_killpg in (('posix', True), ('fallback', False)):",
+   "    saved = getattr(os, 'killpg', None)",
+   "    if keep_killpg:",
+   "        assert saved is not None, 'expected os.killpg on this host'",
+   "    else:",
+   "        del os.killpg",
+   "    try:",
+   "        sys.argv = ['notebook_evidence.py', '--source', os.path.join(root, 'slow.py'),",
+   "                    '--run-dir', os.path.join(root, 'run-' + label), '--authorized-execution', '--timeout', '2']",
+   "        code = notebook_evidence.main()",
+   "        evidence = json.load(open(os.path.join(root, 'run-' + label, 'run.json')))",
+   "        assert (code, evidence['status'], evidence['reason']) == expected, (label, code, evidence)",
+   "    finally:",
+   "        if saved is not None and not hasattr(os, 'killpg'):",
+   "            os.killpg = saved",
+   "subprocess.Popen, shutil.which = real_popen, real_which",
+   "print('portable')",
+  ].join("\n")
+  const p=Bun.spawn(["python3","-c",harness,path.dirname(script),root],{stdout:"pipe",stderr:"pipe"})
+  expect(await p.exited).toBe(0)
+ }finally{await rm(root,{recursive:true,force:true})}
+},30000)

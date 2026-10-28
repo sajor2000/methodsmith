@@ -85,6 +85,14 @@ def main(argv: list[str]) -> int:
     warnings.append("Recorded reviewer names are not authenticated signatures; scientific review remains human-owned.")
     seen_ids: set[str] = set()
     previous_hash = ""
+    # v2 approval binds to current bytes, and the ledger is append-only, so a
+    # superseded entry would otherwise block forever. Only the latest entry
+    # per artifact path is checked against current bytes; older ones warn.
+    latest_for_path: dict[str, int] = {}
+    if version == 2:
+        for position, candidate in enumerate(entries, start=1):
+            if isinstance(candidate, dict) and isinstance(candidate.get("artifact_path"), str) and candidate.get("artifact_path"):
+                latest_for_path[Path(candidate["artifact_path"]).as_posix()] = position
     for index, entry in enumerate(entries, start=1):
         if not isinstance(entry, dict):
             blockers.append(f"Entry {index} must be an object.")
@@ -103,12 +111,20 @@ def main(argv: list[str]) -> int:
             expected = entry.get("artifact_sha256")
             if not isinstance(relative, str) or not safe_relative(relative) or not relative:
                 blockers.append(f"{entry_id}: invalid artifact path.")
+            elif latest_for_path.get(Path(relative).as_posix()) != index:
+                warnings.append(f"{entry_id}: superseded by a later entry for this artifact; digest not rechecked.")
             else:
                 artifact = root / relative
                 if not artifact.resolve().is_relative_to(root) or artifact.is_symlink() or not artifact.is_file():
                     blockers.append(f"{entry_id}: artifact unavailable or outside project.")
-                elif hashlib.sha256(artifact.read_bytes()).hexdigest() != expected:
-                    blockers.append(f"{entry_id}: artifact digest changed or missing; approval is stale.")
+                else:
+                    try:
+                        current = hashlib.sha256(artifact.read_bytes()).hexdigest()
+                    except OSError as exc:
+                        blockers.append(f"{entry_id}: artifact unreadable ({exc.__class__.__name__}).")
+                    else:
+                        if current != expected:
+                            blockers.append(f"{entry_id}: artifact digest changed or missing; approval is stale.")
         expected_hash = stable_hash(entry, previous_hash, version)
         if entry.get("entry_hash") and entry.get("entry_hash") != expected_hash:
             blockers.append(f"{entry_id}: entry_hash does not match append-only content.")

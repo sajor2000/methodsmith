@@ -25,3 +25,19 @@ test("dated journal profile binds passing checks to retained evidence",async()=>
  expect(run().exitCode).toBe(1)
  }finally{await rm(root,{recursive:true,force:true})}
 })
+test("malformed profile shapes print a blocked result instead of a traceback",async()=>{
+ const root=await mkdtemp(path.join(os.tmpdir(),"journal-malformed-")); const file=path.join(root,"profile.json")
+ async function run(){const p=Bun.spawn(["python3",script,file],{stdout:"pipe",stderr:"pipe"});return {code:await p.exited,out:await new Response(p.stdout).text(),err:await new Response(p.stderr).text()}}
+ try{
+ await writeFile(file,JSON.stringify([1,2,3]))
+ let result=await run()
+ expect(result.code).toBe(1)
+ expect(JSON.parse(result.out).status).toBe("blocked")
+ expect(result.err).not.toContain("Traceback")
+ await writeFile(file,JSON.stringify({schema_version:1,journal:"Synthetic Journal",article_type:"Original Research",source_url:123,retrieved_at:"2026-10-27",rules:[]}))
+ result=await run()
+ expect(result.code).toBe(1)
+ expect(JSON.parse(result.out).status).toBe("blocked")
+ expect(result.err).not.toContain("Traceback")
+ }finally{await rm(root,{recursive:true,force:true})}
+})

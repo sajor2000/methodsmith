@@ -79,6 +79,27 @@
           "authorization": {
             "type": "string"
           },
+          "approval": {
+            "type": "object",
+            "description": "Required for human-approved changes. change_digest is the SHA-256 of the change object without approval, serialized with json.dumps(..., sort_keys=True, separators=(\",\", \":\")).",
+            "required": [
+              "reviewer",
+              "timestamp",
+              "change_digest"
+            ],
+            "properties": {
+              "reviewer": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "string"
+              },
+              "change_digest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          },
           "evidence": {
             "type": "array",
             "items": {

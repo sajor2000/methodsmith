@@ -74,7 +74,7 @@ if any(o.get("output_type")=="error" for cell in n.cells for o in cell.get("outp
 '''
             command = [sys.executable, "-c", code, str(copy), str(source.parent), str(args.timeout), args.kernel]
             available = subprocess.run([sys.executable, "-c", "import nbformat, nbclient"], capture_output=True).returncode == 0
-        elif source.suffix == ".py":
+        elif source.suffix.lower() == ".py":
             command = ["marimo", "export", "html", str(copy), "-o", str(run / "notebook.html")]
             available = bool(shutil.which("marimo"))
         elif source.suffix.lower() == ".rmd":
@@ -98,7 +98,13 @@ if any(o.get("output_type")=="error" for cell in n.cells for o in cell.get("outp
                     evidence["status"] = "success" if returncode == 0 else "failed"
                     evidence["exit_code"] = returncode
                 except subprocess.TimeoutExpired:
-                    os.killpg(process.pid, signal.SIGKILL)
+                    try:
+                        if hasattr(os, "killpg"):
+                            os.killpg(process.pid, signal.SIGKILL)
+                        else:
+                            process.kill()
+                    except ProcessLookupError:
+                        pass
                     process.wait()
                     evidence["status"] = "failed"
                     evidence["reason"] = "timeout"

@@ -52,11 +52,11 @@ def validate(data: dict, root: Path) -> list[str]:
 def main() -> int:
     try:
         path = Path(sys.argv[1]).resolve()
-        unresolved = validate(json.loads(path.read_text()), path.parent)
+        unresolved = validate(json.loads(path.read_text(encoding="utf-8")), path.parent)
         print(json.dumps({"status": "blocked" if unresolved else "ready-with-review", "unresolved_required_count": len(unresolved),
                           "limitations": "source authenticity, completeness and scientific meaning require review; no submission authorized"}))
         return 1 if unresolved else 0
-    except (OSError, ValueError, TypeError, KeyError, IndexError):
+    except (OSError, ValueError, TypeError, KeyError, IndexError, AttributeError):
         print(json.dumps({"status": "blocked", "reason": "invalid journal profile or missing evidence"}))
         return 1
 

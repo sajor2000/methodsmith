@@ -20,6 +20,11 @@ class RecordError(ValueError):
     """A safe, non-content-bearing diagnostic."""
 
 
+# Artifact kinds from references/study-record-schema.json; validate() fails
+# closed on anything else so hand-written records cannot reach snapshot/master.
+KINDS = ("code", "notebook", "data", "plan", "table", "figure", "manuscript", "evidence")
+
+
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise RecordError(message)
@@ -92,6 +97,7 @@ def validate(record: dict, study_id: str) -> None:
     for key, item in artifacts.items():
         identifier(key)
         require(isinstance(item, dict), "invalid artifact")
+        require(item.get("kind") in KINDS, "invalid artifact kind")
         require(item.get("provenance") in ("verified", "inferred", "unknown"), "invalid provenance")
         require(item.get("execution") in ("unrun", "success", "failed", "unavailable"), "invalid execution state")
         require(isinstance(item.get("path"), str) and Path(item["path"]).is_absolute(), "invalid protected locator")

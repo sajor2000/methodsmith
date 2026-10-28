@@ -15,3 +15,18 @@ test("shared reanalysis keeps separate comments and blocks unsupported completio
  expect((await run()).code).toBe(1)
  }finally{await rm(root,{recursive:true,force:true})}
 })
+test("human approval binds to the reviewed change through its digest",async()=>{
+ const root=await mkdtemp(path.join(os.tmpdir(),"revision-approved-")); const file=path.join(root,"round.json")
+ try{
+ await writeFile(path.join(root,"note.md"),"clarified sample size")
+ const evidence=[{path:"note.md",sha256:new Bun.CryptoHasher("sha256").update("clarified sample size").digest("hex")}]
+ const bound={evidence,kind:"clarification",state:"human-approved"}
+ const digest=new Bun.CryptoHasher("sha256").update(JSON.stringify(bound)).digest("hex")
+ const record=(change_digest:string)=>({schema_version:1,round_id:"round1",baseline:{provenance:"unknown"},
+  changes:{fix1:{kind:"clarification",state:"human-approved",evidence,approval:{reviewer:"PI",timestamp:"2026-10-27T12:00:00Z",change_digest}}},
+  comments:[{id:"R1-C1",verbatim:"Please clarify the sample size",disposition:"clarify",rationale:"Ambiguous",changes:["fix1"],response_claim:"completed",manuscript_location:"Methods paragraph 3"}]})
+ async function run(change_digest:string){await writeFile(file,JSON.stringify(record(change_digest)));const p=Bun.spawn(["python3",script,file],{stdout:"pipe",stderr:"pipe"});return await p.exited}
+ expect(await run(digest)).toBe(0)
+ expect(await run("0".repeat(64))).toBe(1)
+ }finally{await rm(root,{recursive:true,force:true})}
+})

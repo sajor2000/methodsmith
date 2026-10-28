@@ -89,3 +89,13 @@ test("incomplete ancestor coverage blocks downstream approval",async()=>{
  expect(status.artifacts.table.coverage).toBe("incomplete")
  expect((await run("approve","--expected-revision","3","--id","table","--reviewer","PI","--human-confirmed")).code).toBe(1)
 })
+test("hand-written records with an invalid artifact kind fail closed",async()=>{
+ const {root,state,run}=await setup(); const source=path.join(root,"table.md")
+ await writeFile(source,"N=10")
+ expect((await run("add","--expected-revision","0","--id","table","--path",source,"--kind","table")).code).toBe(0)
+ const file=path.join(state,"study.json")
+ await writeFile(file,(await readFile(file,"utf8")).replace('"kind": "table"','"kind": "dataset"'))
+ const status=await run("status")
+ expect(status.code).toBe(1)
+ expect(status.out).toContain("invalid artifact kind")
+})

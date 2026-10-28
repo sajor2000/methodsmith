@@ -76,7 +76,7 @@ def validate(record: dict, root: Path) -> dict:
 def main() -> int:
     try:
         path = Path(sys.argv[1]).resolve()
-        print(json.dumps(validate(json.loads(path.read_text()), path.parent)))
+        print(json.dumps(validate(json.loads(path.read_text(encoding="utf-8")), path.parent)))
         return 0
     except (OSError, ValueError, KeyError, TypeError, IndexError, AttributeError):
         print(json.dumps({"status": "blocked", "reason": "invalid or unsupported revision evidence; inspect protected record locally"}))
