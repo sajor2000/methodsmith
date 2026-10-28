@@ -5,6 +5,43 @@ release pull requests. Canonical current release notes are the repository's
 [GitHub Releases](https://github.com/sajor2000/ce-datascience/releases) and
 open release PRs. Do not hand-add entries from feature or documentation work.
 
+## [5.5.0](https://github.com/sajor2000/methodsmith/compare/methodsmith-v5.4.1...methodsmith-v5.5.0) (2026-10-28)
+
+
+### Features
+
+* **clif:** add clifpy usage and CLIF repo audit skills ([#170](https://github.com/sajor2000/methodsmith/issues/170)) ([e05b7f6](https://github.com/sajor2000/methodsmith/commit/e05b7f68f2bd0135dd9251b7f130d2e371123b53))
+
+
+### Bug Fixes
+
+* **boundary:** close PHI guard fail-open paths and rename the state folder ([767fe53](https://github.com/sajor2000/methodsmith/commit/767fe53e18e7c01ab3a843eb1404d4c9441ded4e))
+* **boundary:** close remaining schema-only leak paths ([5912331](https://github.com/sajor2000/methodsmith/commit/5912331814a747824776bbf60208e6633e53d7e2))
+* **boundary:** compare outputs.txt's stamp, not the margined run start ([255b178](https://github.com/sajor2000/methodsmith/commit/255b178d540a3f307bd072eec022806bdf03b172))
+* **boundary:** deny row-returning database MCP calls in schema-only ([a3f3fd9](https://github.com/sajor2000/methodsmith/commit/a3f3fd9969a07a9494a12b04abe13816cfb7e2b4))
+* **boundary:** deny scripts that run a file the guard cannot resolve ([4a8ba4f](https://github.com/sajor2000/methodsmith/commit/4a8ba4f9c5645b6857081b7653e0a80f0eaf4e73))
+* **boundary:** describe the new guard coverage and safe-run output in skills and docs ([f861950](https://github.com/sajor2000/methodsmith/commit/f8619500c08ab290e07d9933a9384f770566a5ba))
+* **boundary:** expand shell wildcards and match quoted find patterns ([1076b8a](https://github.com/sajor2000/methodsmith/commit/1076b8a3970131ef61a79cf2be35ed7f4004ad8f))
+* **boundary:** fail closed while a live run's outputs list is untrusted ([6f18444](https://github.com/sajor2000/methodsmith/commit/6f184446d57965184eb0ad6c7d6c5f922a7cddfb))
+* **boundary:** keep outputs other runs record during a run ([213b3af](https://github.com/sajor2000/methodsmith/commit/213b3afac1885ece37be591bb8236f521e3f259f))
+* **boundary:** protect outputs.txt and report signal exits as 128+N ([28276c7](https://github.com/sajor2000/methodsmith/commit/28276c736c875e659a2f469f24feaa04ac3cd29c))
+* **boundary:** rename the state folder to .methodsmith and close guard fail-open paths ([ab06246](https://github.com/sajor2000/methodsmith/commit/ab062466fd9148e4f5039c966f63b9e80348ef99))
+* **boundary:** resolve the project mode from relative, cd, and symlinked targets ([6279bb2](https://github.com/sajor2000/methodsmith/commit/6279bb24fd1024bd96e7bba9dfd5dc95d2de7902))
+* **boundary:** restore run-state lists a run's own code erases ([2481422](https://github.com/sajor2000/methodsmith/commit/2481422b041c39580cfdb11c7c2097a3c6729dac))
+* **boundary:** scan every script launch shape and gate workflow runners ([1e27705](https://github.com/sajor2000/methodsmith/commit/1e277050690e33177cd3fe983c2196ea3c8effde))
+* **boundary:** treat run temp dirs and in-progress runs as data ([36e724f](https://github.com/sajor2000/methodsmith/commit/36e724fec15e73558571b1de5ca9c4879eaa1d5c))
+* **evidence-access:** unify the evidence-access block across the 24 evidence skills ([fca0f2c](https://github.com/sajor2000/methodsmith/commit/fca0f2c38b51e6ad1df5552b4e8b8881bd47430b))
+* **plan:** clarify research decisions before planning ([#175](https://github.com/sajor2000/methodsmith/issues/175)) ([893bccb](https://github.com/sajor2000/methodsmith/commit/893bccb980e4dce1345919e9f675f5a9dcbed364))
+* **research:** correct eight scientific rigor defects ([15550e2](https://github.com/sajor2000/methodsmith/commit/15550e25f94e1b38dc9d392d2f3a101bd6e0cc31))
+* **research:** correct scientific verification and design contracts ([955485e](https://github.com/sajor2000/methodsmith/commit/955485ee967b482ed42876df2c9f81498e03579e))
+* **review:** address PR review feedback ([#171](https://github.com/sajor2000/methodsmith/issues/171)) ([b3961a7](https://github.com/sajor2000/methodsmith/commit/b3961a7ad54b38e8e81220f303f01fb8e798a6f0))
+* **review:** apply review findings ([9b7ae91](https://github.com/sajor2000/methodsmith/commit/9b7ae911a1a02016da78c79979f31ec66496999f))
+* **review:** apply review findings ([8278208](https://github.com/sajor2000/methodsmith/commit/8278208aaa6bb9fe2ad56915554074b4f594eb36))
+* **review:** harden scientific checks and evaluation proofs ([424ce28](https://github.com/sajor2000/methodsmith/commit/424ce287291ce63a4bba4e2deced4dde4db2de05))
+* **review:** resolve scientific feedback and bind advice evidence ([#173](https://github.com/sajor2000/methodsmith/issues/173)) ([e20ee1f](https://github.com/sajor2000/methodsmith/commit/e20ee1f1591f52e51e6b241736d5ed92e2a4f984))
+* **safe-run:** record every output, withhold stderr values, refuse outside a project ([a803347](https://github.com/sajor2000/methodsmith/commit/a803347061b4a5276bd5d83943e83b1e6206f63c))
+* **safe-run:** track a run's temp dir and keep in-progress output as data ([bd0b674](https://github.com/sajor2000/methodsmith/commit/bd0b674990e3078bc72d8103b0124edcac1e9ab4))
+
 ## [5.4.1](https://github.com/sajor2000/methodsmith/compare/methodsmith-v5.4.0...methodsmith-v5.4.1) (2026-10-22)
 
 
