@@ -5,21 +5,17 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 # Superseded runs on the same ref are cancelled; main is never cancelled so
 # every merged commit keeps a complete status history.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   pr-title:
-    # Skip release-please PRs: their pull_request runs fail with a GitHub
-    # workflow-file error that produces no logs (#165). A release PR carries
-    # only release-owned version bumps and changelog text, both validated by
-    # release:validate when the commit is pushed to main. A skipped required
-    # check counts as satisfied for branch protection.
-    if: github.event_name == 'pull_request' && github.head_ref != 'release-please--branches--main'
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
@@ -44,9 +40,6 @@ jobs:
             revert
 
   test:
-    # Same release-please skip as pr-title above (#165): the release commit
-    # still runs this full suite when it lands on main.
-    if: github.event_name != 'pull_request' || github.head_ref != 'release-please--branches--main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -78,7 +71,7 @@ jobs:
         run: bun run build
 
       - name: Install Python test dependencies
-        run: python3 -m pip install "openpyxl>=3.1,<4" "nbformat>=5.10,<6"
+        run: python3 -m pip install "openpyxl>=3.1,<4" "nbformat>=5.10,<6" "nbclient>=0.10,<1" "ipykernel>=6,<8" "PyYAML>=6,<7"
 
       - name: Setup base R for uncertainty regression tests
         uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2
