@@ -7,7 +7,7 @@
   {"query": "SAP v2 needs an amendment: add a per-protocol sensitivity analysis and change the follow-up horizon to 90 days. Keep the SAP-N.M IDs stable.", "should_trigger": true},
   {"query": "Finalize the SAP in docs/plans/ - QA came back GO, all methodological choices are resolved, run the gap checklist and tell me if anything critical is left.", "should_trigger": true},
   {"query": "how should we implement the new Table 1 generator feature in the CLI? make a plan w/ test scenarios, output:html", "should_trigger": true},
-  {"query": "Create a plan for the analysis of our case-control study of statin exposure and post-op delirium, including the research question, exposure definition, and outcome ascertainment.", "should_trigger": true},
+  {"query": "Plan a study of whether starting a medication after ICU admission changes 90-day mortality; help clarify the treatment decision first.", "should_trigger": true},
   {"query": "I have a rough idea for an ML early-warning feature in our app. Plan the work - files, units, tests - I'll execute later with method-work.", "should_trigger": true},
   {"query": "Build the claims-to-datasets schema, estimand table, and decision evidence for our complex EHR validation SAP that already exists in docs/plans/.", "should_trigger": false},
   {"query": "Generate the tabular SAP companion workbook (Overview, Outputs, Master Variables) from our finalized prose SAP.", "should_trigger": false},

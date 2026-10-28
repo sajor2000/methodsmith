@@ -1,0 +1,49 @@
+schema_version: "1.0"
+id: method-plan-grill-no-sap
+target:
+  kind: skill
+  name: method-plan
+  source: plugins/methodsmith/skills/method-plan/SKILL.md
+mode: forward
+prompt_path: evals/methodsmith/cases/method-plan-grill-no-sap/prompt.md
+fixtures: []
+required_behaviors:
+  - identifies-timing-risk
+  - asks-decision
+prohibited_behaviors:
+  - no-bias-guarantee
+  - no-sap
+criteria:
+  - id: identifies-timing-risk
+    description: Identifies time-zero or immortal-time bias as a consequential design issue.
+    type: regex
+    path: response.md
+    pattern: '[Ii]mmortal.time|[Tt]ime.zero|[Ss]urviv(?:e|al).{0,80}(?:treatment|medication|drug)'
+    weight: 4
+    hard_gate: true
+  - id: asks-decision
+    description: Asks a question before writing the plan.
+    type: text_contains
+    path: response.md
+    value: "?"
+    weight: 3
+    hard_gate: true
+  - id: no-bias-guarantee
+    description: Does not promise that a proposed method eliminates bias.
+    type: regex_not
+    path: response.md
+    pattern: '(?:[Ee]liminates|[Rr]emoves|[Aa]voids|[Pp]revents) (?:all |immortal.time )?bias'
+    weight: 3
+    hard_gate: true
+  - id: no-sap
+    description: Does not create an SAP before the interview.
+    type: file_exists
+    path: workspace/analysis/sap.md
+    expected: false
+    weight: 3
+    hard_gate: true
+threshold: 1
+limitations:
+  - This evaluates a synthetic first interaction; it does not prove later interview turns or scientific validity.
+  - Regex gates are approximate; review the complete response for question count, preservation of supplied details, and method assumptions.
+  - The target digest covers method-plan only; independently record the method-grill directory digest because this case exercises both skills.

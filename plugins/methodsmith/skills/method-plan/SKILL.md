@@ -43,7 +43,7 @@ Apply the Skill Value interaction rule to every question below; never silently s
 
 **Implementation mode** — all other inputs; uses Phases 0-5 below.
 
-**Detection** (Phase 0, before Phase 1): 2+ keywords → announce "Entering SAP mode"; otherwise "Entering implementation mode". The user may override ("use SAP mode" / "use implementation mode") at any point; confirm if detection seems wrong. If the input also names code files, tests, or a repo feature, ask which mode to use.
+**Detection** (Phase 0, before Phase 1): an explicit request to write an SAP or 2+ keywords → announce "Entering SAP mode"; otherwise "Entering implementation mode". The user may override ("use SAP mode" / "use implementation mode") at any point; confirm if detection seems wrong. If the input also names code files, tests, or a repo feature, ask which mode to use.
 
 ### SAP Mode Workflow
 
@@ -62,10 +62,8 @@ SAP-mode gates that hold regardless of what the reference says:
 
 ## Core Principles
 
-1. **Requirements first; decisions, not code** — build from an existing requirements document. Capture approach, boundaries, files, dependencies, risks, and test scenarios; pseudo-code only as explicitly directional guidance.
-2. **Research before structuring; right-size the artifact** — compact for small work, more structure for large work.
-3. **Separate planning from execution discovery** — explicitly defer execution-time unknowns. Keep the plan portable (no tool-specific executor instructions) and carry implied test-first or characterization-first posture as a lightweight signal.
-4. **Honor user-named resources** — a named CLI, MCP server, URL, file, or artifact is authoritative. Discover it (`command -v`, fetch, read) before assuming it is unavailable; if it fails, say so instead of substituting.
+Read `references/planning-foundations.md` for principles 1-4; principles 5-7 follow.
+
 5. **Data shape before SAP, coding, or modeling** - With data available, inspect actual columns, grain, keys, dates, missingness, duplicates, and validity before SAP finalization or implementation planning (`method-data-qa` for tabular, `method-omics-qc` for omics). Without data, write an explicit data-profile prerequisite and keep SAP variable/model sections provisional.
 6. **Every new SAP gets a tabular workbook contract** - Not execution-ready without `analysis/sap-tables/01-overview.csv`, `02-outputs.csv`, `03-variables.csv`, and the rendered `<slug>-tabular-sap.xlsx` when `openpyxl` is available. If data QA is missing, keep the SAP in draft and list `method-data-qa` before `method-sap-workbook`.
 7. **Causal/observational analysis guardrail** - Make the estimand, causal assumptions, unit/grain, key fields, time zero, and success criteria explicit. Record an analyst-approved assumption only when the choice can be responsibly deferred; unresolved methodological choices block finalization rather than being silently inferred.
@@ -89,7 +87,7 @@ If the user references an existing plan or an obvious recent match exists in `do
 
 ### 0.1b Classify Task Domain and Detect Mode
 
-Detect the mode (Dual-Mode rule); SAP mode continues to 0.2. Otherwise software or analysis code (repos, APIs, databases, pipelines, notebooks) → 0.2 in implementation mode; genuinely ambiguous ("plan a migration") → ask; anything else → read `references/universal-planning.md`, follow it, and skip all later phases. Named tools or links do not change this routing.
+Detect the mode (Dual-Mode rule); SAP mode continues to 0.2. A study, research question, or analysis plan also continues to 0.2, even without SAP keywords or code, so its research decisions reach 0.5b. Otherwise software or analysis code (repos, APIs, databases, pipelines, notebooks) → 0.2 in implementation mode; genuinely ambiguous ("plan a migration") → ask; anything else → read `references/universal-planning.md`, follow it, and skip all later phases. Named tools or links do not change this routing.
 
 ### 0.2 Find Upstream Requirements Document
 
@@ -99,6 +97,10 @@ Prefer a matching unified artifact in `docs/plans/` (`artifact_contract: ce-unif
 
 - **Relevant origin found:** read `references/origin-document.md` and apply 0.3 (carry everything forward; drop nothing silently) and 0.5 (do not plan over true product blockers).
 - **No relevant origin, or unclear input:** read `references/planning-bootstrap.md` (0.4); it may recommend `method-brainstorm` or route a symptom without a root cause to the `method-debug` skill.
+
+### 0.5b Clarify the Research Decision
+
+Read `references/planning-foundations.md` and apply its research-decision interview before structuring a study or analysis plan.
 
 ### 0.6 Assess Plan Depth
 
@@ -148,7 +150,7 @@ Read `references/pre-write-review.md` and fix every failed plan check and origin
 
 **REQUIRED: Write the plan file to disk before presenting any options.**
 
-For a current-CE unified requirements artifact (`artifact_contract: ce-unified-plan/v1`, `artifact_readiness: requirements-only`), update that same canonical file in place, set `artifact_readiness: implementation-ready`, and preserve the Product Contract and stable R/A/F/AE identifiers. Do not create a sibling `*-plan` file. Otherwise write `docs/plans/YYYY-MM-DD-NNN-<type>-<descriptive-name>-plan.<md|html>` and confirm `Plan written to docs/plans/[filename]`. **Pipeline mode** (LFG, SLFG, or any `disable-model-invocation` context): make needed choices automatically without questions.
+For a current-CE unified requirements artifact (`artifact_contract: ce-unified-plan/v1`, `artifact_readiness: requirements-only`), update that same canonical file in place, set `artifact_readiness: implementation-ready`, and preserve the Product Contract and stable R/A/F/AE identifiers. Do not create a sibling `*-plan` file. Otherwise write `docs/plans/YYYY-MM-DD-NNN-<type>-<descriptive-name>-plan.<md|html>` and confirm `Plan written to docs/plans/[filename]`. **Pipeline mode** (LFG, SLFG, or any `disable-model-invocation` context): make routine choices automatically without questions; leave unresolved research and methodological decisions as gaps.
 
 ### 5.3 Confidence Check and Deepening
 

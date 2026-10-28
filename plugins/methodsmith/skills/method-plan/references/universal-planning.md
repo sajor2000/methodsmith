@@ -42,7 +42,7 @@ When research is recommended, do it — don't just offer. Stale recommendations 
 
 **Research decomposition pattern:**
 1. Identify 2-5 independent research questions based on the task. Good questions target facts the model is least confident about: current prices, hours, availability, recent changes, seasonal specifics.
-2. Dispatch parallel research. Prefer user-named surfaces first per Core Principle 4 in SKILL.md; fall back to web search for questions those surfaces don't cover.
+2. Dispatch parallel research. Prefer user-named surfaces first per Core Principle 4 in `references/planning-foundations.md`; fall back to web search for questions those surfaces don't cover.
 3. Collate findings into a brief research summary before proceeding to planning.
 
 Example for "plan a date night in Seattle this Saturday":
