@@ -8,9 +8,14 @@ test("journal requirements need dated sources and unresolved mandatory checks bl
  const profile={schema_version:1,journal:"Synthetic Journal",article_type:"Original Research",source_url:"https://example.org/authors",retrieved_at:"2026-10-27",rules:[{id:"abstract",requirement:"Structured abstract",source_location:"Abstract section",required:true,check_kind:"human",status:"unresolved",evidence:null}]}
  async function run(){await writeFile(file,JSON.stringify(profile));const p=Bun.spawn(["python3",script,file],{stdout:"pipe",stderr:"pipe"});return {code:await p.exited,out:await new Response(p.stdout).text()}}
  try {
- expect((await run()).code).toBe(1)
+ const first=await run()
+ expect(first.code).toBe(1)
+ expect(first.out).toContain('"unresolved_required_count": 1')
+ expect(first.out).toContain('"status": "blocked"')
  profile.rules[0]!.status="passed"
- expect((await run()).code).toBe(1) // no evidence
+ const second=await run()
+ expect(second.code).toBe(1) // no evidence
+ expect(second.out).toContain("invalid journal profile or missing evidence")
  }finally{await rm(root,{recursive:true,force:true})}
 })
 test("dated journal profile binds passing checks to retained evidence",async()=>{
