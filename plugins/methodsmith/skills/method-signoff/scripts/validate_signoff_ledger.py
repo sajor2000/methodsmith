@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -114,6 +115,8 @@ def main(argv: list[str]) -> int:
             expected = entry.get("artifact_sha256")
             if not isinstance(relative, str) or not safe_relative(relative) or not relative:
                 blockers.append(f"{entry_id}: invalid artifact path.")
+            elif not isinstance(expected, str) or not re.fullmatch(r"[a-f0-9]{64}", expected):
+                blockers.append(f"{entry_id}: invalid artifact digest.")
             elif latest_for_path.get(Path(relative).as_posix()) != index:
                 warnings.append(f"{entry_id}: superseded by a later entry for this artifact; digest not rechecked.")
             else:

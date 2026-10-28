@@ -153,3 +153,16 @@ test("superseded v2 entries warn instead of blocking the latest decision", async
  expect(report).toContain("Result: READY-WITH-REVIEW")
  expect(report).toContain("superseded")
 })
+test("v2 entries need well-formed digests even when superseded", async () => {
+ const root=await mkdtemp(path.join(os.tmpdir(),"signoff-malformed-")); tempRoots.push(root)
+ await mkdir(path.join(root,"analysis/signoff"),{recursive:true})
+ await writeFile(path.join(root,"table.md"),"N=11")
+ const newSha=new Bun.CryptoHasher("sha256").update("N=11").digest("hex")
+ await writeFile(path.join(root,"analysis/signoff/signoff-ledger.json"),JSON.stringify({version:2,ledger_id:"ledger",study_id:"study",entries:[
+  {entry_id:"one",reviewer:"PI",artifact:"table",decision:"approved",timestamp:"2026-10-27T12:00:00Z",artifact_path:"table.md",artifact_sha256:"not-a-digest"},
+  {entry_id:"two",reviewer:"PI",artifact:"table",decision:"changes-requested",timestamp:"2026-10-27T13:00:00Z",artifact_path:"table.md",artifact_sha256:newSha}]}))
+ const proc=Bun.spawn(["python3",scriptPath,"--project-root",root],{stdout:"pipe",stderr:"pipe"})
+ expect(await proc.exited).toBe(1)
+ const report=await readFile(path.join(root,"analysis/signoff/signoff-validation-report.md"),"utf8")
+ expect(report).toContain("invalid artifact digest")
+})
