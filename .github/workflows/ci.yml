@@ -7,10 +7,11 @@ on:
   workflow_dispatch:
   workflow_call:
 
-# Superseded runs on the same ref are cancelled; main is never cancelled so
-# every merged commit keeps a complete status history.
+# Superseded runs on the same ref are cancelled. Main is keyed per commit and
+# never cancelled, so every merged commit runs and keeps a complete status
+# history; a shared main group would replace pending runs before they start.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:

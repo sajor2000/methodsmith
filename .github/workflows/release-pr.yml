@@ -13,7 +13,11 @@ permissions:
 concurrency:
   # Serialized, never cancelled: cancelling a main-branch run would kill its
   # validate-candidate job and leave a fully validated commit unreleased.
+  # queue: max keeps later pushes pending (FIFO) instead of letting a newer
+  # pending run replace this one, so every validated commit reaches release
+  # creation without a manual rerun.
   group: release-pr-${{ github.ref }}
+  queue: max
   cancel-in-progress: false
 
 jobs:
