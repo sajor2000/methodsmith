@@ -1251,8 +1251,8 @@ and [What external tools receive](#what-external-tools-receive).
 **R or Python?** Either. Setup detects the language, notebook format and data
 layer from the project and only asks about what it cannot infer.
 
-**Which agents does it run on?** Claude Code and Codex natively, Pi through a
-generated install, and others through the converter CLI. See
+**Which agents does it run on?** Claude Code, Codex, and Factory Droid natively,
+Pi through a generated install, and others through the converter CLI. See
 [Also works with Codex, Pi, Gemini, and more](#also-works-with-codex-pi-gemini-and-more).
 
 **How is it related to Compound Engineering?** It is an MIT-licensed fork. The

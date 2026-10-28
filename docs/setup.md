@@ -1,6 +1,6 @@
 # Methodsmith Setup Guide
 
-Methodsmith is a plugin for Claude Code and Codex. This guide is the fastest
+Methodsmith is a plugin for Claude Code, Codex, and Factory Droid. This guide is the fastest
 path from a fresh machine to a working `methodsmith` install. Use Bash on macOS,
 Linux, WSL, or Git Bash. Use PowerShell on native Windows. Upgrading from
 ce-datascience (the plugin's name before 5.0)? See <!-- rebrand:keep -->
