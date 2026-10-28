@@ -15,11 +15,13 @@ ALLOWED_DECISIONS = {"approved", "approved-with-conditions", "changes-requested"
 
 
 def safe_relative(value: str) -> bool:
+    """Accept only project-relative paths without traversal."""
     path = Path(value)
     return not path.is_absolute() and ".." not in path.parts
 
 
 def stable_hash(entry: dict, previous_hash: str, version: int = 1) -> str:
+    """Hash entry content with the prior entry for the append-only chain."""
     payload = {
         key: entry.get(key)
         for key in REQUIRED_ENTRY_FIELDS
@@ -31,6 +33,7 @@ def stable_hash(entry: dict, previous_hash: str, version: int = 1) -> str:
 
 
 def main(argv: list[str]) -> int:
+    """Validate the ledger and write a report; blockers exit 1, usage errors exit 2."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ledger", default="analysis/signoff/signoff-ledger.json")
     parser.add_argument("--project-root", default=".")

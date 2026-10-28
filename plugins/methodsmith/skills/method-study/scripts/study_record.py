@@ -26,22 +26,26 @@ KINDS = ("code", "notebook", "data", "plan", "table", "figure", "manuscript", "e
 
 
 def require(condition: bool, message: str) -> None:
+    """Raise a safe, non-content diagnostic unless the condition holds."""
     if not condition:
         raise RecordError(message)
 
 
 def identifier(value: str) -> str:
+    """Return the value only if it is a bounded, file-safe identifier."""
     require(isinstance(value, str) and bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", value)), "invalid identifier")
     return value
 
 
 def local_path(value: str | Path) -> Path:
+    """Resolve an approved local path, rejecting unapproved study storage."""
     path = Path(value).expanduser().resolve()
     require(not any("dropbox" in p.lower() for p in path.parts), "Dropbox is not approved study storage")
     return path
 
 
 def digest(path: Path) -> str:
+    """Hash a required file in chunks and fail closed when unavailable."""
     require(path.is_file(), "artifact unavailable")
     h = hashlib.sha256()
     with path.open("rb") as stream:
@@ -55,12 +59,14 @@ def canonical_hash(value: Any) -> str:
 
 
 def owned(root: Path, name: str) -> Path:
+    """Return a study-state path, rejecting symlinks and escapes from the root."""
     path = root / name
     require(not path.is_symlink() and path.resolve().is_relative_to(root), "unsafe state path")
     return path
 
 
 def atomic_json(path: Path, value: Any) -> None:
+    """Write JSON durably via a temporary file and atomic replace."""
     fd, name = tempfile.mkstemp(prefix=".record-", dir=path.parent)
     try:
         with os.fdopen(fd, "w") as stream:
@@ -76,6 +82,7 @@ def atomic_json(path: Path, value: Any) -> None:
 
 @contextlib.contextmanager
 def lock(root: Path):
+    """Serialize writers with a directory lock; a conflict fails closed."""
     target = owned(root, ".write-lock")
     try:
         target.mkdir(mode=0o700)
@@ -88,6 +95,7 @@ def lock(root: Path):
 
 
 def validate(record: dict, study_id: str) -> None:
+    """Enforce the record schema, including acyclic artifact dependencies."""
     require(isinstance(record, dict), "invalid record")
     require(record.get("schema_version") == 1, "unsupported schema version")
     require(record.get("study_id") == study_id, "study identity mismatch")
@@ -105,6 +113,7 @@ def validate(record: dict, study_id: str) -> None:
         require(isinstance(item.get("dependencies"), list) and all(isinstance(d, str) for d in item["dependencies"]), "invalid dependencies")
         require(all(d in artifacts and d != key for d in item["dependencies"]), "dangling dependency")
     def visit(key: str, trail: set[str]) -> None:
+        """Recurse artifact dependencies, failing on cycles."""
         require(key not in trail, "dependency cycle")
         for dep in artifacts[key]["dependencies"]:
             visit(dep, trail | {key})
@@ -113,6 +122,7 @@ def validate(record: dict, study_id: str) -> None:
 
 
 def load(root: Path, study_id: str) -> dict:
+    """Load and validate the record, rejecting moved study roots."""
     with owned(root, "study.json").open() as stream:
         record = json.load(stream)
     validate(record, study_id)
@@ -135,6 +145,7 @@ QUARTO_PROJECT = "project:\n  type: default\nexecute:\n  cache: false\n  freeze:
 
 
 def require_standalone_quarto(source: Path, run: Path) -> None:
+    """Reject inherited Quarto project settings near the source or the run."""
     for start in (source.parent, run.parent):
         for directory in (start, *start.parents):
             require(not any((directory / name).exists() for name in ("_quarto.yml", "_quarto.yaml")),
@@ -171,6 +182,7 @@ def execution_options_enabled(value: Any, ancestors: frozenset[int] = frozenset(
 
 
 def notebook_execution_complete(path: Path) -> bool:
+    """Check every code cell ran to a positive count with no error outputs."""
     notebook = json.loads(path.read_text())
     require(isinstance(notebook, dict) and isinstance(notebook.get("cells"), list), "invalid executed notebook")
     for cell in notebook["cells"]:
@@ -203,6 +215,7 @@ def notebook_execution_complete(path: Path) -> bool:
 
 
 def validate_run_outputs(evidence_path: Path, evidence: dict) -> None:
+    """Check run evidence structure, timestamps and retained output digests."""
     require(evidence.get("schema_version") == 1, "unsupported run evidence version")
     outcome = evidence.get("status")
     require(outcome in ("success", "failed", "unavailable"), "invalid run outcome")
@@ -254,9 +267,11 @@ def validate_run_outputs(evidence_path: Path, evidence: dict) -> None:
 
 
 def status(record: dict) -> dict:
+    """Project per-artifact freshness, approval and coverage plus handoff states."""
     artifacts = record["artifacts"]
     states: dict[str, dict] = {}
     def inspect(key: str) -> dict:
+        """Compute one artifact status, memoized across the projection."""
         if key in states:
             return states[key]
         item = artifacts[key]
@@ -301,6 +316,7 @@ def status(record: dict) -> dict:
 
 
 def evidence_binding(record: dict, key: str) -> str:
+    """Hash the artifact evidence chain an approval or binding must match."""
     item = record["artifacts"][key]
     return canonical_hash({"digest": item["digest"], "execution": item["execution"],
                            "run": item.get("run"), "dependencies_complete": item.get("dependencies_complete", False),
@@ -308,6 +324,7 @@ def evidence_binding(record: dict, key: str) -> str:
 
 
 def snapshot(root: Path, record: dict, snapshot_id: str) -> dict:
+    """Copy current artifacts into a new immutable, digest-bound snapshot."""
     identifier(snapshot_id)
     target = owned(root, "snapshots")
     target.mkdir(mode=0o700, exist_ok=True)
@@ -337,6 +354,7 @@ def snapshot(root: Path, record: dict, snapshot_id: str) -> dict:
 
 
 def parser() -> argparse.ArgumentParser:
+    """Build the study-record CLI with its subcommands."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--root", required=True)
     p.add_argument("--study-id", required=True)
@@ -373,6 +391,7 @@ def parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    """Dispatch subcommands under the write lock and print JSON results."""
     args = parser().parse_args()
     try:
         root = local_path(args.root)

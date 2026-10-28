@@ -19,6 +19,7 @@ FIELDS = {
 
 
 def project(data: dict) -> dict:
+    """Reduce status data to reviewed, bounded fields and declared dependencies."""
     identifier(data["study_id"])
     require(type(data["revision"]) is int and data["revision"] >= 0, "invalid revision")
     require(bool(re.fullmatch(r"[a-f0-9]{64}", data["record_digest"])), "invalid record digest")
@@ -42,6 +43,7 @@ def project(data: dict) -> dict:
 
 
 def render(data: dict) -> str:
+    """Render the escaped snapshot table as a static, CSP-locked HTML page."""
     labels = ["Artifact", "Freshness", "Provenance", "Execution", "Human approval", "Coverage", "Depends on"]
     rows = ""
     for key, item in data["artifacts"].items():
@@ -60,6 +62,7 @@ def render(data: dict) -> str:
 
 
 def main() -> int:
+    """Write the reviewed projection once, refusing to overwrite existing output."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--status", required=True)
     p.add_argument("--output", required=True)

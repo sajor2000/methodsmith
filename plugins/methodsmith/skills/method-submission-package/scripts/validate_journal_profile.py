@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 
 
 def validate(data: dict, root: Path) -> list[str]:
+    """Check profile structure and evidence; return the unresolved required rule ids."""
     if data.get("schema_version") != 1:
         raise ValueError("unsupported schema")
     if not data.get("journal") or not data.get("article_type"):
@@ -50,6 +51,7 @@ def validate(data: dict, root: Path) -> list[str]:
 
 
 def main() -> int:
+    """Validate the profile named in argv and print unresolved required checks as JSON."""
     try:
         path = Path(sys.argv[1]).resolve()
         unresolved = validate(json.loads(path.read_text(encoding="utf-8")), path.parent)

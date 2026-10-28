@@ -9,15 +9,18 @@ import sys
 
 
 def check(condition: bool) -> None:
+    """Raise one safe message unless the condition holds."""
     if not condition:
         raise ValueError("invalid or unsupported revision evidence")
 
 
 def safe_id(value: str) -> None:
+    """Accept only bounded, file-safe identifiers."""
     check(isinstance(value, str) and bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", value)))
 
 
 def evidence_current(item: dict, root: Path) -> bool:
+    """Check the referenced file is safe and matches its recorded digest."""
     relative = Path(item.get("path", ""))
     check(not relative.is_absolute() and ".." not in relative.parts)
     path = root / relative
@@ -26,6 +29,7 @@ def evidence_current(item: dict, root: Path) -> bool:
 
 
 def validate(record: dict, root: Path) -> dict:
+    """Check round structure, state transitions, evidence and comment coverage."""
     check(record.get("schema_version") == 1)
     safe_id(record["round_id"])
     baseline = record["baseline"]
@@ -74,6 +78,7 @@ def validate(record: dict, root: Path) -> dict:
 
 
 def main() -> int:
+    """Validate the record file named in argv and print the result as JSON."""
     try:
         path = Path(sys.argv[1]).resolve()
         print(json.dumps(validate(json.loads(path.read_text(encoding="utf-8")), path.parent)))

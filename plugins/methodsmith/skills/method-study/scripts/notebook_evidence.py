@@ -14,6 +14,7 @@ from study_record import RecordError, require, local_path, digest, atomic_json, 
 
 
 def main() -> int:
+    """Run one authorized execution into a new run directory and record run evidence."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--source", required=True)
     p.add_argument("--run-dir", required=True)

@@ -16,6 +16,7 @@ def git(root: str, *args: str) -> bytes:
 
 
 def inventory(root: str, base: str | None) -> dict:
+    """Digest staged index bytes and any scoped outgoing history without revealing contents."""
     staged = git(root, "ls-files", "--stage", "-z")
     # Bind paths, modes and exact index blob identities without disclosing their values.
     for line in staged.split(b"\0"):
@@ -36,6 +37,7 @@ def inventory(root: str, base: str | None) -> dict:
 
 
 def main() -> int:
+    """Bind an approval to the current inventory digest, or report awaiting review."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--repo", required=True)
     p.add_argument("--base", help="actual destination ref; required for a push review")
