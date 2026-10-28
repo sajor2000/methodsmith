@@ -11,7 +11,7 @@
         "Reads reports/data-qa/shock_v1.md before writing variable, missingness, cohort-size, or model sections",
         "Writes the SAP to analysis/sap.md (the default path) with sap_version and status frontmatter, keeping status: draft while any estimand, comparator, time-zero, adjustment, or missing-data choice remains unresolved",
         "Requires the method-sap-workbook companion (analysis/sap-tables/01-overview.csv, 02-outputs.csv, 03-variables.csv) or records an explicit blocker",
-        "Uses the method-grill interview for material unresolved research decisions before structuring the SAP, without re-asking decisions already supplied; carries unresolved choices as gaps in non-interactive mode",
+        "When material research decisions remain unresolved, questions them before writing the SAP in interactive mode or records them as gaps in non-interactive mode",
         "Does not set status: final without user acceptance and does not run inferential analyses",
         "Grounds SAP-1 background and SAP-5 methods justification in sources read through the PubMed/Paperclip MCP tools and cited by PMID/DOI with an evidence label, or writes a GAP comment, never a citation from memory"
       ]

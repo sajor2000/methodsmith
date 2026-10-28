@@ -71,7 +71,7 @@ transitive dependencies, manuscript handoff visibility and failed R chunk status
 
 The user authorized sequential fresh-context agents. Three independent bounded
 code-review rounds are now recorded below; all five reproduced defects were fixed
-and independently closed. This is not a full multi-persona `ce-code-review`
+and independently closed. This is not a full multi-persona `method-review`
 receipt. Both new lifecycle cases have passed twice with frozen input digests;
 remaining affected existing cases and wider acceptance coverage are still pending.
 

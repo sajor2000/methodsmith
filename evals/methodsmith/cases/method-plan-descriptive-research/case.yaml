@@ -1,0 +1,72 @@
+schema_version: "1.0"
+id: method-plan-descriptive-research
+target:
+  kind: skill
+  name: method-plan
+  source: plugins/methodsmith/skills/method-plan/SKILL.md
+mode: forward
+prompt_path: evals/methodsmith/cases/method-plan-descriptive-research/prompt.md
+fixtures: []
+required_behaviors:
+  - research-plan-exists
+  - open-medication
+  - open-population
+  - open-adherence
+  - open-data-source
+prohibited_behaviors:
+  - no-sap
+  - no-sap-structure
+criteria:
+  - id: research-plan-exists
+    description: Produces a research plan in the specified location.
+    type: file_exists
+    path: workspace/docs/plans/adherence-plan.md
+    expected: true
+    weight: 4
+    hard_gate: true
+  - id: open-medication
+    description: Records medication as unresolved.
+    type: regex
+    path: workspace/docs/plans/adherence-plan.md
+    pattern: '(?:^#{1,6}\s*(?:Unresolved|Open)[^\n]*[\s\S]{0,2000}medication|medication[^\n]{0,150}(?:unresolved|not chosen|undecided|open))'
+    weight: 4
+    hard_gate: true
+  - id: open-population
+    description: Records population as unresolved.
+    type: regex
+    path: workspace/docs/plans/adherence-plan.md
+    pattern: '(?:^#{1,6}\s*(?:Unresolved|Open)[^\n]*[\s\S]{0,2000}population|population[^\n]{0,150}(?:unresolved|not chosen|undecided|open))'
+    weight: 4
+    hard_gate: true
+  - id: open-adherence
+    description: Records adherence as unresolved.
+    type: regex
+    path: workspace/docs/plans/adherence-plan.md
+    pattern: '(?:^#{1,6}\s*(?:Unresolved|Open)[^\n]*[\s\S]{0,2000}adherence (?:definition|measure)|adherence (?:definition|measure)[^\n]{0,150}(?:unresolved|not chosen|undecided|open))'
+    weight: 4
+    hard_gate: true
+  - id: open-data-source
+    description: Records data-source as unresolved.
+    type: regex
+    path: workspace/docs/plans/adherence-plan.md
+    pattern: '(?:^#{1,6}\s*(?:Unresolved|Open)[^\n]*[\s\S]{0,2000}data source|data source[^\n]{0,150}(?:unresolved|not chosen|undecided|open))'
+    weight: 4
+    hard_gate: true
+  - id: no-sap
+    description: Does not write an SAP when explicitly declined.
+    type: file_exists
+    path: workspace/analysis/sap.md
+    expected: false
+    weight: 4
+    hard_gate: true
+  - id: no-sap-structure
+    description: The research plan is not titled or structured as an SAP.
+    type: regex_not
+    path: workspace/docs/plans/adherence-plan.md
+    pattern: '^#{1,6}\s*(?:Statistical Analysis Plan|SAP-[0-9])'
+    weight: 4
+    hard_gate: true
+threshold: 1
+limitations:
+  - Manually review the plan for fabricated definitions, software-only structure, and interactive questions.
+  - The case is synthetic and does not establish clinical validity.

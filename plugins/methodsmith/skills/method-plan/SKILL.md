@@ -43,7 +43,7 @@ Apply the Skill Value interaction rule to every question below; never silently s
 
 **Implementation mode** — all other inputs; uses Phases 0-5 below.
 
-**Detection** (Phase 0, before Phase 1): an explicit request to write an SAP or 2+ keywords → announce "Entering SAP mode"; otherwise "Entering implementation mode". The user may override ("use SAP mode" / "use implementation mode") at any point; confirm if detection seems wrong. If the input also names code files, tests, or a repo feature, ask which mode to use.
+**Detection** (Phase 0, before Phase 1): an explicit request to write an SAP or 2+ keywords → announce "Entering SAP mode"; otherwise "Entering implementation mode". Explicitly declining an SAP overrides keyword detection. The user may override ("use SAP mode" / "use implementation mode") at any point; confirm if detection seems wrong. If the input also names code files, tests, or a repo feature, ask which mode to use.
 
 ### SAP Mode Workflow
 
@@ -62,7 +62,7 @@ SAP-mode gates that hold regardless of what the reference says:
 
 ## Core Principles
 
-Read `references/planning-foundations.md` before planning for the four general planning principles.
+Read `references/planning-foundations.md` for principles 1-4; principles 5-7 follow.
 
 5. **Data shape before SAP, coding, or modeling** - With data available, inspect actual columns, grain, keys, dates, missingness, duplicates, and validity before SAP finalization or implementation planning (`method-data-qa` for tabular, `method-omics-qc` for omics). Without data, write an explicit data-profile prerequisite and keep SAP variable/model sections provisional.
 6. **Every new SAP gets a tabular workbook contract** - Not execution-ready without `analysis/sap-tables/01-overview.csv`, `02-outputs.csv`, `03-variables.csv`, and the rendered `<slug>-tabular-sap.xlsx` when `openpyxl` is available. If data QA is missing, keep the SAP in draft and list `method-data-qa` before `method-sap-workbook`.
@@ -77,8 +77,7 @@ A plan is ready when an implementer can start confidently without the plan writi
 `OUTPUT_FORMAT` is `md` or `html`, never both. The repository root is pre-resolved at skill load:
 !`git rev-parse --show-toplevel 2>/dev/null || true`
 
-Follow the output-mode resolution in `references/planning-foundations.md` using that pre-resolved value.
-
+Use it as `<repo-root>` if absolute, else run `git rev-parse --show-toplevel`. Read `<repo-root>/.methodsmith/config.local.yaml` with the native file-read tool (in a linked worktree without it, try the main checkout from the absolute common Git directory). Read `references/output-mode.md` to resolve CLI `output:` > config `plan_output:` > default `md` (pipeline forces `md`). Then read `references/markdown-rendering.md` (md) or `references/html-rendering.md` plus `references/html-visuals.md` (html); both pair with `references/plan-sections.md`.
 
 ### 0.1 Resume Existing Plan Work When Appropriate
 
@@ -88,7 +87,7 @@ If the user references an existing plan or an obvious recent match exists in `do
 
 ### 0.1b Classify Task Domain and Detect Mode
 
-Detect the mode (Dual-Mode rule); SAP mode continues to 0.2. Otherwise software or analysis code (repos, APIs, databases, pipelines, notebooks) → 0.2 in implementation mode; genuinely ambiguous ("plan a migration") → ask; anything else → read `references/universal-planning.md`, follow it, and skip all later phases. Named tools or links do not change this routing.
+Detect the mode (Dual-Mode rule); SAP mode continues to 0.2. A study or analysis plan also continues to 0.2, even without SAP keywords or code, so its decisions reach 0.5b. For a non-SAP research plan without software work, set `RESEARCH_PLAN_ONLY`. Software or analysis code → 0.2 in implementation mode; genuinely ambiguous ("plan a migration") → ask; anything else → `references/universal-planning.md`, skipping later phases. Named tools or links do not change routing.
 
 ### 0.2 Find Upstream Requirements Document
 
@@ -101,7 +100,7 @@ Prefer a matching unified artifact in `docs/plans/` (`artifact_contract: ce-unif
 
 ### 0.5b Clarify the Research Decision
 
-For a study or analysis, read `references/research-decision.md` and apply it before structuring the plan: brief and `docs/brainstorms/*-grill.md` intake, the `method-grill` planning-integration interview for material unresolved decisions, gap handling when the interview stops or in pipeline mode, and the outcome-preservation rules that hold throughout the SAP. Reassess SAP versus implementation mode after the interview; if the appropriate mode changes, announce the switch and follow its gates.
+Read `references/planning-foundations.md` and apply its research-decision interview before structuring a study or analysis plan.
 
 ### 0.6 Assess Plan Depth
 
@@ -116,6 +115,8 @@ Phase 1.0 is a gate for any study or analysis work with data: inspect the actual
 ## Phase 2: Resolve Planning Questions
 
 Mark each open question (origin deferrals, research gaps, required decisions) **resolved during planning** or **deferred to implementation** (depends on code changes or runtime behavior). Ask only when the answer materially affects architecture, scope, sequencing, or risk and cannot be inferred. Do not run tests, build, or probe runtime behavior.
+
+**Research-plan route:** If `RESEARCH_PLAN_ONLY` remains set and SAP mode was not selected, follow the research-plan route in `references/universal-planning.md` instead of Phases 3-5.
 
 ## Phase 3: Structure the Plan
 
@@ -151,7 +152,7 @@ Read `references/pre-write-review.md` and fix every failed plan check and origin
 
 **REQUIRED: Write the plan file to disk before presenting any options.**
 
-For a current-CE unified requirements artifact (`artifact_contract: ce-unified-plan/v1`, `artifact_readiness: requirements-only`), update that same canonical file in place, set `artifact_readiness: implementation-ready`, and preserve the Product Contract and stable R/A/F/AE identifiers. Do not create a sibling `*-plan` file. Otherwise write `docs/plans/YYYY-MM-DD-NNN-<type>-<descriptive-name>-plan.<md|html>` and confirm `Plan written to docs/plans/[filename]`. **Pipeline mode** (LFG, SLFG, or any `disable-model-invocation` context): make needed choices automatically without questions.
+For a current-CE unified requirements artifact (`artifact_contract: ce-unified-plan/v1`, `artifact_readiness: requirements-only`), update that same canonical file in place, set `artifact_readiness: implementation-ready`, and preserve the Product Contract and stable R/A/F/AE identifiers. Do not create a sibling `*-plan` file. Otherwise write `docs/plans/YYYY-MM-DD-NNN-<type>-<descriptive-name>-plan.<md|html>` and confirm `Plan written to docs/plans/[filename]`. **Pipeline mode** (LFG, SLFG, or any `disable-model-invocation` context): make routine choices automatically without questions; leave unresolved research and methodological decisions as gaps.
 
 ### 5.3 Confidence Check and Deepening
 

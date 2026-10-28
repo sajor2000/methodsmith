@@ -10,6 +10,8 @@
 
 This file is loaded when method-plan detects a non-software task (Phase 0.1b). It replaces the software-specific phases (0.2 through 5.1) with a domain-agnostic planning workflow.
 
+**Research-plan route:** When `RESEARCH_PLAN_ONLY` is set by `method-plan`, the research interview, data preflight, and planning questions have already run. Skip the classification and pipeline stop below and Steps 1-1b. Use Step 2's research-plan structure (questions, methods, sources, deliverables, and unresolved decisions). Keep unconfirmed methodological choices as gaps. In pipeline or non-interactive mode, save the provisional plan under `docs/plans/` using the naming convention in Step 3 and return to the caller without questions or a menu. In interactive mode follow Step 3. Do not create an SAP or require software units, file lists, or test files unless the user asks for them.
+
 ## Before starting: verify classification
 
 The detection stub in SKILL.md routes here for anything that isn't clearly software. Verify the classification is correct before proceeding:
@@ -42,7 +44,7 @@ When research is recommended, do it — don't just offer. Stale recommendations 
 
 **Research decomposition pattern:**
 1. Identify 2-5 independent research questions based on the task. Good questions target facts the model is least confident about: current prices, hours, availability, recent changes, seasonal specifics.
-2. Dispatch parallel research. Prefer user-named surfaces first per Core Principle 4 in SKILL.md; fall back to web search for questions those surfaces don't cover.
+2. Dispatch parallel research. Prefer user-named surfaces first per Core Principle 4 in `references/planning-foundations.md`; fall back to web search for questions those surfaces don't cover.
 3. Collate findings into a brief research summary before proceeding to planning.
 
 Example for "plan a date night in Seattle this Saturday":
