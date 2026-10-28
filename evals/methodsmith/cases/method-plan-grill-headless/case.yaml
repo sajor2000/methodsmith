@@ -31,9 +31,9 @@ criteria:
     weight: 4
     hard_gate: true
   - id: data-profile-gap
-    description: The response identifies the missing data profile or data QA prerequisite.
+    description: The SAP identifies the missing data profile or data QA prerequisite.
     type: regex
-    path: response.md
+    path: workspace/analysis/sap.md
     pattern: '[Dd]ata[- ](?:profile|QA|quality)|method-data-qa'
     weight: 3
     hard_gate: true

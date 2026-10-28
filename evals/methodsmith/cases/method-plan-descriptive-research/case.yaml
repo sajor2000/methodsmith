@@ -9,9 +9,13 @@ prompt_path: evals/methodsmith/cases/method-plan-descriptive-research/prompt.md
 fixtures: []
 required_behaviors:
   - research-plan-exists
-  - open-decisions
+  - open-medication
+  - open-population
+  - open-adherence
+  - open-data-source
 prohibited_behaviors:
   - no-sap
+  - no-sap-structure
 criteria:
   - id: research-plan-exists
     description: Produces a research plan in the specified location.
@@ -20,11 +24,32 @@ criteria:
     expected: true
     weight: 4
     hard_gate: true
-  - id: open-decisions
-    description: Records unresolved research choices rather than inventing them.
+  - id: open-medication
+    description: Records medication as unresolved.
     type: regex
     path: workspace/docs/plans/adherence-plan.md
-    pattern: '[Uu]nresolved|[Pp]rovisional|[Gg][Aa][Pp]|[Oo]pen decision'
+    pattern: '(?:^#{1,6}\s*(?:Unresolved|Open)[^\n]*[\s\S]{0,2000}medication|medication[^\n]{0,150}(?:unresolved|not chosen|undecided|open))'
+    weight: 4
+    hard_gate: true
+  - id: open-population
+    description: Records population as unresolved.
+    type: regex
+    path: workspace/docs/plans/adherence-plan.md
+    pattern: '(?:^#{1,6}\s*(?:Unresolved|Open)[^\n]*[\s\S]{0,2000}population|population[^\n]{0,150}(?:unresolved|not chosen|undecided|open))'
+    weight: 4
+    hard_gate: true
+  - id: open-adherence
+    description: Records adherence as unresolved.
+    type: regex
+    path: workspace/docs/plans/adherence-plan.md
+    pattern: '(?:^#{1,6}\s*(?:Unresolved|Open)[^\n]*[\s\S]{0,2000}adherence (?:definition|measure)|adherence (?:definition|measure)[^\n]{0,150}(?:unresolved|not chosen|undecided|open))'
+    weight: 4
+    hard_gate: true
+  - id: open-data-source
+    description: Records data-source as unresolved.
+    type: regex
+    path: workspace/docs/plans/adherence-plan.md
+    pattern: '(?:^#{1,6}\s*(?:Unresolved|Open)[^\n]*[\s\S]{0,2000}data source|data source[^\n]{0,150}(?:unresolved|not chosen|undecided|open))'
     weight: 4
     hard_gate: true
   - id: no-sap
@@ -32,6 +57,13 @@ criteria:
     type: file_exists
     path: workspace/analysis/sap.md
     expected: false
+    weight: 4
+    hard_gate: true
+  - id: no-sap-structure
+    description: The research plan is not titled or structured as an SAP.
+    type: regex_not
+    path: workspace/docs/plans/adherence-plan.md
+    pattern: '^#{1,6}\s*(?:Statistical Analysis Plan|SAP-[0-9])'
     weight: 4
     hard_gate: true
 threshold: 1
