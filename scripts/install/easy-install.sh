@@ -425,6 +425,10 @@ install_droid() {
   local marketplace_source="$source_root"
   if [ "$source_explicit" = "no" ]; then
     marketplace_source="$GITHUB_REPO"
+  else
+    # Droid resolves local marketplace paths to absolute paths; normalize the
+    # checkout path so the registered form matches the derived-name lookup.
+    marketplace_source="$(cd "$source_root" && pwd -P)"
   fi
 
   run_or_echo droid plugin marketplace add "$marketplace_source"
@@ -438,6 +442,9 @@ install_droid() {
       derived="$(printf '%s\n' "$registered" | awk -v suffix="local:$marketplace_source" 'index($0, suffix) + length(suffix) == length($0) + 1 {print $1; exit}')"
       if [ -n "$derived" ]; then
         install_marketplace="$derived"
+      elif [ "$source_explicit" = "yes" ]; then
+        echo "Could not identify the registered Droid marketplace for $marketplace_source" >&2
+        exit 2
       fi
     fi
   fi
