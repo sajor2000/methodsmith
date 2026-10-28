@@ -1,0 +1,64 @@
+schema_version: "1.0"
+id: method-plan-grill-headless
+target:
+  kind: skill
+  name: method-plan
+  source: plugins/methodsmith/skills/method-plan/SKILL.md
+mode: forward
+prompt_path: evals/methodsmith/cases/method-plan-grill-headless/prompt.md
+fixtures: []
+required_behaviors:
+  - draft-status
+  - open-choices
+  - data-profile-gap
+prohibited_behaviors:
+  - no-final-status
+  - no-selected-trial-design
+  - no-invented-endpoint
+criteria:
+  - id: draft-status
+    description: The SAP remains in draft.
+    type: regex
+    path: workspace/analysis/sap.md
+    pattern: '^status:\s*draft\b'
+    weight: 4
+    hard_gate: true
+  - id: open-choices
+    description: The draft marks unresolved treatment decisions as gaps or provisional.
+    type: regex
+    path: workspace/analysis/sap.md
+    pattern: '[Gg][Aa][Pp]|[Pp]rovisional|[Uu]nresolved'
+    weight: 4
+    hard_gate: true
+  - id: data-profile-gap
+    description: The SAP identifies the missing data profile or data QA prerequisite.
+    type: regex
+    path: workspace/analysis/sap.md
+    pattern: '(?:gap|prerequisite|required)[^\n]{0,100}(?:data[- ](?:profile|QA|quality)|method-data-qa)|(?:data[- ](?:profile|QA|quality)|method-data-qa)[^\n]{0,100}(?:gap|prerequisite|required)'
+    weight: 3
+    hard_gate: true
+  - id: no-final-status
+    description: An incomplete SAP is not finalized.
+    type: regex_not
+    path: workspace/analysis/sap.md
+    pattern: '^status:\s*final\b'
+    weight: 4
+    hard_gate: true
+  - id: no-selected-trial-design
+    description: Frontmatter does not label an unchosen target-trial design as settled.
+    type: regex_not
+    path: workspace/analysis/sap.md
+    pattern: '^study_type:\s*target[-_]trial'
+    weight: 4
+    hard_gate: true
+  - id: no-invented-endpoint
+    description: The primary outcome is not labeled all-cause without confirmation.
+    type: regex_not
+    path: workspace/analysis/sap.md
+    pattern: '(?:[Pp]rimary outcome|[Pp]rimary endpoint|[Tt]o estimate|[Ee]ndpoint with time point)[^\n]{0,100}all.cause mortality'
+    weight: 4
+    hard_gate: true
+threshold: 1
+limitations:
+  - Regex gates require manual review for fabricated answers, inappropriate outcome qualifiers, and questions that block a headless workflow.
+  - The synthetic case does not establish clinical validity or safety with real data.

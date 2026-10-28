@@ -3,6 +3,7 @@
 ## Contents
 
 - Goal
+- Task and deliverable
 - Hypothesis
 - Data
 - Proposed analysis
@@ -17,7 +18,15 @@ Each branch lists the probes to draw questions from, what a strong answer looks 
 - **Strong answer:** Names the decision and the actor, and states what a null result would still teach.
 - **Red flags:** The goal is "to explore" with no decision attached; descriptive, predictive, and causal aims mixed in one question; only a positive result would be publishable.
 
+## Task and deliverable
+
+- **Probes:** What should be produced, who will use or execute it, what counts as success, and which data access, resource, or timing constraints matter?
+- **Strong answer:** Names the deliverable, consumer, acceptance criteria, and material constraints.
+- **Red flags:** The requested artifact cannot answer the aim, acceptance criteria are unclear, or access is assumed without confirmation.
+
 ## Hypothesis
+
+Adapt this branch to the aim: for prediction clarify target, prediction horizon, intended use, and performance criteria; for descriptive work clarify the question and quantities to estimate. Do not require a directional causal hypothesis for either.
 
 - **Probes:** Population, exposure or intervention, comparator, and outcome (PICO/PECO)? Time zero and follow-up window? Expected direction and a clinically meaningful difference? Primary versus secondary outcomes? What result would falsify it?
 - **Strong answer:** One primary hypothesis, a defined time zero, a stated direction, and a minimal clinically important difference.

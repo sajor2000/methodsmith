@@ -9,6 +9,17 @@ async function read(rel: string): Promise<string> {
 }
 
 describe("method-grill research-project interview", () => {
+  test("routes research planning through the scoped interview and preserves headless gaps", async () => {
+    const planDir = path.join(process.cwd(), "plugins", "methodsmith", "skills", "method-plan")
+    const plan = await readFile(path.join(planDir, "SKILL.md"), "utf8")
+    const foundations = await readFile(path.join(planDir, "references", "planning-foundations.md"), "utf8")
+    const grill = await read("SKILL.md")
+    expect(plan).toContain("even without SAP keywords or code")
+    expect(plan).toContain("references/planning-foundations.md")
+    expect(foundations).toContain("load `method-grill` in its planning-integration mode")
+    expect(foundations).toContain("do not interview or fabricate answers")
+    expect(grill).toContain("### Planning integration")
+  })
   test("asks one question at a time with a recommended answer first", async () => {
     const content = await read("SKILL.md")
 
@@ -19,11 +30,11 @@ describe("method-grill research-project interview", () => {
     expect(content).toMatch(/blocking question UI/)
   })
 
-  test("covers all six branches in the skill and the question bank", async () => {
+  test("covers all seven branches in the skill and the question bank", async () => {
     const content = await read("SKILL.md")
     const bank = await read("references/question-bank.md")
 
-    for (const branch of ["Goal", "Hypothesis", "Data", "Proposed analysis", "Target journal", "Audience"]) {
+    for (const branch of ["Goal", "Task and deliverable", "Hypothesis", "Data", "Proposed analysis", "Target journal", "Audience"]) {
       expect(content).toContain(`| ${branch} |`)
       expect(bank).toContain(`## ${branch}`)
     }
