@@ -1,0 +1,40 @@
+schema_version: "1.0"
+id: method-plan-descriptive-research
+target:
+  kind: skill
+  name: method-plan
+  source: plugins/methodsmith/skills/method-plan/SKILL.md
+mode: forward
+prompt_path: evals/methodsmith/cases/method-plan-descriptive-research/prompt.md
+fixtures: []
+required_behaviors:
+  - research-plan-exists
+  - open-decisions
+prohibited_behaviors:
+  - no-sap
+criteria:
+  - id: research-plan-exists
+    description: Produces a research plan in the specified location.
+    type: file_exists
+    path: workspace/docs/plans/adherence-plan.md
+    expected: true
+    weight: 4
+    hard_gate: true
+  - id: open-decisions
+    description: Records unresolved research choices rather than inventing them.
+    type: regex
+    path: workspace/docs/plans/adherence-plan.md
+    pattern: '[Uu]nresolved|[Pp]rovisional|[Gg][Aa][Pp]|[Oo]pen decision'
+    weight: 4
+    hard_gate: true
+  - id: no-sap
+    description: Does not write an SAP when explicitly declined.
+    type: file_exists
+    path: workspace/analysis/sap.md
+    expected: false
+    weight: 4
+    hard_gate: true
+threshold: 1
+limitations:
+  - Manually review the plan for fabricated definitions, software-only structure, and interactive questions.
+  - The case is synthetic and does not establish clinical validity.

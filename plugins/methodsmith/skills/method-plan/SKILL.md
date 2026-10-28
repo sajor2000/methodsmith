@@ -43,7 +43,7 @@ Apply the Skill Value interaction rule to every question below; never silently s
 
 **Implementation mode** — all other inputs; uses Phases 0-5 below.
 
-**Detection** (Phase 0, before Phase 1): an explicit request to write an SAP or 2+ keywords → announce "Entering SAP mode"; otherwise "Entering implementation mode". The user may override ("use SAP mode" / "use implementation mode") at any point; confirm if detection seems wrong. If the input also names code files, tests, or a repo feature, ask which mode to use.
+**Detection** (Phase 0, before Phase 1): an explicit request to write an SAP or 2+ keywords → announce "Entering SAP mode"; otherwise "Entering implementation mode". Explicitly declining an SAP overrides keyword detection. The user may override ("use SAP mode" / "use implementation mode") at any point; confirm if detection seems wrong. If the input also names code files, tests, or a repo feature, ask which mode to use.
 
 ### SAP Mode Workflow
 
@@ -87,7 +87,7 @@ If the user references an existing plan or an obvious recent match exists in `do
 
 ### 0.1b Classify Task Domain and Detect Mode
 
-Detect the mode (Dual-Mode rule); SAP mode continues to 0.2. A study, research question, or analysis plan also continues to 0.2, even without SAP keywords or code, so its research decisions reach 0.5b. Otherwise software or analysis code (repos, APIs, databases, pipelines, notebooks) → 0.2 in implementation mode; genuinely ambiguous ("plan a migration") → ask; anything else → read `references/universal-planning.md`, follow it, and skip all later phases. Named tools or links do not change this routing.
+Detect the mode (Dual-Mode rule); SAP mode continues to 0.2. A study or analysis plan also continues to 0.2, even without SAP keywords or code, so its decisions reach 0.5b. For a non-SAP research plan without software work, set `RESEARCH_PLAN_ONLY`. Software or analysis code → 0.2 in implementation mode; genuinely ambiguous ("plan a migration") → ask; anything else → `references/universal-planning.md`, skipping later phases. Named tools or links do not change routing.
 
 ### 0.2 Find Upstream Requirements Document
 
@@ -115,6 +115,8 @@ Phase 1.0 is a gate for any study or analysis work with data: inspect the actual
 ## Phase 2: Resolve Planning Questions
 
 Mark each open question (origin deferrals, research gaps, required decisions) **resolved during planning** or **deferred to implementation** (depends on code changes or runtime behavior). Ask only when the answer materially affects architecture, scope, sequencing, or risk and cannot be inferred. Do not run tests, build, or probe runtime behavior.
+
+**Research-plan route:** If `RESEARCH_PLAN_ONLY` remains set and SAP mode was not selected, follow the research-plan route in `references/universal-planning.md` instead of Phases 3-5.
 
 ## Phase 3: Structure the Plan
 

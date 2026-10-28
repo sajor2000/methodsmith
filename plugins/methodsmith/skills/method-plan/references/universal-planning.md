@@ -10,6 +10,8 @@
 
 This file is loaded when method-plan detects a non-software task (Phase 0.1b). It replaces the software-specific phases (0.2 through 5.1) with a domain-agnostic planning workflow.
 
+**Research-plan route:** When `RESEARCH_PLAN_ONLY` is set by `method-plan`, the research interview, data preflight, and planning questions have already run. Skip the classification and pipeline stop below and Steps 1-1b. Use Step 2's research-plan structure (questions, methods, sources, deliverables, and unresolved decisions). Keep unconfirmed methodological choices as gaps. In pipeline or non-interactive mode, save the provisional plan under `docs/plans/` using the naming convention in Step 3 and return to the caller without questions or a menu. In interactive mode follow Step 3. Do not create an SAP or require software units, file lists, or test files unless the user asks for them.
+
 ## Before starting: verify classification
 
 The detection stub in SKILL.md routes here for anything that isn't clearly software. Verify the classification is correct before proceeding:

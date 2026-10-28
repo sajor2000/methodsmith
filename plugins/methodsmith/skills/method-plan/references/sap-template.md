@@ -72,7 +72,7 @@ status: draft | final | amended
 
 ### SAP-1.4: Estimand(s)
 
-When the endpoint definition is unresolved, carry the supplied outcome wording into every estimand attribute and mark the missing definition as a gap. Do not add an unconfirmed cause, setting, or other qualifier, even in a provisional estimand.
+When the endpoint definition is unresolved, carry the supplied outcome wording into the endpoint attribute and mark the missing definition as a gap. Do not add an unconfirmed cause, setting, or other qualifier, even in a provisional estimand.
 
 [For each primary and key secondary objective, state the estimand per ICH E9(R1): (1) population, (2) treatment condition(s) being compared, (3) endpoint/variable with time point, (4) each anticipated intercurrent event (e.g., treatment discontinuation, rescue medication, treatment switching, death before outcome assessment) with its strategy (treatment policy, hypothetical, composite variable, while on treatment, principal stratum), and (5) population-level summary (e.g., risk difference, marginal or conditional odds ratio, hazard ratio, RMST difference). Flag hypothetical and principal-stratum strategies as resting on untestable assumptions. For observational causal questions, state the target-trial causal contrast (intention-to-treat or per-protocol analogue) and time zero. Analysis sets in SAP-4 support the estimand; they do not replace it.]
 

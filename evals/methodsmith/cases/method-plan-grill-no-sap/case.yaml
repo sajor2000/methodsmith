@@ -13,6 +13,7 @@ required_behaviors:
 prohibited_behaviors:
   - no-bias-guarantee
   - no-sap
+  - no-implementation-plan
 criteria:
   - id: identifies-timing-risk
     description: Identifies time-zero or immortal-time bias as a consequential design issue.
@@ -39,6 +40,13 @@ criteria:
     description: Does not create an SAP before the interview.
     type: file_exists
     path: workspace/analysis/sap.md
+    expected: false
+    weight: 3
+    hard_gate: true
+  - id: no-implementation-plan
+    description: The first interaction does not create a plan directory in the empty workspace.
+    type: file_exists
+    path: workspace/docs/plans
     expected: false
     weight: 3
     hard_gate: true
