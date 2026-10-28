@@ -3,8 +3,10 @@ import { GitHub, Manifest } from "release-please"
 import { DuplicateReleaseError } from "release-please/build/src/errors"
 import { bindTag, resolvedTag, type TagApi, type GitObject } from "./tag-binding"
 
-// Freeze the discovered candidate set before any release mutation. A later
-// successful push must never release an older, unvalidated pending commit.
+/**
+ * Freeze the discovered candidate set before any release mutation. A later
+ * successful push must never release an older, unvalidated pending commit.
+ */
 export async function createValidatedReleases(
   manifest: Pick<Manifest, "buildReleases" | "createReleases">,
   validatedSha: string,
@@ -41,6 +43,7 @@ export async function createValidatedReleases(
   }
 }
 
+/** Check that a durable, non-draft release exists and its tag still resolves to the validated commit. */
 export async function confirmedRelease(
   tags: TagApi, readRelease: () => Promise<{draft: boolean} | null>, tag: string, sha: string,
 ): Promise<boolean> {

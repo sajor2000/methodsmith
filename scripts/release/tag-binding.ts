@@ -5,6 +5,10 @@ export interface TagApi {
   createRef(tag: string, sha: string): Promise<void>
 }
 
+/**
+ * Resolve a tag through annotated tag chains to its commit SHA, or null when
+ * the tag does not exist.
+ */
 export async function resolvedTag(api: TagApi, tag: string): Promise<string | null> {
   let object = await api.readRef(tag)
   if (!object) return null
@@ -18,6 +22,7 @@ export async function resolvedTag(api: TagApi, tag: string): Promise<string | nu
   return object.sha
 }
 
+/** Create or verify a release tag so it points at exactly the validated commit. */
 export async function bindTag(api: TagApi, tag: string, sha: string): Promise<void> {
   const existing = await resolvedTag(api, tag)
   if (existing === null) {
