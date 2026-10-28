@@ -99,3 +99,13 @@ test("hand-written records with an invalid artifact kind fail closed",async()=>{
  expect(status.code).toBe(1)
  expect(status.out).toContain("invalid artifact kind")
 })
+test("hand-written records with a non-boolean dependencies_complete fail closed",async()=>{
+ const {root,state,run}=await setup(); const source=path.join(root,"table.md")
+ await writeFile(source,"N=10")
+ expect((await run("add","--expected-revision","0","--id","table","--path",source,"--kind","table")).code).toBe(0)
+ const file=path.join(state,"study.json")
+ await writeFile(file,(await readFile(file,"utf8")).replace('"dependencies_complete": false','"dependencies_complete": "false"'))
+ const status=await run("status")
+ expect(status.code).toBe(1)
+ expect(status.out).toContain("invalid dependencies_complete")
+})

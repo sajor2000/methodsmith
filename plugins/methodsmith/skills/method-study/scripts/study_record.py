@@ -112,6 +112,8 @@ def validate(record: dict, study_id: str) -> None:
         require(isinstance(item.get("digest"), str) and bool(re.fullmatch(r"[a-f0-9]{64}", item["digest"])), "invalid digest")
         require(isinstance(item.get("dependencies"), list) and all(isinstance(d, str) for d in item["dependencies"]), "invalid dependencies")
         require(all(d in artifacts and d != key for d in item["dependencies"]), "dangling dependency")
+        require("dependencies_complete" not in item or type(item["dependencies_complete"]) is bool,
+                "invalid dependencies_complete")
     def visit(key: str, trail: set[str]) -> None:
         """Recurse artifact dependencies, failing on cycles."""
         require(key not in trail, "dependency cycle")
