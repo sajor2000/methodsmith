@@ -40,9 +40,9 @@ If the config cannot be read or is missing fields, fall through to defaults:
 | Tier | Formats | Support Level |
 |------|---------|---------------|
 | **First-class** | `.qmd`, `.Rmd`, `.R`, `.py`, marimo (`.py` with `import marimo as mo`) | Full scaffolding with correct headers, imports, and output patterns. Text-native formats the agent can read and write without structural risk. Marimo `.py` notebooks are text-native and fully first-class. |
-| **Best-effort** | `.ipynb` | Scaffold as a `.py` file with cell markers (`# %%`) that the user can convert, or generate the JSON cell structure if the agent is confident in the output. |
+| **Tool-gated** | `.ipynb` | Scaffold a real `.ipynb`: write the cells as a temporary `.py` with `# %%` markers, then convert with `nbformat` or `jupytext`. If no converter is available, report a blocker and create nothing; never deliver a `.py` or `.qmd` substitute for a Jupyter request. |
 
-First-class formats are preferred because the agent can reliably read, write, and diff them. Binary or structured formats (.ipynb JSON) carry risk of malformed output that silently breaks the notebook.
+First-class formats are preferred because the agent can reliably read, write, and diff them. Structured formats (`.ipynb` JSON) carry risk of malformed output when written by hand: generate them through a converter rather than raw JSON, and honor the user's selected format instead of substituting an easier one.
 
 ---
 
