@@ -1,6 +1,6 @@
 {
   "name": "methodsmith",
-  "version": "5.4.1",
+  "version": "5.5.0",
   "description": "Methodsmith plugin for Claude Code, Codex, and Pi — agentic workflows for computational science, statistical review, and reporting compliance",
   "license": "MIT",
   "keywords": [
