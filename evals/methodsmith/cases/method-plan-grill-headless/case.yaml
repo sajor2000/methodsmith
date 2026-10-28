@@ -34,7 +34,7 @@ criteria:
     description: The SAP identifies the missing data profile or data QA prerequisite.
     type: regex
     path: workspace/analysis/sap.md
-    pattern: '[Dd]ata[- ](?:profile|QA|quality)|method-data-qa'
+    pattern: '(?:gap|prerequisite|required)[^\n]{0,100}(?:data[- ](?:profile|QA|quality)|method-data-qa)|(?:data[- ](?:profile|QA|quality)|method-data-qa)[^\n]{0,100}(?:gap|prerequisite|required)'
     weight: 3
     hard_gate: true
   - id: no-final-status
