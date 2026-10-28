@@ -428,16 +428,29 @@ install_droid() {
   fi
 
   run_or_echo droid plugin marketplace add "$marketplace_source"
-  run_or_echo droid plugin install "$PLUGIN_NAME@$MARKETPLACE_NAME" --scope "$scope"
+  # Droid derives a local marketplace's registered name from its source path,
+  # which can differ from $MARKETPLACE_NAME when the checkout has another
+  # name. Read the registered name back instead of assuming it.
+  local install_marketplace="$MARKETPLACE_NAME"
+  if [ "$dry_run" = "no" ]; then
+    local registered derived
+    if registered="$(droid plugin marketplace list 2>/dev/null)"; then
+      derived="$(printf '%s\n' "$registered" | awk -v suffix="local:$marketplace_source" 'index($0, suffix) + length(suffix) == length($0) + 1 {print $1; exit}')"
+      if [ -n "$derived" ]; then
+        install_marketplace="$derived"
+      fi
+    fi
+  fi
+  run_or_echo droid plugin install "$PLUGIN_NAME@$install_marketplace" --scope "$scope"
   echo ""
   echo "Droid install prepared. Restart Droid and invoke /method-setup in your project."
   if [ "$source_explicit" = "yes" ]; then
     echo "This marketplace uses the local checkout. Update with git pull in $source_root, then run:"
-    echo "  droid plugin marketplace update $MARKETPLACE_NAME"
-    echo "  droid plugin update $PLUGIN_NAME@$MARKETPLACE_NAME --scope $scope"
+    echo "  droid plugin marketplace update $install_marketplace"
+    echo "  droid plugin update $PLUGIN_NAME@$install_marketplace --scope $scope"
   else
-    echo "Update later with: droid plugin marketplace update $MARKETPLACE_NAME"
-    echo "Then run: droid plugin update $PLUGIN_NAME@$MARKETPLACE_NAME --scope $scope"
+    echo "Update later with: droid plugin marketplace update $install_marketplace"
+    echo "Then run: droid plugin update $PLUGIN_NAME@$install_marketplace --scope $scope"
   fi
 }
 

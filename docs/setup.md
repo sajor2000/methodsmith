@@ -228,7 +228,7 @@ How a new version reaches you depends on the agent.
 |---|---|---|
 | Claude Code | Yes, once auto-update is on for the `methodsmith` marketplace. `bash install.sh claude` and `.\install.ps1 claude` turn it on (add `--no-auto-update` or `-NoAutoUpdate` to skip). After a one-line `claude plugin install ... --marketplace sajor2000/methodsmith`, turn it on yourself: run `/plugin`, open **Marketplaces**, select `methodsmith`, and choose **Enable auto-update**. | `claude plugin update methodsmith@methodsmith`, then `/reload-plugins` |
 | Codex | No. Codex has no documented automatic plugin update. | `codex plugin marketplace upgrade methodsmith`, then restart Codex. Refresh the generated agents with `bunx github:sajor2000/methodsmith install methodsmith --to codex` |
-| Factory Droid | No. | `droid plugin marketplace update methodsmith`, then `droid plugin update methodsmith@methodsmith --scope user`; restart Droid |
+| Factory Droid | No. | `droid plugin marketplace update methodsmith`, then `droid plugin update methodsmith@methodsmith --scope user` (`--scope project` for a project-scope install); restart Droid |
 | OpenCode, Pi, Gemini CLI, Kiro | No. These use generated files. | `bunx github:sajor2000/methodsmith install methodsmith --to opencode` (or `--to pi`, `--to gemini`, `--to kiro`; add `--output <workspace>` for a project install) |
 | Qwen Code | No. | `qwen extensions update methodsmith` |
 | Local checkout or offline package | No. | `git pull` in the checkout (or unpack the new package), then re-run the installer |
