@@ -28,7 +28,7 @@ Usage:
   bash scripts/install/easy-install.sh --target codex [options]
 
 Options:
-  --target claude|codex|droid  Agent platform to configure
+  --target claude|codex|droid|doctor  Agent platform to configure
   --source PATH          Source path; Droid requires a repo root with .factory-plugin/marketplace.json.
                          Without it, Claude, Codex, and Droid install from the
                          GitHub marketplace so updates reach you.
