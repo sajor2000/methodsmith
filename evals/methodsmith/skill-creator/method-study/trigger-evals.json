@@ -1,0 +1,82 @@
+[
+  {
+    "query": "Initialize a protected study record",
+    "should_trigger": true
+  },
+  {
+    "query": "Inventory inherited study provenance",
+    "should_trigger": true
+  },
+  {
+    "query": "Show stale notebook dependencies",
+    "should_trigger": true
+  },
+  {
+    "query": "Record a scientific study decision",
+    "should_trigger": true
+  },
+  {
+    "query": "Prepare a reviewed visual study card",
+    "should_trigger": true
+  },
+  {
+    "query": "Link figures to producing runs",
+    "should_trigger": true
+  },
+  {
+    "query": "Preserve a submission snapshot",
+    "should_trigger": true
+  },
+  {
+    "query": "Reconcile a changed manuscript export",
+    "should_trigger": true
+  },
+  {
+    "query": "Record notebook run evidence",
+    "should_trigger": true
+  },
+  {
+    "query": "Inspect current study approvals",
+    "should_trigger": true
+  },
+  {
+    "query": "Explain a Python loop",
+    "should_trigger": false
+  },
+  {
+    "query": "Translate this sentence",
+    "should_trigger": false
+  },
+  {
+    "query": "Calculate a mean from three numbers",
+    "should_trigger": false
+  },
+  {
+    "query": "Change the terminal font",
+    "should_trigger": false
+  },
+  {
+    "query": "Install a text editor",
+    "should_trigger": false
+  },
+  {
+    "query": "Explain Git rebase generally",
+    "should_trigger": false
+  },
+  {
+    "query": "Find the weather",
+    "should_trigger": false
+  },
+  {
+    "query": "Resize a logo",
+    "should_trigger": false
+  },
+  {
+    "query": "Write a birthday greeting",
+    "should_trigger": false
+  },
+  {
+    "query": "Review a software pull request without a scientific manuscript",
+    "should_trigger": false
+  }
+]

@@ -34,6 +34,11 @@ const PI_AGENTS_BLOCK_BODY = `## Methodsmith (Pi compatibility)
 
 This block is managed by methodsmith.
 
+When using \`ask_user\` for multiple questions, pass a \`questions\` array and put
+\`context\`, \`options\`, \`allowMultiple\`, and \`allowFreeform\` inside each question
+entry. Do not also pass those fields at the top level. Top-level fields apply to
+the whole batch only when supported by the tool.
+
 Pi extensions used by this plugin:
 - Required: \`pi-subagents\` (by nicobailon) provides the \`subagent\` tool used by skills that dispatch parallel agents
 - Recommended: \`pi-ask-user\` (by edlsh) provides the \`ask_user\` tool; skills fall back to numbered options in chat when it is missing

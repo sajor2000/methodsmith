@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Make Figure 2 for our JAMA Network Open submission: Kaplan-Meier curves for 1-year mortality by early vs delayed anticoagulation, from analysis/outputs/km_data.csv (columns time_days, event, arm). SAP section is SAP-5.2. Use ggplot2 in RStudio with a number-at-risk table underneath.",
+      "prompt": "Make Figure 2 for our JAMA Network Open submission: Kaplan-Meier curves for 1-year mortality by early vs delayed anticoagulation, from analysis/outputs/km_data.csv (columns time_days, event, arm). SAP section is SAP-5.2. Use ggplot2 in RStudio with a number-at-risk table underneath. The synthetic project has a protected study record with incomplete provenance and an output whose producing code changed. Apply this skill without treating artifact existence as execution or approval.",
       "expected_output": "Renders the figure from the CSV with a saved R script that sources the clinical theme (theme_clinical, Okabe-Ito scale, save_figure at 3.5 or 7 in width, vector PDF), uses ggsurvfit or survminer with a number-at-risk table aligned to the x breaks, censor marks, y axis 'Survival Probability' from 0 and x axis in whole months, adds a fig2 manifest entry with caption, alt text, SAP link, and style_profile set to the jama override, runs the manifest validator, and visually inspects the export for overlap and legend placement.",
       "files": [],
       "expectations": [
@@ -13,7 +13,9 @@
         "Creates or updates analysis/publication/figures/figure-manifest.json with a fig2 entry containing figure_id, sap_section SAP-5.2, source_data, source_code, output_path, caption starting with 'Figure 2.', alt_text, and style_profile jama (the journal override), noting that the override inherits clinical-standard",
         "Runs scripts/validate_figure_manifest.py against the manifest with --project-root and reports blockers or warnings",
         "Visually inspects the exported image for text overlap, risk-table alignment, and legend placement when image viewing is available, or states that inspection was not performed",
-        "Cites numbers in the caption and alt text (such as n per group) as {{num:<id>}} from the number registry rather than typing them"
+        "Cites numbers in the caption and alt text (such as n per group) as {{num:<id>}} from the number registry rather than typing them",
+        "Preserves incomplete provenance and does not infer historical approval",
+        "Identifies stale dependent evidence or routes to method-study without claiming a current verified result"
       ]
     },
     {

@@ -8,8 +8,8 @@ numbers to their analysis code. Built for clinical statistics, machine learning,
 and meta-analysis. Your team keeps scientific judgment and responsibility for
 the results.
 
-**70 skills · 55 specialist agents · 49 reporting standards.** Works with Claude
-Code, Codex, Pi, Gemini CLI, OpenCode, Kiro, and Qwen Code.
+**72 skills · 55 specialist agents · 49 reporting standards.** Works with Claude
+Code, Codex, Factory Droid, Pi, Gemini CLI, OpenCode, Kiro, and Qwen Code.
 
 > **Research use only; not a medical device for clinical care.** Methodsmith
 > supports research workflows and is not intended to diagnose, treat, cure,
@@ -75,6 +75,7 @@ each harness it finds.
 |---|---|
 | Claude Code | `claude plugin uninstall ce-datascience@ce-datascience-plugin`, then `claude plugin marketplace remove ce-datascience-plugin`, `claude plugin marketplace add sajor2000/methodsmith`, `claude plugin install methodsmith@methodsmith`. If you used `--aliases`, re-run `bash install.sh claude --aliases`. |
 | Codex | `codex plugin marketplace remove ce-datascience-plugin`, then `codex plugin marketplace add sajor2000/methodsmith` and `bunx github:sajor2000/methodsmith install methodsmith --to codex`. Open `/plugins` and install Methodsmith. |
+| Factory Droid | `droid plugin marketplace add sajor2000/methodsmith`, then `droid plugin install methodsmith@methodsmith --scope user`. |
 | OpenCode | `bunx github:sajor2000/methodsmith install methodsmith --to opencode` |
 | Pi | `bunx github:sajor2000/methodsmith install methodsmith --to pi --pi-home ~/.pi/agent` |
 | Gemini CLI, Kiro | `bunx github:sajor2000/methodsmith install methodsmith --to gemini --output .` (or `--to kiro`) in each workspace |
@@ -84,92 +85,14 @@ The old `/ce-*` commands no longer work; use the new names. The deprecated
 `/ce-*` aliases that 5.x wrote with `--aliases` are removed the next time you
 run `bash install.sh claude --aliases`.
 
-<details>
-<summary>Every renamed command</summary>
-
-<!-- rebrand:keep-end -->
-<!-- rebrand:keep-start renamed-commands -->
-| Before 5.0 | Methodsmith |
-|---|---|
-| `/ce-adversarial-review` | `/method-adversarial-review` |
-| `/ce-bioinfo-qc` | `/method-omics-qc` |
-| `/ce-brainstorm` | `/method-brainstorm` |
-| `/ce-checklist-match` | `/method-checklist` |
-| `/ce-clean-gone-branches` | `/method-clean-branches` |
-| `/ce-clif` | `/method-clif` |
-| `/ce-clif-audit` | `/method-clif-audit` |
-| `/ce-clif-meta-analysis` | `/method-clif-meta-analysis` |
-| `/ce-clif-project-template` | `/method-clif-template` |
-| `/ce-clifpy` | `/method-clifpy` |
-| `/ce-clinical-research-voice` | `/method-voice` |
-| `/ce-code-review` | `/method-review` |
-| `/ce-cohort-build` | `/method-cohort` |
-| `/ce-commit` | `/method-commit` |
-| `/ce-commit-push-pr` | `/method-pr` |
-| `/ce-compound` | `/method-compound` |
-| `/ce-compound-refresh` | `/method-compound-refresh` |
-| `/ce-data-qa` | `/method-data-qa` |
-| `/ce-debug` | `/method-debug` |
-| `/ce-doc-review` | `/method-doc-review` |
-| `/ce-effect-size` | `/method-meta-analysis` |
-| `/ce-evidence-map` | `/method-evidence-map` |
-| `/ce-fabric` | `/method-fabric` |
-| `/ce-figure` | `/method-figure` |
-| `/ce-genome-build` | `/method-genome-build` |
-| `/ce-grill` | `/method-grill` |
-| `/ce-handoff` | `/method-handoff` |
-| `/ce-ideate` | `/method-ideate` |
-| `/ce-journal-select` | `/method-journal-select` |
-| `/ce-language-detect` | `/method-language-detect` |
-| `/ce-literature-search` | `/method-lit-search` |
-| `/ce-manuscript-citations` | `/method-citations` |
-| `/ce-manuscript-package` | `/method-submission-package` |
-| `/ce-manuscript-section-discipline` | `/method-section-check` |
-| `/ce-marimo` | `/method-marimo` |
-| `/ce-method-extract` | `/method-extract` |
-| `/ce-ml-experiment-track` | `/method-ml-track` |
-| `/ce-model-card` | `/method-model-card` |
-| `/ce-model-strategy` | `/method-model-choice` |
-| `/ce-notebook-edit` | `/method-notebook-edit` |
-| `/ce-notebook-standards` | `/method-notebook-standards` |
-| `/ce-numbers` | `/method-numbers` |
-| `/ce-optimize` | `/method-optimize` |
-| `/ce-phenotype-validate` | `/method-phenotype` |
-| `/ce-plan` | `/method-plan` |
-| `/ce-power` | `/method-power` |
-| `/ce-pre-submission-audit` | `/method-presubmit` |
-| `/ce-prereg` | `/method-prereg` |
-| `/ce-pubmed` | `/method-pubmed` |
-| `/ce-release-notes` | `/method-release-notes` |
-| `/ce-report-bug` | `/method-report-bug` |
-| `/ce-research-question` | `/method-question` |
-| `/ce-resolve-pr-feedback` | `/method-resolve-feedback` |
-| `/ce-review-pack` | `/method-signoff` |
-| `/ce-rstats` | `/method-r` |
-| `/ce-sap-tabular` | `/method-sap-workbook` |
-| `/ce-sas-stata-assess` | `/method-sas-stata` |
-| `/ce-scientific-anti-slop` | `/method-anti-slop` |
-| `/ce-scientific-writing` | `/method-write` |
-| `/ce-sessions` | `/method-sessions` |
-| `/ce-setup` | `/method-setup` |
-| `/ce-sprint` | `/method-sprint` |
-| `/ce-statistical-analysis-plan` | `/method-sap` |
-| `/ce-table1` | `/method-table1` |
-| `/ce-trial-design` | `/method-trial-design` |
-| `/ce-update` | `/method-update` |
-| `/ce-verify` | `/method-verify` |
-| `/ce-work` | `/method-work` |
-| `/ce-workflow` | `/method-workflow` |
-| `/ce-worktree` | `/method-worktree` |
-<!-- rebrand:keep-end -->
+See the full [renamed-command inventory and migration details](../../docs/setup.md#moving-from-ce-datascience).
 
 Agents keep the rest of their name: `ce-methods-reviewer` is now `method-methods-reviewer`. <!-- rebrand:keep -->
-
-</details>
+<!-- rebrand:keep-end -->
 
 ## Getting Started
 
-For complete copy-paste setup across Claude Code, Codex, OpenCode, Gemini CLI,
+For complete copy-paste setup across Claude Code, Codex, Droid, OpenCode, Gemini CLI,
 Kiro, Pi, and Qwen Code, see [`../../docs/setup.md`](../../docs/setup.md).
 
 From a source checkout, run `bash install.sh doctor` (or
@@ -615,10 +538,10 @@ identifier (an identifier shape, or a value in the identifier index).
 
 ### What external tools receive
 
-PubMed, Paperclip, and every other MCP tool receive search terms, MeSH terms,
-PMIDs, DOIs, and paper titles. They never receive data values, identifiers,
-row text, or data files. This holds in **every mode, including after you
-approve the endpoint**: approving the model endpoint does not cover
+The workflow permits research tools such as PubMed and Paperclip to receive
+non-sensitive search terms, MeSH terms, PMIDs, DOIs, and paper titles. It prohibits
+sending data values, identifiers, row text, or data files. This policy applies
+in **every mode, including after you approve the endpoint**: approving the model endpoint does not cover
 third-party services such as NCBI or Paperclip.
 
 Claude Code `WebSearch` queries, `WebFetch` URLs and prompts, MCP tool
@@ -682,13 +605,13 @@ one-line warning, so a hook bug never blocks unrelated work.
 | Component | Count |
 |-----------|-------|
 | Agents | 55 |
-| Skills | 70 |
+| Skills | 72 |
 
 Publication workflows use shared artifact registries and publication profiles so tables, figures, manuscript packages, registry exports, review packs, and signoff ledgers stay consistent. The initial publication profiles are JAMA and generic biomedical.
 
 ## Platform Support
 
-The plugin is authored once and distributed across Claude Code, Codex, Pi, Gemini CLI, OpenCode, Kiro, and Qwen Code.
+The plugin is authored once and distributed across Claude Code, Codex, Factory Droid, Pi, Gemini CLI, OpenCode, Kiro, and Qwen Code.
 
 - Claude Code loads the plugin directly from `plugins/methodsmith`.
 - Claude Code plugin commands and skills are namespaced as `/methodsmith:method-*`; install optional local aliases for bare `/method-*` demo UX.
@@ -810,7 +733,7 @@ templates, data-quality tools, and provisional candidates.
 | `/method-table1` | Generate a publication-ready Table 1 shell, spec, and validation report from the SAP variables catalog; `--design rct\|observational\|descriptive` sets the comparison columns (SMD column for observational comparisons, no baseline p-values for randomized trials) |
 | `/method-figure` | Create publication figures in R (ggplot2) or Python (matplotlib, Jupyter/Marimo) in a journal-neutral clinical figure style (calibration-in-the-large via an offset model, cumulative incidence under competing risks), and validate figure manifests for source data, code, outputs, captions, alt text, and checklist traceability |
 | `/method-numbers` | Lock every manuscript, Table 1, caption, and abstract number to a registry of aggregates written by R or Python analysis code (`{{num:<id>}}` placeholders), and run a fail-closed gate that traces each number to its SAP output, script commit, and source hash |
-| `/method-journal-select` | Match a finished manuscript or abstract to candidate journals with sourced scope fit, PubMed scope-fit evidence, a legitimacy screen on indexing claims, and a ranked target with backups |
+| `/method-journal-select` | Select journals for submitting or transferring a manuscript or abstract: sourced scope fit, PubMed scope-fit evidence, a legitimacy screen on indexing claims, a ranked target with backups, and sourced per-journal author requirements (article type, word limits, required checklist) |
 | `/method-submission-package` | Build a manuscript package manifest and Quarto-ready shell from SAP, Table 1, figure, checklist, and registry artifacts |
 | `/method-citations` | Resolve PubMed/Paperclip evidence, gate the bibliography for fabricated references, and deliver a Word manuscript with editable Zotero citation fields |
 | `/method-write` | Draft, revise, or audit evidence-bound scientific manuscripts without imposing one journal's style |
@@ -1037,3 +960,21 @@ cross-platform converter come from that work.
 ## License
 
 MIT
+
+
+## Collaborative study records and peer review
+
+These new workflows are under validation; full lifecycle release acceptance is pending.
+
+Use `/method-study` to inventory a new or inherited study, connect code and outputs,
+check stale dependencies, preserve submission snapshots and produce a reviewed
+status card. Jupyter, marimo, R Markdown and Quarto remain native choices.
+Use `/method-revision` to retain reviewer comments under stable IDs, link shared
+analysis changes and draft evidence-bound responses across rounds.
+
+Full records and outputs stay in approved protected storage. Shared cards contain
+reviewed identifiers and statuses. Word/Zotero and source-led manuscripts use one
+explicit master with preserved handoffs. A matching digest, successful render or
+validator pass is not human scientific approval. Notebook engines and Word/Zotero
+application checks require their local runtimes; unavailable checks stay pending.
+These workflows do not automatically upload data, push Git changes or submit papers.

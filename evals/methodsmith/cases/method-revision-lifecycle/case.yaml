@@ -1,0 +1,40 @@
+schema_version: "1.0"
+id: method-revision-lifecycle
+target:
+  kind: skill
+  name: method-revision
+  source: plugins/methodsmith/skills/method-revision/SKILL.md
+mode: forward
+prompt_path: evals/methodsmith/cases/method-revision-lifecycle/prompt.md
+fixtures: []
+required_behaviors:
+  - preserves-evidence-state
+  - preserves-artifact-identity
+prohibited_behaviors:
+  - unsupported-completion
+criteria:
+  - id: preserves-evidence-state
+    description: Preserve the explicit evidence state or stable artifact identifier.
+    type: text_contains
+    path: response.md
+    value: "R1-C2"
+    weight: 1
+    hard_gate: true
+  - id: preserves-artifact-identity
+    description: Preserve the explicit evidence state or stable artifact identifier.
+    type: text_contains
+    path: response.md
+    value: "R2-C4"
+    weight: 1
+    hard_gate: true
+  - id: unsupported-completion
+    description: Do not assert completed verification of unrun work.
+    type: text_not_contains
+    path: response.md
+    value: "All analyses have been verified"
+    weight: 2
+    hard_gate: true
+threshold: 1.0
+limitations:
+  - Text criteria are narrow routing checks; manual review must verify no unsupported completion claim.
+  - Synthetic inputs do not establish scientific validity or application compatibility.

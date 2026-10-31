@@ -11,6 +11,8 @@
         "Raises immortal time bias or time-zero definition for the 'early statin use after admission' exposure",
         "Looks up the target journal's limits or required reporting checklist itself rather than asking the user for them, or marks them unverified",
         "Looks up prior studies on statins in sepsis and published 90-day mortality rates through the PubMed MCP, reading a source before citing it and keeping the PMID, or marks them unverified, instead of asking the user for them",
+        "Checks the supplied exposure and comparator for consequential design weaknesses even when they are stated, and asks only decision-changing questions",
+        "Distinguishes the target population and estimand of a landmark design from a baseline treatment strategy and does not promise bias elimination",
         "Summarizes the decisions and asks the user to confirm a shared understanding before saving anything",
         "Saves the record to docs/brainstorms/<date>-<slug>-grill.md with a Decisions table, ranked open risks, and a reviewer attack list"
       ]

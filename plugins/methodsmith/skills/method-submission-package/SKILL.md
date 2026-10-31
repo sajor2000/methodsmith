@@ -1,6 +1,6 @@
 ---
 name: method-submission-package
-description: "Assembles a journal submission package from the SAP, outputs, tables, figures, reporting checklist, and provenance. Use when the user needs a submission bundle."
+description: "Assembles traceable journal packages. Use when preparing submission files, readiness checks or journal transfers."
 argument-hint: "[optional: --out-dir manuscript --format quarto]"
 ---
 
@@ -67,3 +67,9 @@ For non-Quarto projects, generate the same package manifest without forcing a co
 @./references/quarto-manuscript-template.md
 
 @./references/journal-package-checklist.md
+
+## Journal adaptation and preserved baseline
+
+For journal-specific packaging, read `references/journal-profile.md`, produce a dated profile from current official instructions and run `scripts/validate_journal_profile.py` using the same loaded `SKILL_DIR` anchor as the package builder. Missing or unresolved required rules block readiness. A validator pass only permits review; compare scientific claims, registered numbers and citation associations before approving reformatted output.
+
+Use `method-study` to designate one manuscript master, preserve coauthor edits, and create an explicit protected snapshot after final checks. The working package manifest is overwritten by the builder and is not a submission baseline. Never describe a snapshot as submitted without actual submission evidence. For reviewer rounds, load `method-revision`; for journal transfer, keep the prior package intact and record the new profile and artifact digests. No automatic journal submission.

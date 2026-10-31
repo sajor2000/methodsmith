@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Our ICU delirium prediction-model manuscript (manuscript/main.docx, external validation on MIMIC-IV plus a single-center holdout) is ready. It needs to be MEDLINE-indexed, we can't pay an APC over $2,000, and review shouldn't take a year. Where should we send it? Give me a real recommendation, not a list.",
+      "prompt": "Our ICU delirium prediction-model manuscript (manuscript/main.docx, external validation on MIMIC-IV plus a single-center holdout) is ready. It needs to be MEDLINE-indexed, we can't pay an APC over $2,000, and review shouldn't take a year. Where should we send it? Give me a real recommendation, not a list. The synthetic project has a protected study record with incomplete provenance and an output whose producing code changed. Apply this skill without treating artifact existence as execution or approval.",
       "expected_output": "Profiles the work, asks for must-haves only when they change the ranking, builds a 5-8 candidate pool from each journal's own aims-and-scope pages, gathers PubMed scope-fit evidence per candidate, screens indexing claims, and returns a ranked sourced table with a recommended target and two backups, leaving the choice to the author.",
       "files": [],
       "expectations": [
@@ -13,7 +13,9 @@
         "Verifies each candidate's indexing claims against the NLM Catalog or DOAJ and flags any claim that cannot be verified instead of accepting or silently dropping it",
         "Marks every unsourced cell unknown with no invented impact factors, acceptance rates, or turnaround times",
         "Recommends one target plus two backups with rationale and a per-journal next-step list, and leaves the final choice to the author",
-        "Emits the __CE_JOURNAL_SELECT__ handoff line with target, backups, candidate, sourced-cell and unknown-cell counts"
+        "Emits the __CE_JOURNAL_SELECT__ handoff line with target, backups, candidate, sourced-cell and unknown-cell counts",
+        "Preserves incomplete provenance and does not infer historical approval",
+        "Identifies stale dependent evidence or routes to method-study without claiming a current verified result"
       ]
     },
     {

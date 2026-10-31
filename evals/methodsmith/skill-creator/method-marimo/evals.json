@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Create a new marimo notebook analysis/notebooks/aki_explore.py to explore our QA'd AKI extract (data/restricted/aki_cohort_v2.parquet, QA report in reports/data-qa/aki_cohort_v2.md). I want a slider for the creatinine-rise threshold and a plot of KDIGO stage counts. We use uv in this repo.",
+      "prompt": "Create a new marimo notebook analysis/notebooks/aki_explore.py to explore our QA'd AKI extract (data/restricted/aki_cohort_v2.parquet, QA report in reports/data-qa/aki_cohort_v2.md). I want a slider for the creatinine-rise threshold and a plot of KDIGO stage counts. We use uv in this repo. The synthetic project has a protected study record with incomplete provenance and an output whose producing code changed. Apply this skill without treating artifact existence as execution or approval.",
       "expected_output": "Asks or records the notebook topology via method-notebook-standards, then creates a text-native marimo .py with marimo.App and separate @app.cell functions for loading, transformation, and plotting, a widget-driven threshold, and runs marimo check.",
       "files": [],
       "expectations": [
@@ -11,7 +11,9 @@
         "Creates a .py file containing 'import marimo as mo', 'app = mo.App(' and explicit @app.cell functions",
         "Keeps data loading, transformation, and plotting in separate cells with visible returned values, and does not wrap reactive dependencies in broad try/except",
         "Reads data only from the declared restricted path and references the QA report as provenance",
-        "Runs 'marimo check' through the project runner (uv) or reports the validation gap"
+        "Runs 'marimo check' through the project runner (uv) or reports the validation gap",
+        "Preserves incomplete provenance and does not infer historical approval",
+        "Identifies stale dependent evidence or routes to method-study without claiming a current verified result"
       ]
     },
     {

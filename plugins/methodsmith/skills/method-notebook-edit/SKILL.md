@@ -28,7 +28,7 @@ Existing notebooks are fragile because cell order, metadata, outputs, and JSON s
 
 ## Workflow
 
-1. Prefer text-native formats for new work. If the user is starting fresh, route to the `method-work` skill scaffolding instead of creating a new `.ipynb`.
+1. Respect the selected format for new and existing work. Jupyter, marimo, R Markdown and Quarto are first-class choices. For new `.ipynb` work, use `method-work` scaffolding with Jupyter selected; do not force conversion to a text-native format.
 2. Inspect the notebook structure and identify a unique anchor tag in `cell.metadata.tags`.
 3. Load the `method-notebook-standards` skill before adding or materially changing executable cells. Put the explanatory Markdown and new code body in small project files, then run:
 

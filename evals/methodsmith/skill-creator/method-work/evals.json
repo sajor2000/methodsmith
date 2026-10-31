@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Execute docs/plans/2026-09-15-aki-nephrotoxin-plan.md. The SAP is analysis/sap.md (sap_version 1.1), the tabular catalog is analysis/sap-tables/02-outputs.csv, and the data-QA report is at analysis/data-qa-report.md. I'm on main right now.",
+      "prompt": "Execute docs/plans/2026-09-15-aki-nephrotoxin-plan.md. The SAP is analysis/sap.md (sap_version 1.1), the tabular catalog is analysis/sap-tables/02-outputs.csv, and the data-QA report is at analysis/data-qa-report.md. I'm on main right now. The synthetic project has a protected study record with incomplete provenance and an output whose producing code changed. Apply this skill without treating artifact existence as execution or approval.",
       "expected_output": "Reads the plan, produces the SAP coverage summary, seeds one task per output-catalog row, asks how to branch off main, and executes with tests and fail-loud analytical code.",
       "files": [],
       "expectations": [
@@ -11,7 +11,9 @@
         "Seeds one task per non-banner row of analysis/sap-tables/02-outputs.csv and refuses to mark a catalog task complete until the output file exists at the expected subfolder",
         "Because the current branch is main, offers to create a feature branch or worktree and does not commit to main without explicit confirmation",
         "Does not edit the plan body during execution (only the final status flip at shipping)",
-        "Does not substitute synthetic data for unavailable real data in analytical runs"
+        "Does not substitute synthetic data for unavailable real data in analytical runs",
+        "Preserves incomplete provenance and does not infer historical approval",
+        "Identifies stale dependent evidence or routes to method-study without claiming a current verified result"
       ]
     },
     {

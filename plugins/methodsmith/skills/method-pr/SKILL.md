@@ -38,6 +38,7 @@ Gather context at runtime. Run each command below as its **own** shell call (pro
 | `git log --oneline -10` | Recent commit and title style | Unborn repo: no history to match |
 | `git rev-parse --abbrev-ref origin/HEAD` | Remote default branch | No `origin/HEAD` (it may still print `origin/HEAD`; ignore that output): resolve in Step 1 |
 | `gh pr list --head <branch> --state open --json number,url,title,state,headRefName,headRepositoryOwner` | Open PR for this branch | See "PR check rules" |
+| `test -f .methodsmith/study/study.json` (from the repo root) | Protected study record at the default root: Step 5's study disclosure gate is active | No record at the default root: check the project instructions and `.methodsmith/config.local.yaml` for another approved study root before treating the gate as inactive |
 
 ### PR check rules
 
@@ -123,6 +124,8 @@ Commit subjects are imperative and name the outcome (what is now possible or fix
 ### Step 5: Push
 
 **Project publishing gate.** Before pushing, discover any additional path-scoped instructions governing the committed files, then satisfy every applicable pre-push or review-ready requirement from those and the project's active instructions for the exact final commit state. If required evidence is missing or failing, keep the local commit, stop before the external write, and report it.
+
+**Study disclosure gate.** If the Context study-record check found an active study record, run the disclosure review after the Step 4 commit and before pushing. Load the `method-study` skill and run its bundled `git_disclosure.py` from that skill's loaded skill directory with `--repo <repo-root> --base <destination ref>`; never omit `--base`. The Step 4 commit aligned the real index with the new HEAD, so this review covers the exact committed bytes through the outgoing object set. It exits blocked until a protected approval JSON supplies a matching `inventory_digest`, actual human `reviewer` and `timestamp` (pass it via `--approval`); review the actual content privately before writing that approval. Do not push until the approval matches. Treat `outgoing_review: "not-scoped"` as insufficient: without `--base` the review covers staging only, never a push. Re-run immediately before the push; any intervening index, HEAD or base change invalidates the review. If the gate blocks, keep the local commit, stop before the external write, and report it. Completion evidence for this path: the fingerprinter's approved result bound to the current commit and destination ref.
 
 Then run `git branch --show-current` immediately before pushing. Push only when it is a non-empty feature branch, not the default branch. Push the live `HEAD` so a stale branch name from Context cannot be pushed:
 

@@ -1,6 +1,6 @@
 ---
 name: method-signoff
-description: "Creates PI-facing review packs and multi-analyst signoff ledgers for study outputs. Use when the user needs PI review, statistician signoff, or a coordinating-center handoff."
+description: "Records named scientific review decisions. Use when approving study artifacts or checking signoff."
 argument-hint: "[optional: --ledger analysis/signoff/signoff-ledger.json]"
 ---
 
@@ -45,3 +45,7 @@ python3 "$SKILL_DIR/scripts/validate_signoff_ledger.py" --ledger analysis/signof
 @./references/review-pack-template.md
 
 @./references/signoff-ledger-schema.yaml
+
+## Content-bound study approvals
+
+For new ledgers use schema version 2 with each entry's project-relative `artifact_path` and SHA-256 `artifact_sha256`. The validator checks current bytes; version 1 remains readable but is explicitly legacy evidence, not current content-bound approval. Use `method-study` for transitive dependency bindings and stale approvals. A hash chain or typed reviewer name does not authenticate identity or replace the actual human review. Preserve original ledgers before deliberate migration.

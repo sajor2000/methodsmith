@@ -28,12 +28,14 @@ describe("Methodsmith identity in every manifest", () => {
     const claude = json(".claude-plugin/marketplace.json")
     const cursor = json(".cursor-plugin/marketplace.json")
     const codex = json(".agents/plugins/marketplace.json")
-    for (const marketplace of [claude, cursor, codex]) {
+    const factory = json(".factory-plugin/marketplace.json")
+    for (const marketplace of [claude, cursor, codex, factory]) {
       expect(marketplace.name).toBe("methodsmith")
       expect(marketplace.plugins.map((plugin: { name: string }) => plugin.name)).toEqual(["methodsmith"])
     }
     expect(codex.interface.displayName).toBe("Methodsmith")
     expect(claude.metadata.description).not.toMatch(/computational scientists/)
+    expect(factory.plugins[0].source).toBe("./plugins/methodsmith")
   })
 
   test("Codex card: short description fits 30 characters and starter prompts are domain commands", () => {

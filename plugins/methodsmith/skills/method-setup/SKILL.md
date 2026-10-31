@@ -234,3 +234,7 @@ success.
 Finish with the detected-profile summary and a recommendation to load
 `method-workflow` in the current project. Refer to it by skill name — invocation
 syntax varies by harness.
+
+## Optional study record
+
+For collaborative research or inherited-study intake, offer `method-study` after resolving approved storage. Its protected record links existing plans, notebooks and publication artifacts without moving data. Reuse the selected Jupyter, marimo, R Markdown or Quarto format; no conversion is required. A local config fallback from another worktree must never select that worktree's study record implicitly.

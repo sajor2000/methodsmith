@@ -1,6 +1,6 @@
 # Methodsmith Setup Guide
 
-Methodsmith is a plugin for Claude Code and Codex. This guide is the fastest
+Methodsmith is a plugin for Claude Code, Codex, and Factory Droid. This guide is the fastest
 path from a fresh machine to a working `methodsmith` install. Use Bash on macOS,
 Linux, WSL, or Git Bash. Use PowerShell on native Windows. Upgrading from
 ce-datascience (the plugin's name before 5.0)? See <!-- rebrand:keep -->
@@ -170,6 +170,27 @@ start a new thread and ask Codex to use Methodsmith for setup. If Bun is
 available, the helper also installs the generated Methodsmith agents into the selected
 `CODEX_HOME`.
 
+### Factory Droid
+
+Install from the native Methodsmith marketplace:
+
+```bash
+droid plugin marketplace add sajor2000/methodsmith
+droid plugin install methodsmith@methodsmith --scope user
+```
+
+Or use the guided installer from a checkout:
+
+```bash
+git clone https://github.com/sajor2000/methodsmith.git ~/methodsmith
+cd ~/methodsmith
+bash install.sh droid
+```
+
+Restart Droid, open your project, and run `/method-setup`. Droid translates the
+shared plugin's Claude agent definitions into native droids during install,
+alongside loading the skills through its normal plugin interface.
+
 ### Pi
 
 Pi uses the generated installation path rather than a native marketplace.
@@ -191,6 +212,7 @@ is recommended for the compact setup confirmation.
 |---|---|---|
 | Claude Code | Adds the GitHub marketplace (or this checkout with `--source`), installs `methodsmith`, turns on auto-update, and optionally creates managed bare `/method-*` aliases | Restart Claude Code, open the project or study directory, then run `/methodsmith:method-setup` or the optional `/method-setup` alias |
 | Codex | Adds the GitHub marketplace (or this checkout with `--source`) so `codex plugin marketplace upgrade` works and, when Bun is available, writes the generated agent bridge into the selected `CODEX_HOME` | Restart Codex, open `/plugins`, install **Methodsmith**, restart again, then start a new task in the target project |
+| Factory Droid | Adds the GitHub marketplace (or this checkout with `--source`) and installs Methodsmith at the selected user or project scope | Restart Droid, open the target project, then run `/method-setup` |
 | Pi | Writes generated Methodsmith skills and agents under the selected Pi home, plus a managed block in that root's `AGENTS.md` | Install `pi-subagents`, restart Pi, open the target project, then invoke `method-setup` |
 
 The installer does not configure every research project globally. The
@@ -206,6 +228,7 @@ How a new version reaches you depends on the agent.
 |---|---|---|
 | Claude Code | Yes, once auto-update is on for the `methodsmith` marketplace. `bash install.sh claude` and `.\install.ps1 claude` turn it on (add `--no-auto-update` or `-NoAutoUpdate` to skip). After a one-line `claude plugin install ... --marketplace sajor2000/methodsmith`, turn it on yourself: run `/plugin`, open **Marketplaces**, select `methodsmith`, and choose **Enable auto-update**. | `claude plugin update methodsmith@methodsmith`, then `/reload-plugins` |
 | Codex | No. Codex has no documented automatic plugin update. | `codex plugin marketplace upgrade methodsmith`, then restart Codex. Refresh the generated agents with `bunx github:sajor2000/methodsmith install methodsmith --to codex` |
+| Factory Droid | No. | `droid plugin marketplace update methodsmith`, then `droid plugin update methodsmith@methodsmith --scope user` (`--scope project` for a project-scope install); restart Droid |
 | OpenCode, Pi, Gemini CLI, Kiro | No. These use generated files. | `bunx github:sajor2000/methodsmith install methodsmith --to opencode` (or `--to pi`, `--to gemini`, `--to kiro`; add `--output <workspace>` for a project install) |
 | Qwen Code | No. | `qwen extensions update methodsmith` |
 | Local checkout or offline package | No. | `git pull` in the checkout (or unpack the new package), then re-run the installer |
@@ -522,10 +545,10 @@ identifier (an identifier shape, or a value in the identifier index).
 
 #### What external tools receive
 
-PubMed, Paperclip, and every other MCP tool receive search terms, MeSH terms,
-PMIDs, DOIs, and paper titles. They never receive data values, identifiers,
-row text, or data files. This holds in **every mode, including after you
-approve the endpoint**: approving the model endpoint does not cover
+The workflow permits research tools such as PubMed and Paperclip to receive
+non-sensitive search terms, MeSH terms, PMIDs, DOIs, and paper titles. It prohibits
+sending data values, identifiers, row text, or data files. This policy applies
+in **every mode, including after you approve the endpoint**: approving the model endpoint does not cover
 third-party services such as NCBI or Paperclip.
 
 Claude Code `WebSearch` queries, `WebFetch` URLs and prompts, MCP tool
@@ -824,13 +847,14 @@ qwen extensions install sajor2000/methodsmith:methodsmith
 Qwen is not a generated `--to qwen` target. `--to all` only writes generated
 targets that are detected on the machine.
 
-### Cursor, Copilot, and Droid
+### Cursor and Copilot
 
 These tools load plugins through their own marketplace or plugin install flows
 and are not generated converter targets; `--to cursor`, `--to copilot`, and
 `--to droid` exit with a message that says so. The repo ships a Cursor
 marketplace manifest (`.cursor-plugin/marketplace.json`) for Cursor's native
-plugin install.
+plugin install. Factory Droid uses the native marketplace and installer
+described in [Factory Droid](#factory-droid).
 
 ## 7. First Run In A Project
 
@@ -1196,3 +1220,33 @@ The build writes:
 | `method-setup` reports a legacy Compound Codex tool map | Rerun `install --to codex --codex-home "$CODEX_HOME"`; it replaces the retired `COMPOUND CODEX TOOL MAP` block with the current Methodsmith block. Or remove the block after reviewing it, as the skill offers. |
 | OpenCode did not create `.opencode/` | Do not use an output directory named `opencode` or `.opencode` when you want workspace nesting. Use a normal workspace path. |
 | MCP writes reports into the plugin cache | Set `METHODSMITH_PROJECT_ROOT=/absolute/path/to/project` or pass `project_root` where the MCP tool supports it. |
+
+
+## Collaborative study records and peer review
+
+These new workflows are under validation; full lifecycle release acceptance is pending.
+
+Use `/method-study` to inventory a new or inherited study, connect code and outputs,
+check stale dependencies, preserve submission snapshots and produce a reviewed
+status card. Jupyter, marimo, R Markdown and Quarto remain native choices.
+Use `/method-revision` to retain reviewer comments under stable IDs, link shared
+analysis changes and draft evidence-bound responses across rounds.
+
+Full records and outputs stay in approved protected storage. Shared cards contain
+reviewed identifiers and statuses. Word/Zotero and source-led manuscripts use one
+explicit master with preserved handoffs. A matching digest, successful render or
+validator pass is not human scientific approval. Notebook engines and Word/Zotero
+application checks require their local runtimes; unavailable checks stay pending.
+These workflows do not automatically upload data, push Git changes or submit papers.
+
+
+### Safeguards by host
+
+| Host | Technical data-boundary enforcement | Prerequisite and limit |
+|---|---|---|
+| Claude Code | Pre-tool hook on supported tool paths | Python must be available; heuristic checks are not a sandbox or universal PHI detector. |
+| Codex / OpenCode | Workflow instructions; hook entries exit without enforcement | Review tool access, storage and endpoints independently. |
+| Other converted hosts | Workflow instructions | Do not assume Claude hook behavior carries over. |
+
+Endpoint approval does not authorize disclosure to research/search services.
+Keep patient-level artifacts in the approved protected project boundary.

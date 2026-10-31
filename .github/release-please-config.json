@@ -37,6 +37,7 @@
         ".windsurf/",
         ".claude-plugin/",
         ".cursor-plugin/",
+        ".factory-plugin/",
         "plugins/"
       ],
       "extra-files": [

@@ -28,8 +28,8 @@ Each branch lists the probes to draw questions from, what a strong answer looks 
 
 Adapt this branch to the aim: for prediction clarify target, prediction horizon, intended use, and performance criteria; for descriptive work clarify the question and quantities to estimate. Do not require a directional causal hypothesis for either.
 
-- **Probes:** Population, exposure or intervention, comparator, and outcome (PICO/PECO)? Time zero and follow-up window? Expected direction and a clinically meaningful difference? Primary versus secondary outcomes? What result would falsify it?
-- **Strong answer:** One primary hypothesis, a defined time zero, a stated direction, and a minimal clinically important difference.
+- **Probes:** Population, exposure or intervention, comparator, and outcome (PICO/PECO)? Time zero and follow-up window? For causal aims, expected direction and a clinically meaningful difference? Primary versus secondary outcomes? What result would falsify it?
+- **Strong answer:** For causal aims, one primary hypothesis, a defined time zero, a stated direction, and a minimal clinically important difference. For prediction or descriptive aims, the target or question and the criteria named in the adaptation above.
 - **Red flags:** Several co-primary outcomes; an outcome defined with information from after time zero; a comparator that is "everyone else"; no falsifying result.
 
 ## Data

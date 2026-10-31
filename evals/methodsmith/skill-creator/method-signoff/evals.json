@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "We're wrapping up the primary analysis for the ICU delirium cohort and Dr. Okafor (PI) wants one packet she can review before Friday. Table 1 is in analysis/publication/tables/table1.md, figures are under analysis/figures/, the data-QA report is analysis/data-qa-report.md, and sprint-03 closed last week. Two analysts (Priya and Tom) need to sign off on the SAP lock and Table 1. Can you put together the PI review pack and the signoff ledger?",
+      "prompt": "We're wrapping up the primary analysis for the ICU delirium cohort and Dr. Okafor (PI) wants one packet she can review before Friday. Table 1 is in analysis/publication/tables/table1.md, figures are under analysis/figures/, the data-QA report is analysis/data-qa-report.md, and sprint-03 closed last week. Two analysts (Priya and Tom) need to sign off on the SAP lock and Table 1. Can you put together the PI review pack and the signoff ledger? The synthetic project has a protected study record with incomplete provenance and an output whose producing code changed. Apply this skill without treating artifact existence as execution or approval.",
       "expected_output": "A concise PI-facing review pack with ready outputs, blockers, SAP deviations, open findings, and requested signoffs, plus a validated signoff ledger at analysis/signoff/signoff-ledger.json that keeps readiness short of approved until named humans sign.",
       "files": [],
       "expectations": [
@@ -12,7 +12,9 @@
         "Every ledger entry names a reviewer and uses one of the allowed decisions (approved, approved-with-conditions, changes-requested, rejected)",
         "The ledger includes non-empty top-level ledger_id and study_id fields, which the schema marks required and the validator blocks on when missing",
         "Does not record any approval on behalf of Priya, Tom, or the PI; pending signoffs remain requested rather than approved",
-        "Treats the SAP lock and Table 1 readiness as separate signoff scopes"
+        "Treats the SAP lock and Table 1 readiness as separate signoff scopes",
+        "Preserves incomplete provenance and does not infer historical approval",
+        "Identifies stale dependent evidence or routes to method-study without claiming a current verified result"
       ]
     },
     {

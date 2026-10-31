@@ -1,5 +1,5 @@
 [
-  {"query": "Our ICU delirium prediction-model manuscript is done. Where should we submit it? Needs MEDLINE indexing and we can't pay a big APC.", "should_trigger": true},
+  {"query": "Our ICU delirium prediction-model manuscript is done. Where should we submit it? Needs MEDLINE indexing and we can't pay a big APC. in a study with a protected lifecycle record", "should_trigger": true},
   {"query": "Rank candidate journals for our sepsis RCT manuscript with scope-fit evidence and give me a target plus two backups.", "should_trigger": true},
   {"query": "We want full open access under $2,000 APC for this survey study - which journals actually fit and are legitimately indexed?", "should_trigger": true},
   {"query": "A colleague swears by 'Annals of Clinical and Critical Care Science' for our AKI paper but I can't find it in the NLM Catalog. Is it legit or should we cross it off?", "should_trigger": true},

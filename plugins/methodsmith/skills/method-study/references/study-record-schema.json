@@ -1,0 +1,96 @@
+{
+  "type": "object",
+  "required": [
+    "schema_version",
+    "study_id",
+    "root",
+    "revision",
+    "artifacts",
+    "snapshots"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "study_id": {
+      "type": "string"
+    },
+    "root": {
+      "type": "string"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "path",
+          "kind",
+          "digest",
+          "provenance",
+          "execution",
+          "dependencies"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "code",
+              "notebook",
+              "data",
+              "plan",
+              "table",
+              "figure",
+              "manuscript",
+              "evidence"
+            ]
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "provenance": {
+            "enum": [
+              "verified",
+              "inferred",
+              "unknown"
+            ]
+          },
+          "execution": {
+            "enum": [
+              "unrun",
+              "success",
+              "failed",
+              "unavailable"
+            ]
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dependencies_complete": {
+            "type": "boolean"
+          },
+          "dependency_bindings": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        }
+      }
+    },
+    "snapshots": {
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

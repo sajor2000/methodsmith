@@ -98,9 +98,9 @@ The script resolves every DOI through CrossRef then OpenAlex and every PMID thro
 - `OK` — the identifier resolves and the claimed title, year, and first author match;
 - `MISMATCH` — the identifier resolves but a claimed field differs; the record's true values travel in the report for the author to compare;
 - `UNVERIFIED` — no identifier, or no record could be fetched; carry that status into the ledger, never a silent OK;
-- `FABRICATED` — the DOI or PMID is registered nowhere. A fabricated reference blocks delivery: the script exits 2.
+- `FABRICATED` — the DOI or PMID was not found by the consulted resolvers (legacy wire label; not proof of fabrication or search completeness). Such a reference blocks delivery: the script exits 2.
 
-Entries parsed from free prose carry a guessed title and year, so the script compares their identifier only and attaches the resolved record for a human to compare; do not mark such an entry MISMATCH on the parser's guess.
+Entries parsed from free prose carry a guessed title and year, so the script compares their identifier only and attaches the resolved record for a human to compare; do not mark such an entry MISMATCH on the parser's guess. Their `identity_status` stays `unverified` until that human comparison happens.
 
 Use `--lookup-cache <file>` to reuse or record lookups across runs, and `--offline` to classify from a populated cache when the network is unavailable. Add `--strict` to also fail on MISMATCH.
 
@@ -156,3 +156,9 @@ __CE_CITATION_LEDGER__ path=<ledger-path> docx=<field-bearing-master> style=<sty
 - It does not write to a Zotero library without an explicit user request and a reversible procedure.
 - It does not treat Paperclip citation URLs, `pubmed_format_citations` output, or PubMed metadata strings as editable Word fields.
 - It does not claim that a citation supports a manuscript statement when only metadata or an abstract was reviewed.
+
+## Claim support and manuscript handoffs
+
+Record identity status separately from support for each manuscript claim. The verifier's additive `identity_status`, `claim_support` and `access_level` fields distinguish metadata checks from evidence review. Its legacy `FABRICATED` wire label means identifier not found by consulted resolvers; it does not prove fabrication or search completeness. A real DOI may still support the wrong claim. Record the consulted passage/location, source version, access level (metadata-only, abstract-only or full-text), and supported/unsupported/unverified outcome in the citation ledger. Abstract-only access cannot verify full-text-dependent claims; never invent a quotation.
+
+Use `method-study` for one manuscript master and explicit source/export digests. Never flatten Zotero fields in the master. Quarto CSL rendering does not guarantee editable Zotero fields. Structural DOCX checks and actual Zotero Refresh are distinct; leave the application check pending when unavailable. Preserve external edits and reconcile them before regeneration.

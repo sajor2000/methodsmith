@@ -54,7 +54,7 @@ type Summary = {
   n_unverified: number
   n_fabricated: number
 }
-type AuditRecord = { index: number; identifier: string | null; verdict: string; reasons: string[] }
+type AuditRecord = { index: number; identifier: string | null; verdict: string; reasons: string[]; identity_status?: string }
 type Report = { summary: Summary; records: AuditRecord[] }
 
 function extract(cwd: string, file: string): Entry[] {
@@ -238,4 +238,42 @@ describe("reference integrity gate", () => {
     expect(report.records[0]!.resolved_title).toBe("A cohort study of sepsis mortality")
     expect(report.records[0]!.lookup_source).toBe("CrossRef")
   })
+})
+
+test("reference identity is separate from claim support, including legacy not-found verdicts", () => {
+  const cwd = workspace({
+    "entries.json": JSON.stringify([{ index: 1, identifier: "doi:10.0000/synthetic", title: "Synthetic", fields_trustworthy: true }]),
+    "lookups.json": JSON.stringify({ "doi:10.0000/synthetic": { found: false, source: "fixture" } }),
+  })
+  const result = run(cwd, ["classify", "--entries", "entries.json", "--lookups", "lookups.json"])
+  const record = JSON.parse(result.out).records[0]
+  expect(record.identity_status).toBe("not-found")
+  expect(record.claim_support).toBe("unverified")
+  expect(record.verdict).toBe("FABRICATED") // compatibility only; not proof of fabrication
+})
+
+test("a free-text OK verdict keeps identity unverified until a human compares the record", () => {
+  const root = workspace({
+    "entries.json": JSON.stringify([{ index: 1, identifier: "doi:10.0000/synthetic", title: "Guessed From Prose", fields_trustworthy: false }]),
+    "lookups.json": JSON.stringify({
+      "doi:10.0000/synthetic": { found: true, title: "A Different Registered Paper", year: "2001", author: "Doe", source: "fixture" },
+    }),
+  })
+  const report = classify(root, "entries.json", "lookups.json")
+  expect(report.records[0]!.verdict).toBe("OK") // legacy wire label stays for pipeline compatibility
+  expect(report.records[0]!.identity_status).toBe("unverified")
+})
+
+test("audit keeps free-text identity unverified even when the identifier resolves", () => {
+  const root = workspace({
+    "refs.txt": "[1] Smith J. A cohort study of sepsis mortality. Lancet. 2019. doi:10.1016/S0140-6736(19)30001-1\n",
+    "cache.json": JSON.stringify({
+      "doi:10.1016/s0140-6736(19)30001-1": { found: true, title: "An entirely different registered paper", year: "1971", author: "Nobody", source: "CrossRef" },
+    }),
+  })
+  const result = run(root, ["audit", "refs.txt", "--offline", "--lookup-cache", "cache.json", "--out", "qc/a.json"])
+  expect(result.code).toBe(0)
+  const report = JSON.parse(readFileSync(path.join(root, "qc", "a.json"), "utf8")) as { records: Array<{ verdict: string; identity_status: string }> }
+  expect(report.records[0]!.verdict).toBe("OK")
+  expect(report.records[0]!.identity_status).toBe("unverified")
 })

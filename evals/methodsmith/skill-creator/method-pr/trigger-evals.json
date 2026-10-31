@@ -1,5 +1,5 @@
 [
-  {"query": "Commit my changes, push the branch, and open a PR. The diff adds the multiple-imputation sensitivity analysis and updates the SAP.", "should_trigger": true},
+  {"query": "Commit my changes, push the branch, and open a PR. The diff adds the multiple-imputation sensitivity analysis and updates the SAP. in a study with a protected lifecycle record", "should_trigger": true},
   {"query": "ship it. feature/km-figures is ready, make the PR with a good description", "should_trigger": true},
   {"query": "Write a PR description for https://github.com/example-lab/readmit/pull/212 — don't commit or push anything, just give me the text.", "should_trigger": true},
   {"query": "Update the description on my open PR to reflect the new calibration results and the removed subgroup analysis.", "should_trigger": true},

@@ -1,6 +1,6 @@
 [
   {
-    "query": "Put together a review packet for our PI with Table 1, the KM figures, and the open SAP deviations so she can sign off before we send to the coordinating center",
+    "query": "Put together a review packet for our PI with Table 1, the KM figures, and the open SAP deviations so she can sign off before we send to the coordinating center in a study with a protected lifecycle record",
     "should_trigger": true
   },
   {

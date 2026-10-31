@@ -46,3 +46,7 @@ Pick the narrowest row and read its reference file before writing code. Each fil
 2. When available, use Ref MCP to read the official documentation for the exact R package and function before proposing an unfamiliar, version-sensitive, or safety-relevant call. Record the package/version or a version gap with the recommendation.
 3. When current ecosystem or CRAN-policy discovery is necessary, use Tavily MCP to find candidate primary sources, then read the official package, CRAN, R-project, or rOpenSci source. A search snippet or a third-party blog is not sufficient evidence for an API or submission rule.
 4. If the configured research tool is unavailable, state the verification gap and use only repository-local evidence or stable base-R behavior; never invent an option, version, benchmark, or policy.
+
+## Study and manuscript continuity
+
+For an active study record, use `method-study` to retain native R Markdown or Quarto notebooks, declared inputs and verified runs. Use an isolated R process for clean-run evidence; cached chunks and successful rendering alone do not prove every intended analysis executed. Keep one authoritative manuscript and reconcile external Word edits before rendering over them. Do not convert the user's notebook format merely for lifecycle integration.

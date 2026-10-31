@@ -135,7 +135,7 @@ export default function Home() {
         </header>
 
         <div className="ms-inventory container" aria-label="Included in Methodsmith">
-          <p>70 skills, 55 specialist agents, 49 reporting standards.</p>
+          <p>72 skills, 55 specialist agents, 49 reporting standards.</p>
           <Link href="https://github.com/sajor2000/methodsmith/blob/main/plugins/methodsmith/README.md#skills">
             Browse the full toolkit
           </Link>
@@ -237,7 +237,7 @@ export default function Home() {
             Built for three kinds of study
           </Heading>
           <p className="ms-section__lead">
-            70 skills in total. These are the ones each kind of study reaches for first.
+            72 skills in total. These are the ones each kind of study reaches for first.
           </p>
           <div className="ms-audiences">
             {AUDIENCES.map(({title, lead, commands}) => (
@@ -283,7 +283,7 @@ export default function Home() {
             The skill map
           </Heading>
           <p className="ms-section__lead">
-            Thirty of the 70 skills, in the order a study meets them, with the
+            Thirty of the 72 skills, in the order a study meets them, with the
             guardrails that apply at every step.
           </p>
           <details className="ms-disclosure">

@@ -1,5 +1,6 @@
 {
   "$comment": "Single source of truth for the ce-datascience -> Methodsmith rebrand. Consumed by scripts/rebrand/rename.ts, src legacy cleanup, the Claude alias installer, and method-update. Old names stay valid as deprecated aliases for one release.",
+  "postRebrandSkills": ["method-study", "method-revision"],
   "plugin": {
     "old": "ce-datascience",
     "new": "methodsmith",

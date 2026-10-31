@@ -45,6 +45,8 @@ type Kind = "skills" | "agents" | "checklists"
 // risk-of-bias tools)") do not match because the number must sit directly
 // before these words.
 const PATTERNS: Array<{ kind: Kind; pattern: RegExp }> = [
+  { kind: "skills", pattern: /^\|\s*Skills\s*\|\s*(\d+)\s*\|/gi },
+  { kind: "agents", pattern: /^\|\s*Agents\s*\|\s*(\d+)\s*\|/gi },
   { kind: "skills", pattern: /\b(\d+) (?:slash )?skills\b/gi },
   { kind: "agents", pattern: /\b(\d+) (?:specialist )?(?:agents|reviewers|review agents|reviewer agents)\b/gi },
   { kind: "checklists", pattern: /\b(\d+) (?:EQUATOR )?(?:reporting )?checklists\b/gi },

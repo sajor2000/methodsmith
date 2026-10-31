@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Our project is R-first (renv.lock, _targets.R, Quarto reports in reports/). I need to add a sensitivity analysis to the readmission model -- a negative binomial with site random effects instead of the Poisson GLM in R/fit_models.R. What's the right workflow here?",
+      "prompt": "Our project is R-first (renv.lock, _targets.R, Quarto reports in reports/). I need to add a sensitivity analysis to the readmission model -- a negative binomial with site random effects instead of the Poisson GLM in R/fit_models.R. What's the right workflow here? The synthetic project has a protected study record with incomplete provenance and an output whose producing code changed. Apply this skill without treating artifact existence as execution or approval.",
       "expected_output": "Routes to the shared R workflow: inspects renv.lock/_targets.R/existing conventions first, requires SAP and data-QA gates before model code, and records sessionInfo with results rather than freely adding packages.",
       "files": [],
       "expectations": [
@@ -11,7 +11,9 @@
         "Checks for a canonical SAP via method-plan and a method-data-qa gate before writing model code",
         "Does not add or change package dependencies (e.g., installing glmmTMB/lme4) without explicit authorization",
         "Requires recording sessionInfo() or equivalent environment evidence with the reproducible result",
-        "Routes the causal/modeling claim review to method-review rather than treating R syntax as methodological validation"
+        "Routes the causal/modeling claim review to method-review rather than treating R syntax as methodological validation",
+        "Preserves incomplete provenance and does not infer historical approval",
+        "Identifies stale dependent evidence or routes to method-study without claiming a current verified result"
       ]
     },
     {

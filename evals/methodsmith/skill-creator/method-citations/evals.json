@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "I have manuscript/drafts/sepsis-lactate-v4.docx going to Critical Care Medicine. The Introduction has 14 claims flagged with [CITE] placeholders (e.g. 'lactate clearance at 6 h predicts 28-day mortality'). Please find supporting papers, verify they actually say what we claim, and give me a Word file with real Zotero citations in Vancouver style. My Zotero group library is 'ICU-outcomes'.",
+      "prompt": "I have manuscript/drafts/sepsis-lactate-v4.docx going to Critical Care Medicine. The Introduction has 14 claims flagged with [CITE] placeholders (e.g. 'lactate clearance at 6 h predicts 28-day mortality'). Please find supporting papers, verify they actually say what we claim, and give me a Word file with real Zotero citations in Vancouver style. My Zotero group library is 'ICU-outcomes'. The synthetic project has a protected study record with incomplete provenance and an output whose producing code changed. Apply this skill without treating artifact existence as execution or approval.",
       "expected_output": "Resolves candidate sources through PubMed MCP (calling by purpose on whichever server is connected), checks claim support with Paperclip full text where available, writes a citation ledger, and produces a separate field-bearing DOCX master with live Zotero fields while leaving the original DOCX untouched.",
       "files": [],
       "expectations": [
@@ -13,7 +13,9 @@
         "Inserts citations as Zotero Word fields and does not type numeric superscripts or a static bibliography as the final representation",
         "Does not promote partially_supported, unsupported, or unverified claims into finished citations without flagging them for author review",
         "Ends with an audit report and the __CE_CITATION_LEDGER__ handoff line including supported, unresolved, and fields_verified counts",
-        "When the manuscript reports results, renders {{num:<id>}} placeholders in the field-bearing master into ADDIN CE_NUM fields with the method-numbers skill and runs its check before delivery"
+        "When the manuscript reports results, renders {{num:<id>}} placeholders in the field-bearing master into ADDIN CE_NUM fields with the method-numbers skill and runs its check before delivery",
+        "Preserves incomplete provenance and does not infer historical approval",
+        "Identifies stale dependent evidence or routes to method-study without claiming a current verified result"
       ]
     },
     {

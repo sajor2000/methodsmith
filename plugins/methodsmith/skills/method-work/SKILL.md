@@ -152,3 +152,7 @@ Return `status: complete` only when behavior-bearing work has verification evide
 
 - Finish every task; do not stop at 80%.
 - Do not re-scope the plan into human-time phases, estimate hours, or ask the user to pick units for "this session"; use subagents for context pressure. If a plan is genuinely too large, say so and suggest `method-plan` to reduce scope.
+
+## Collaborative study handoff
+
+For study-linked work, use `method-study` to check plan authority, dependencies and freshness before execution. Preserve the selected Jupyter, marimo, R Markdown or Quarto format. Explain scientific intent before material code additions, retain existing authorization within scope, and record actual run evidence after checks. Do not turn an inherited unknown baseline into verified history. Reviewer-requested analyses go through `method-revision` and remain labeled post-submission.

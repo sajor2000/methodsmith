@@ -1,0 +1,180 @@
+{
+  "type": "object",
+  "required": [
+    "schema_version",
+    "round_id",
+    "baseline",
+    "changes",
+    "comments"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "round_id": {
+      "type": "string"
+    },
+    "baseline": {
+      "type": "object",
+      "required": [
+        "provenance"
+      ],
+      "properties": {
+        "snapshot_id": {
+          "type": "string"
+        },
+        "provenance": {
+          "enum": [
+            "verified",
+            "inferred",
+            "unknown"
+          ]
+        },
+        "evidence": {
+          "type": "object",
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        }
+      }
+    },
+    "changes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "kind",
+          "state",
+          "evidence"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "clarification",
+              "reanalysis",
+              "new-question"
+            ]
+          },
+          "state": {
+            "enum": [
+              "proposed",
+              "implemented",
+              "verified",
+              "human-approved"
+            ]
+          },
+          "post_submission": {
+            "type": "boolean"
+          },
+          "authorization": {
+            "type": "string"
+          },
+          "approval": {
+            "type": "object",
+            "description": "Required for human-approved changes. change_digest is the SHA-256 of the change object without approval, serialized with json.dumps(..., sort_keys=True, separators=(\",\", \":\")).",
+            "required": [
+              "reviewer",
+              "timestamp",
+              "change_digest"
+            ],
+            "properties": {
+              "reviewer": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "string"
+              },
+              "change_digest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "comments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "verbatim",
+          "disposition",
+          "rationale",
+          "changes",
+          "response_claim"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "verbatim": {
+            "type": "string",
+            "minLength": 1
+          },
+          "disposition": {
+            "enum": [
+              "address",
+              "partial",
+              "disagree",
+              "clarify",
+              "pending"
+            ]
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "response_claim": {
+            "enum": [
+              "proposed",
+              "partial",
+              "completed",
+              "disagree"
+            ]
+          },
+          "manuscript_location": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

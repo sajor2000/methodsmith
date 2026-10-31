@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -15,20 +16,25 @@ ALLOWED_DECISIONS = {"approved", "approved-with-conditions", "changes-requested"
 
 
 def safe_relative(value: str) -> bool:
+    """Accept only project-relative paths without traversal."""
     path = Path(value)
     return not path.is_absolute() and ".." not in path.parts
 
 
-def stable_hash(entry: dict, previous_hash: str) -> str:
+def stable_hash(entry: dict, previous_hash: str, version: int = 1) -> str:
+    """Hash entry content with the prior entry for the append-only chain."""
     payload = {
         key: entry.get(key)
         for key in REQUIRED_ENTRY_FIELDS
     }
+    if version == 2:
+        payload.update({key: entry.get(key) for key in ("artifact_path", "artifact_sha256")})
     payload["previous_hash"] = previous_hash
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
 
 
 def main(argv: list[str]) -> int:
+    """Validate the ledger and write a report; blockers exit 1, usage errors exit 2."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ledger", default="analysis/signoff/signoff-ledger.json")
     parser.add_argument("--project-root", default=".")
@@ -40,6 +46,9 @@ def main(argv: list[str]) -> int:
 
     root = Path(args.project_root).resolve()
     ledger_path = root / args.ledger
+    if not ledger_path.resolve().is_relative_to(root) or ledger_path.is_symlink():
+        print("Error: unsafe ledger path", file=sys.stderr)
+        return 2
     blockers: list[str] = []
     warnings: list[str] = []
 
@@ -72,8 +81,22 @@ def main(argv: list[str]) -> int:
         blockers.append("Ledger field 'entries' must be a list.")
         entries = []
 
+    version = ledger.get("version", 1)
+    if version not in (1, 2):
+        blockers.append("Unsupported signoff ledger version.")
+    if version == 1:
+        warnings.append("Legacy ledger: approval is not bound to current artifact bytes.")
+    warnings.append("Recorded reviewer names are not authenticated signatures; scientific review remains human-owned.")
     seen_ids: set[str] = set()
     previous_hash = ""
+    # v2 approval binds to current bytes, and the ledger is append-only, so a
+    # superseded entry would otherwise block forever. Only the latest entry
+    # per artifact path is checked against current bytes; older ones warn.
+    latest_for_path: dict[str, int] = {}
+    if version == 2:
+        for position, candidate in enumerate(entries, start=1):
+            if isinstance(candidate, dict) and isinstance(candidate.get("artifact_path"), str) and candidate.get("artifact_path"):
+                latest_for_path[Path(candidate["artifact_path"]).as_posix()] = position
     for index, entry in enumerate(entries, start=1):
         if not isinstance(entry, dict):
             blockers.append(f"Entry {index} must be an object.")
@@ -87,7 +110,28 @@ def main(argv: list[str]) -> int:
                 blockers.append(f"{entry_id}: missing required field '{field}'")
         if entry.get("decision") and entry.get("decision") not in ALLOWED_DECISIONS:
             blockers.append(f"{entry_id}: unsupported decision '{entry.get('decision')}'")
-        expected_hash = stable_hash(entry, previous_hash)
+        if version == 2:
+            relative = entry.get("artifact_path")
+            expected = entry.get("artifact_sha256")
+            if not isinstance(relative, str) or not safe_relative(relative) or not relative:
+                blockers.append(f"{entry_id}: invalid artifact path.")
+            elif not isinstance(expected, str) or not re.fullmatch(r"[a-f0-9]{64}", expected):
+                blockers.append(f"{entry_id}: invalid artifact digest.")
+            elif latest_for_path.get(Path(relative).as_posix()) != index:
+                warnings.append(f"{entry_id}: superseded by a later entry for this artifact; digest not rechecked.")
+            else:
+                artifact = root / relative
+                if not artifact.resolve().is_relative_to(root) or artifact.is_symlink() or not artifact.is_file():
+                    blockers.append(f"{entry_id}: artifact unavailable or outside project.")
+                else:
+                    try:
+                        current = hashlib.sha256(artifact.read_bytes()).hexdigest()
+                    except OSError as exc:
+                        blockers.append(f"{entry_id}: artifact unreadable ({exc.__class__.__name__}).")
+                    else:
+                        if current != expected:
+                            blockers.append(f"{entry_id}: artifact digest changed or missing; approval is stale.")
+        expected_hash = stable_hash(entry, previous_hash, version)
         if entry.get("entry_hash") and entry.get("entry_hash") != expected_hash:
             blockers.append(f"{entry_id}: entry_hash does not match append-only content.")
         previous_hash = entry.get("entry_hash") or expected_hash
@@ -96,6 +140,9 @@ def main(argv: list[str]) -> int:
         warnings.append("No signoff entries recorded.")
 
     report_path = ledger_path.with_name("signoff-validation-report.md")
+    if report_path.is_symlink():
+        print("Error: unsafe report path", file=sys.stderr)
+        return 2
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(
         "\n".join([

@@ -101,6 +101,7 @@ describe("methodsmith skill value contract", () => {
     // These skills must carry the cross-platform interaction contract at runtime.
     const explicitInteractionSkills = new Set([
       "method-fabric/SKILL.md",
+      "method-study/SKILL.md",
       "method-model-choice/SKILL.md",
       "method-notebook-standards/SKILL.md",
       "method-trial-design/SKILL.md",
@@ -131,6 +132,8 @@ describe("methodsmith skill value contract", () => {
     for (const required of [
       "AskUserQuestion",
       "request_user_input",
+      "AskUser",
+      "question",
       "ask_user",
       "pi-ask-user",
       "ToolSearch",

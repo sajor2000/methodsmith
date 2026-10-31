@@ -13,7 +13,7 @@ argument-hint: "[new|extend] [notebook scope or path]"
 - **Output:** A recorded notebook topology decision and a cell/chunk structure that is reviewable, documented, and reusable.
 - **Ask only if:** Only when new or material notebook work has no explicit master-notebook versus multi-file decision.
 - **Do not do:** Do not silently broaden a bounded existing-notebook edit into a whole-notebook rewrite.
-- **Interaction:** Ask the topology question with `AskUserQuestion` in Claude Code, `request_user_input` in Codex, `ask_user` in Gemini, or `ask_user` in Pi via `pi-ask-user`. In Claude Code, first call `ToolSearch` with `select:AskUserQuestion` when the schema is not loaded. Only when no blocking tool exists or the call errors, present numbered choices in chat and wait.
+- **Interaction:** Ask the topology question with `AskUserQuestion` in Claude Code, `request_user_input` in Codex, `AskUser` in Droid, `question` in OpenCode, or `ask_user` in Gemini and Pi via `pi-ask-user`. For Pi batch questions, put `context`, `options`, `allowMultiple`, and `allowFreeform` on each `questions` entry; do not also pass them at the top level. In Claude Code, first call `ToolSearch` with `select:AskUserQuestion` when the schema is not loaded. Only when no blocking tool exists or the call errors, present numbered choices in chat and wait.
 
 ## Start with topology
 
@@ -44,3 +44,7 @@ For any notebook edit, interactive run, or script execution that reads, creates,
 ## Completion check
 
 Before handoff, verify the topology decision is recorded, every added or materially changed executable unit has its preceding Markdown/narrative, exceptions explain their size, the real source and validation evidence are recorded for persisted analytical output, and the format's normal structural or render validation has run (or its gap is reported).
+
+## Study evidence handoff
+
+When a study record is in use, link material cells/chunks to the scientific plan or decision and register their source/configuration dependencies through `method-study`. Distinguish structural validation, actual execution, fresh outputs and human scientific review. Jupyter needs a fresh kernel for reproducibility evidence; marimo static checks and cached reactive state are not clean-run evidence; R Markdown needs an isolated R process; Quarto freeze/cache does not track every external input. Preserve the user's chosen native format and existing topology decision. A changed input leaves dependent figures, tables and claims stale until revalidated.

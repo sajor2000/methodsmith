@@ -1,4 +1,7 @@
-version: 1
+version: 2
+readable_versions: [1, 2]
+v2_entry_required_fields: [artifact_path, artifact_sha256]
+legacy_note: Version 1 is structurally readable but does not bind approval to current content.
 required_fields:
   - ledger_id
   - study_id

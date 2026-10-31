@@ -98,6 +98,8 @@ describe("writePiBundle", () => {
     expect(agentsContent).toContain("BEGIN METHODSMITH PI TOOL MAP")
     expect(agentsContent).toContain("pi-subagents")
     expect(agentsContent).toContain("pi-ask-user")
+    expect(agentsContent).toContain("inside each question")
+    expect(agentsContent).toContain("Do not also pass those fields at the top level")
   })
 
   test("transforms Task calls in copied SKILL.md files", async () => {

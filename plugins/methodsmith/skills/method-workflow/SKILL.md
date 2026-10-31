@@ -1,6 +1,6 @@
 ---
 name: method-workflow
-description: "Shows the methodsmith study lifecycle for the current project and recommends the next safe skill. Use when the user asks what to run next or wants lifecycle status."
+description: "Shows study status and the next safe skill. Use when navigating the research lifecycle."
 ---
 
 # Workflow Navigator
@@ -152,3 +152,7 @@ If no stack profile exists, append: "Run the `method-setup` command first to rev
 `references/lifecycle-paths.md` — Ordered skill sequences for all 5 project types with language branches and data-layer overlays
 
 `references/state-detection.md` — File-system signals used to infer which steps are complete
+
+## Evidence-backed lifecycle status
+
+When the project has a study record, load `method-study` for read-only status and use its freshness, provenance, execution and approval states in the lifecycle card. Do not inherit another worktree's study record. File existence alone means an artifact is present, not that an analysis ran or was approved. Recommend `method-study` for inherited-study intake and `method-revision` for reviewer rounds. If no record exists, label lifecycle detection heuristic and dependency coverage unknown; do not initialize it during this read-only navigator.

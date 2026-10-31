@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "I'm picking this project back up after a month. It's an OMOP study -- there's analysis/research-question.yaml, analysis/pubmed/ with a PubMed results CSV, and analysis/cohort/ has SQL referencing person and observation_period. Python/Jupyter. What should I run next?",
+      "prompt": "I'm picking this project back up after a month. It's an OMOP study -- there's analysis/research-question.yaml, analysis/pubmed/ with a PubMed results CSV, and analysis/cohort/ has SQL referencing person and observation_period. Python/Jupyter. What should I run next? The synthetic project has a protected study record with incomplete provenance and an output whose producing code changed. Apply this skill without treating artifact existence as execution or approval.",
       "expected_output": "Auto-detects an observational OMOP study, emits the lifecycle card with done/in-progress/not-started steps based on artifacts, and recommends the next safe skill without running anything.",
       "files": [],
       "expectations": [
@@ -12,7 +12,9 @@
         "Recommends a single next step (e.g., method-extract) with a one-line rationale",
         "Does not run any lifecycle skill or create/modify project files",
         "Appends a note to run method-setup if no stack profile exists",
-        "When analysis/numbers/registry.json exists, adds a Numbers line with the method-numbers gate status (PASS, FAIL, or not run) to the lifecycle card"
+        "When analysis/numbers/registry.json exists, adds a Numbers line with the method-numbers gate status (PASS, FAIL, or not run) to the lifecycle card",
+        "Preserves incomplete provenance and does not infer historical approval",
+        "Identifies stale dependent evidence or routes to method-study without claiming a current verified result"
       ]
     },
     {

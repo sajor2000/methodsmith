@@ -1,0 +1,22 @@
+{
+  "name": "methodsmith",
+  "description": "Rigorous methods for statistics, machine learning, and meta-analysis, from question to paper. Every study compounds.",
+  "owner": {
+    "name": "Juan Carlos Rojas"
+  },
+  "plugins": [
+    {
+      "name": "methodsmith",
+      "description": "Rigorous methods for statistics, machine learning, and meta-analysis, from question to paper: pre-specified SAPs, statistical and reporting-checklist review, and reproducible R and Python workflows. Every study compounds.",
+      "category": "Data Science",
+      "tags": [
+        "data-science",
+        "biostatistics",
+        "statistical-analysis",
+        "research-workflow",
+        "reporting-checklists"
+      ],
+      "source": "./plugins/methodsmith"
+    }
+  ]
+}

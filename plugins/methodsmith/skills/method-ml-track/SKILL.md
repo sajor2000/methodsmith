@@ -171,3 +171,7 @@ disclosure:
 @./references/backends-comparison.md
 
 @./references/run-log-schema.yaml
+
+## Study record integration
+
+Use `method-study` to link the reviewed aggregate run summary, code/configuration, split definitions and source-version references to the study plan. Preserve this run-log schema as the authoritative run summary. Raw logs, model artifacts and data hashes stay protected unless explicitly cleared for sharing. Foundation-model runs use the same authorization, budget and provenance rules; this handoff does not authorize training or paid compute.

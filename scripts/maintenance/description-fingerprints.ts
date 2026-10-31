@@ -71,6 +71,18 @@ export function collectFingerprints(): string[] {
     offset += size + 1
     if (description) fingerprints.add(descriptionFingerprint(description))
   }
+  // Include the candidate release before it is committed, including new skills.
+  const currentPaths = git(["ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", ...pathspecs])
+    .toString().split("\0").filter(Boolean)
+  for (const relative of new Set(currentPaths)) {
+    try {
+      const description = readDescription(readFileSync(path.join(repoRoot, relative), "utf8"))
+      if (description) fingerprints.add(descriptionFingerprint(description))
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
+      // A tracked deletion remains represented by its historical fingerprint.
+    }
+  }
   return [...fingerprints].sort()
 }
 

@@ -1,0 +1,82 @@
+[
+  {
+    "query": "Respond to reviewer one",
+    "should_trigger": true
+  },
+  {
+    "query": "Organize journal reviewer comments",
+    "should_trigger": true
+  },
+  {
+    "query": "Track shared revision analyses",
+    "should_trigger": true
+  },
+  {
+    "query": "Prepare round two response",
+    "should_trigger": true
+  },
+  {
+    "query": "Draft a justified reviewer disagreement",
+    "should_trigger": true
+  },
+  {
+    "query": "Link reviewer comment to changed code",
+    "should_trigger": true
+  },
+  {
+    "query": "Check a claimed completed revision",
+    "should_trigger": true
+  },
+  {
+    "query": "Preserve the submitted code baseline for review",
+    "should_trigger": true
+  },
+  {
+    "query": "Carry unresolved peer review comments forward",
+    "should_trigger": true
+  },
+  {
+    "query": "Record authorization for post-submission analysis",
+    "should_trigger": true
+  },
+  {
+    "query": "Explain a Python loop",
+    "should_trigger": false
+  },
+  {
+    "query": "Translate this sentence",
+    "should_trigger": false
+  },
+  {
+    "query": "Calculate a mean from three numbers",
+    "should_trigger": false
+  },
+  {
+    "query": "Change the terminal font",
+    "should_trigger": false
+  },
+  {
+    "query": "Install a text editor",
+    "should_trigger": false
+  },
+  {
+    "query": "Explain Git rebase generally",
+    "should_trigger": false
+  },
+  {
+    "query": "Find the weather",
+    "should_trigger": false
+  },
+  {
+    "query": "Resize a logo",
+    "should_trigger": false
+  },
+  {
+    "query": "Write a birthday greeting",
+    "should_trigger": false
+  },
+  {
+    "query": "Review a software pull request without a scientific manuscript",
+    "should_trigger": false
+  }
+]

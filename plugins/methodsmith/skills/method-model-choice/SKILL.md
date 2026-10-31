@@ -13,7 +13,7 @@ argument-hint: "<research question, SAP path, or data-profile path> [language:au
 - **Output:** `analysis/model-strategy/<slug>-model-strategy.md`, an optional stack-matched `.R` or `.py` scaffold, and a `__CE_MODEL_STRATEGY__` handoff.
 - **Ask only if:** A load-bearing input cannot be established from the request, SAP, data profile, repository, or prior handoff.
 - **Do not do:** Do not choose a final model before data grain and estimand are known, run models without authorization, install packages, fabricate language parity, or claim to replace human biostatistical approval.
-- **Interaction:** Check repository, configuration, handoffs, and supplied artifacts first. Ask one decision-changing question at a time with `AskUserQuestion` in Claude Code, `request_user_input` in Codex, `ask_user` in Gemini, or `ask_user` in Pi via `pi-ask-user`. In Claude Code, first call `ToolSearch` with `select:AskUserQuestion` when the schema is not loaded. Only when no blocking tool exists or the call errors, present concise numbered choices in chat and wait.
+- **Interaction:** Check repository, configuration, handoffs, and supplied artifacts first. Ask one decision-changing question at a time with `AskUserQuestion` in Claude Code, `request_user_input` in Codex, `AskUser` in Droid, `question` in OpenCode, or `ask_user` in Gemini and Pi via `pi-ask-user`. In Claude Code, first call `ToolSearch` with `select:AskUserQuestion` when the schema is not loaded. Only when no blocking tool exists or the call errors, present concise numbered choices in chat and wait.
 
 Treat PhD-level biostatistical practice as the quality bar, not an identity claim. A complete recommendation is `ready_for_review`; only a named human reviewer can approve it.
 

@@ -16,7 +16,7 @@ Verdicts:
   OK           An identifier resolved and the metadata agrees.
   MISMATCH     An identifier resolved but title, year, author or venue differs.
   UNVERIFIED   No identifier, or no lookup was available for it.
-  FABRICATED   An identifier is present and registered nowhere.
+  FABRICATED   Legacy identifier-not-found label; not proof of fabrication.
 
 Identifier resolution is authoritative. Text-only entries are best effort: a
 title with no DOI or PMID can only be searched, so a near-miss is reported as
@@ -313,12 +313,11 @@ def classify(entry: dict, lookup: dict) -> dict:
     found = lookup.get("found")
     if found is False:
         if identifier:
-            # An identifier that is registered nowhere is the fabrication case:
-            # a DOI or PMID either exists or it does not.
+            # Preserve the legacy wire label. Not found does not prove fabrication.
             return {
                 "verdict": "FABRICATED",
                 "reasons": [
-                    "%s is registered nowhere (%s)" % (identifier, lookup.get("source", "lookup"))
+                    "%s was not found by consulted resolvers (%s); not proof of fabrication" % (identifier, lookup.get("source", "lookup"))
                 ],
             }
         return {
@@ -340,6 +339,9 @@ def classify(entry: dict, lookup: dict) -> dict:
     if not entry.get("fields_trustworthy", True):
         return {
             "verdict": "OK",
+            # Identifier resolved, but title and year were never compared:
+            # identity stays unverified until a human compares the record.
+            "identity": "unverified",
             "reasons": [
                 "identifier resolved via %s" % lookup.get("source", "lookup"),
                 "free-text entry: title and year were not compared",
@@ -518,6 +520,9 @@ def audit(entries: list, cache: dict, offline: bool) -> list:
                 "title": entry.get("title"),
                 "claimed_year": entry.get("year"),
                 "verdict": verdict["verdict"],
+                "identity_status": verdict.get("identity") or {"OK": "verified", "MISMATCH": "mismatch", "FABRICATED": "not-found", "UNVERIFIED": "unverified"}[verdict["verdict"]],
+                "claim_support": "unverified",
+                "access_level": "metadata-only",
                 "reasons": verdict["reasons"],
                 "lookup_source": (lookup or {}).get("source"),
                 "resolved_title": (lookup or {}).get("title"),
@@ -614,6 +619,9 @@ def main(argv=None) -> int:
                         "index": entry.get("index"),
                         "identifier": entry.get("identifier"),
                         "verdict": verdict["verdict"],
+                "identity_status": verdict.get("identity") or {"OK": "verified", "MISMATCH": "mismatch", "FABRICATED": "not-found", "UNVERIFIED": "unverified"}[verdict["verdict"]],
+                "claim_support": "unverified",
+                "access_level": "metadata-only",
                         "reasons": verdict["reasons"],
                     }
                 )

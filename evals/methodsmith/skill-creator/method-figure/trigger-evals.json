@@ -1,5 +1,5 @@
 [
-  {"query": "Make a cumulative incidence figure for the primary outcome by treatment arm from analysis/outputs/cif.csv in ggplot2, publication style, with source data and code recorded for the manuscript.", "should_trigger": true},
+  {"query": "Make a cumulative incidence figure for the primary outcome by treatment arm from analysis/outputs/cif.csv in ggplot2, publication style, with source data and code recorded for the manuscript. in a study with a protected lifecycle record", "should_trigger": true},
   {"query": "pls clean up fig1 for the NEJM submission - matplotlib fonts too small, legend sits on top of the curves, and I need alt text + caption", "should_trigger": true},
   {"query": "Validate analysis/publication/figures/figure-manifest.json before we build the journal package - check captions, alt text, SAP links, and paths.", "should_trigger": true},
   {"query": "Create a publication-ready forest plot of subgroup HRs from analysis/outputs/subgroups.csv in ggplot2, 8pt minimum text, exported as PDF, linked to SAP-5.4.", "should_trigger": true},
