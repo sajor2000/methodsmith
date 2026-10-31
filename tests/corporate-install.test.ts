@@ -198,6 +198,46 @@ printf '%s\\n' "$*" >> "$DROID_CALL_LOG"
     }
   }, SLOW_TEST_TIMEOUT_MS)
 
+  test("Droid explicit source fails closed when the marketplace listing fails", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "method-droid-list-fail-"))
+    try {
+      const binDir = path.join(tempRoot, "bin")
+      const logPath = path.join(tempRoot, "calls.log")
+      await fs.mkdir(binDir)
+      const droid = path.join(binDir, "droid")
+      await fs.writeFile(droid, `#!/usr/bin/env bash
+if [ "$*" = "plugin marketplace list" ]; then
+  echo "marketplace list unavailable" >&2
+  exit 1
+fi
+printf '%s\\n' "$*" >> "$DROID_CALL_LOG"
+`)
+      await fs.chmod(droid, 0o755)
+
+      const source = await fs.realpath(repoRoot)
+      const proc = Bun.spawn(["bash", path.join(repoRoot, "install.sh"), "droid", "--source", source], {
+        cwd: repoRoot,
+        env: {
+          ...process.env,
+          PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+          DROID_CALL_LOG: logPath,
+        },
+        stdout: "pipe",
+        stderr: "pipe",
+      })
+      const exitCode = await proc.exited
+      const stdout = await new Response(proc.stdout).text()
+      const stderr = await new Response(proc.stderr).text()
+      expect(exitCode).toBe(2)
+      expect(stderr).toContain(`Could not list the registered Droid marketplaces for ${source}`)
+      expect(stdout).not.toContain("Droid install prepared")
+      expect(await fs.readFile(logPath, "utf8")).toContain("plugin marketplace add")
+      expect(await fs.readFile(logPath, "utf8")).not.toContain("plugin install")
+    } finally {
+      await fs.rm(tempRoot, { recursive: true, force: true })
+    }
+  }, SLOW_TEST_TIMEOUT_MS)
+
   test("Claude local aliases are managed, idempotent, and preserve user-owned commands", async () => {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "method-claude-aliases-"))
     const commandsDir = path.join(tempRoot, "commands")
