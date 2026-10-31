@@ -439,7 +439,7 @@ install_droid() {
   if [ "$dry_run" = "no" ]; then
     local registered derived
     if registered="$(droid plugin marketplace list 2>/dev/null)"; then
-      derived="$(printf '%s\n' "$registered" | awk -v suffix="local:$marketplace_source" 'index($0, suffix) + length(suffix) == length($0) + 1 {print $1; exit}')"
+      derived="$(printf '%s\n' "$registered" | awk -v suffix="local:$marketplace_source" 'index($0, suffix) > 0 && index($0, suffix) + length(suffix) == length($0) + 1 {print $1; exit}')"
       if [ -n "$derived" ]; then
         install_marketplace="$derived"
       elif [ "$source_explicit" = "yes" ]; then

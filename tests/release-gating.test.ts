@@ -21,7 +21,42 @@ test("release creation requires the same-commit CI workflow without bypass", asy
 })
 
 import { bindTag, resolvedTag, type TagApi } from "../scripts/release/tag-binding"
-import { createValidatedReleases, confirmedRelease } from "../scripts/release/create-validated-releases"
+import { Manifest, type GitHub } from "release-please"
+import {
+ createValidatedReleases, confirmedRelease, manifestForValidatedCommit,
+} from "../scripts/release/create-validated-releases"
+
+test("release config and versions come from validated SHA while discovery stays on main", async () => {
+ const sha="a".repeat(40)
+ const configPath=".github/release-please-config.json"
+ const manifestPath=".github/.release-please-manifest.json"
+ const reads:{path:string;branch:string}[]=[]
+ const configs:Record<string,unknown> = {
+  main:{packages:{".":{"release-type":"simple","package-name":"cli","tag-separator":"_"}}},
+  [sha]:{packages:{".":{"release-type":"simple","package-name":"cli","tag-separator":"-"}}},
+ }
+ const versions:Record<string,unknown> = {
+  main:{".":"5.4.2"},
+  [sha]:{".":"5.4.1"},
+ }
+ const github={
+  repository:{owner:"owner",repo:"methodsmith",defaultBranch:"main"},
+  getFileJson:async(path:string,branch:string)=>{
+   reads.push({path,branch})
+   return path===configPath?configs[branch]:versions[branch]
+  },
+ } as unknown as GitHub
+
+ const manifest=await manifestForValidatedCommit(github,sha)
+ expect(manifest).toBeInstanceOf(Manifest)
+ expect((manifest as unknown as {targetBranch:string}).targetBranch).toBe("main")
+ expect(manifest.repositoryConfig["."].tagSeparator).toBe("-")
+ expect(manifest.releasedVersions["."]?.toString()).toBe("5.4.1")
+ expect(reads).toEqual([
+  {path:configPath,branch:sha},
+  {path:manifestPath,branch:sha},
+ ])
+})
 
 test("new passing commit cannot release an older pending candidate", async () => {
  const tags = tagApi("a".repeat(40))

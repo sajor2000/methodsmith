@@ -150,23 +150,38 @@ Try the [rerunnable BCG meta-analysis example](demo/bcg-meta-analysis/) for code
   code, and a fail-closed gate traces each one to its SAP output, script commit
   and source hash.
 
+### What has been tested
+
+The repository runs automated code tests, type checks, release-metadata checks,
+and validation of behavioral-evaluation case definitions. On an earlier
+candidate in PR #173, a bounded evaluation recorded 18 fresh-context runs across
+nine cases, all passing their hard gates; the report also preserves earlier
+failed runs, grader limitations, and a soft false-positive warning
+([evidence and limits](docs/audits/2026-10-27-pr173-feedback.md)).
+`bun run eval:validate` validates case definitions; it does not execute model
+behavior. Independent biostatistician review was still open as of 2026-10-27
+([issue #124](https://github.com/sajor2000/methodsmith/issues/124)). None of
+these checks establishes a general accuracy rate or clinical validity.
+
 ## How it compares
 
-From each project's public documentation, checked 2026-10-19.
+From public project documentation checked 2026-10-27. Each source link opens the
+README reviewed for that project.
 
-| | Methodsmith | [Compound Engineering](https://github.com/EveryInc/compound-engineering-plugin) | [Superpowers](https://github.com/obra/superpowers) | [Scientific Agent Skills](https://github.com/K-Dense-AI/scientific-agent-skills) | [MedSci Skills](https://github.com/Aperivue/medsci-skills) |
+| | Methodsmith | [Compound Engineering](https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/README.md) | [Superpowers](https://raw.githubusercontent.com/obra/superpowers/main/README.md) | [Scientific Agent Skills](https://raw.githubusercontent.com/K-Dense-AI/scientific-agent-skills/main/README.md) | [MedSci Skills](https://raw.githubusercontent.com/Aperivue/medsci-skills/main/README.md) |
 |---|---|---|---|---|---|
 | Built for | Biostatistics, clinical and ML research | Software engineers | Software engineers | Scientists across fields | Physician-researchers |
-| Plan -> review -> compound loop | Yes | Yes | Plans and TDD | No | Router plus defined chains; no compound step |
-| SAP with estimands | Yes | No | No | Power only | Analysis plan, no estimands |
-| Reporting checklists | 49, item IDs, newest version only | No | No | Writing aids | 49 stated (guidelines and risk-of-bias tools) |
-| PHI guard hook | Claude Code only; requires Python | No | No | No | De-identification skill |
+| Plan -> review -> compound loop | Yes | Yes | Plans and TDD | Not stated in reviewed README | Router plus defined chains; no compound step described |
+| SAP with estimands | Yes | Not stated in reviewed README | Not stated in reviewed README | Power only | Analysis plan; estimands not stated |
+| Reporting checklists | 49, item IDs, newest version only | Not stated in reviewed README | Not stated in reviewed README | Writing aids | 49 stated (guidelines and risk-of-bias tools) |
+| PHI guard hook | Claude Code only; requires Python | Not stated in reviewed README | Not stated in reviewed README | Not stated in reviewed README | De-identification skill; no hook described |
 | Hosts | Claude Code, Codex, Pi, more | 14 hosts | 16 hosts | Many | Claude Code, Codex, Cursor, Copilot |
 
-The reporting-checklist row is not a count race: MedSci Skills states a similar
-number, and the difference is how each is encoded and maintained. See the
-[competitive audit](docs/audits/2026-10-19-medsci-skills-competitive-audit.md)
-for the verified comparison and the gaps we have not closed.
+“Not stated in reviewed README” means the source did not document that feature;
+it does not establish that the project lacks it. This is a comparison of
+documentation, not a product execution or scientific-quality benchmark. See
+the [dated market audit](docs/audits/2026-10-27-release-readme-market-audit.md)
+for source details and limitations.
 
 ## Try it
 
@@ -232,89 +247,10 @@ The old `/ce-*` commands no longer work; use the new names. The deprecated
 `/ce-*` aliases that 5.x wrote with `--aliases` are removed the next time you
 run `bash install.sh claude --aliases`.
 
-<details>
-<summary>Every renamed command</summary>
-
-<!-- rebrand:keep-end -->
-<!-- rebrand:keep-start renamed-commands -->
-| Before 5.0 | Methodsmith |
-|---|---|
-| `/ce-adversarial-review` | `/method-adversarial-review` |
-| `/ce-bioinfo-qc` | `/method-omics-qc` |
-| `/ce-brainstorm` | `/method-brainstorm` |
-| `/ce-checklist-match` | `/method-checklist` |
-| `/ce-clean-gone-branches` | `/method-clean-branches` |
-| `/ce-clif` | `/method-clif` |
-| `/ce-clif-audit` | `/method-clif-audit` |
-| `/ce-clif-meta-analysis` | `/method-clif-meta-analysis` |
-| `/ce-clif-project-template` | `/method-clif-template` |
-| `/ce-clifpy` | `/method-clifpy` |
-| `/ce-clinical-research-voice` | `/method-voice` |
-| `/ce-code-review` | `/method-review` |
-| `/ce-cohort-build` | `/method-cohort` |
-| `/ce-commit` | `/method-commit` |
-| `/ce-commit-push-pr` | `/method-pr` |
-| `/ce-compound` | `/method-compound` |
-| `/ce-compound-refresh` | `/method-compound-refresh` |
-| `/ce-data-qa` | `/method-data-qa` |
-| `/ce-debug` | `/method-debug` |
-| `/ce-doc-review` | `/method-doc-review` |
-| `/ce-effect-size` | `/method-meta-analysis` |
-| `/ce-evidence-map` | `/method-evidence-map` |
-| `/ce-fabric` | `/method-fabric` |
-| `/ce-figure` | `/method-figure` |
-| `/ce-genome-build` | `/method-genome-build` |
-| `/ce-grill` | `/method-grill` |
-| `/ce-handoff` | `/method-handoff` |
-| `/ce-ideate` | `/method-ideate` |
-| `/ce-journal-select` | `/method-journal-select` |
-| `/ce-language-detect` | `/method-language-detect` |
-| `/ce-literature-search` | `/method-lit-search` |
-| `/ce-manuscript-citations` | `/method-citations` |
-| `/ce-manuscript-package` | `/method-submission-package` |
-| `/ce-manuscript-section-discipline` | `/method-section-check` |
-| `/ce-marimo` | `/method-marimo` |
-| `/ce-method-extract` | `/method-extract` |
-| `/ce-ml-experiment-track` | `/method-ml-track` |
-| `/ce-model-card` | `/method-model-card` |
-| `/ce-model-strategy` | `/method-model-choice` |
-| `/ce-notebook-edit` | `/method-notebook-edit` |
-| `/ce-notebook-standards` | `/method-notebook-standards` |
-| `/ce-numbers` | `/method-numbers` |
-| `/ce-optimize` | `/method-optimize` |
-| `/ce-phenotype-validate` | `/method-phenotype` |
-| `/ce-plan` | `/method-plan` |
-| `/ce-power` | `/method-power` |
-| `/ce-pre-submission-audit` | `/method-presubmit` |
-| `/ce-prereg` | `/method-prereg` |
-| `/ce-pubmed` | `/method-pubmed` |
-| `/ce-release-notes` | `/method-release-notes` |
-| `/ce-report-bug` | `/method-report-bug` |
-| `/ce-research-question` | `/method-question` |
-| `/ce-resolve-pr-feedback` | `/method-resolve-feedback` |
-| `/ce-review-pack` | `/method-signoff` |
-| `/ce-rstats` | `/method-r` |
-| `/ce-sap-tabular` | `/method-sap-workbook` |
-| `/ce-sas-stata-assess` | `/method-sas-stata` |
-| `/ce-scientific-anti-slop` | `/method-anti-slop` |
-| `/ce-scientific-writing` | `/method-write` |
-| `/ce-sessions` | `/method-sessions` |
-| `/ce-setup` | `/method-setup` |
-| `/ce-sprint` | `/method-sprint` |
-| `/ce-statistical-analysis-plan` | `/method-sap` |
-| `/ce-table1` | `/method-table1` |
-| `/ce-trial-design` | `/method-trial-design` |
-| `/ce-update` | `/method-update` |
-| `/ce-verify` | `/method-verify` |
-| `/ce-work` | `/method-work` |
-| `/ce-workflow` | `/method-workflow` |
-| `/ce-worktree` | `/method-worktree` |
-<!-- rebrand:keep-end -->
+See the full [renamed-command inventory and migration details](docs/setup.md#moving-from-ce-datascience).
 
 Agents keep the rest of their name: `ce-methods-reviewer` is now `method-methods-reviewer`. <!-- rebrand:keep -->
-
-</details>
-
+<!-- rebrand:keep-end -->
 </details>
 
 ## Get started

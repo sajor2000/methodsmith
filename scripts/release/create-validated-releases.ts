@@ -3,6 +3,26 @@ import { GitHub, Manifest } from "release-please"
 import { DuplicateReleaseError } from "release-please/build/src/errors"
 import { bindTag, resolvedTag, type TagApi, type GitObject } from "./tag-binding"
 
+const RELEASE_CONFIG_PATH = ".github/release-please-config.json"
+const RELEASE_MANIFEST_PATH = ".github/.release-please-manifest.json"
+
+/** Load release configuration and versions from the validated commit, discovering releases on main. */
+export async function manifestForValidatedCommit(github: GitHub, validatedSha: string) {
+  if (!/^[a-f0-9]{40}$/.test(validatedSha)) throw new Error("Invalid validated commit SHA")
+  const validatedFiles = new Set([RELEASE_CONFIG_PATH, RELEASE_MANIFEST_PATH])
+  const pinnedGithub = new Proxy(github, {
+    get(target, property, receiver) {
+      if (property === "getFileJson") {
+        return (path: string, branch: string) =>
+          target.getFileJson(path, validatedFiles.has(path) ? validatedSha : branch)
+      }
+      const value = Reflect.get(target, property, receiver)
+      return typeof value === "function" ? value.bind(target) : value
+    },
+  })
+  return Manifest.fromManifest(pinnedGithub, "main", RELEASE_CONFIG_PATH, RELEASE_MANIFEST_PATH)
+}
+
 /**
  * Freeze the discovered candidate set before any release mutation. A later
  * successful push must never release an older, unvalidated pending commit.
@@ -59,7 +79,7 @@ if (import.meta.main) {
   const [owner, repo] = GITHUB_REPOSITORY.split("/")
   if (!owner || !repo) throw new Error("Invalid repository")
   const github = await GitHub.create({ owner, repo, token: GITHUB_TOKEN, defaultBranch: "main" })
-  const manifest = await Manifest.fromManifest(github, "main", ".github/release-please-config.json", ".github/.release-please-manifest.json")
+  const manifest = await manifestForValidatedCommit(github, GITHUB_SHA)
   async function api(endpoint: string, method = "GET", body?: unknown): Promise<any> {
     const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/${endpoint}`, {
       method, headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, Accept: "application/vnd.github+json", "Content-Type": "application/json" },

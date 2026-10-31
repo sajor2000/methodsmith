@@ -114,13 +114,20 @@ def validate(record: dict, study_id: str) -> None:
         require(all(d in artifacts and d != key for d in item["dependencies"]), "dangling dependency")
         require("dependencies_complete" not in item or type(item["dependencies_complete"]) is bool,
                 "invalid dependencies_complete")
-    def visit(key: str, trail: set[str]) -> None:
-        """Recurse artifact dependencies, failing on cycles."""
-        require(key not in trail, "dependency cycle")
+    complete: set[str] = set()
+    active: set[str] = set()
+    def visit(key: str) -> None:
+        """Recurse artifact dependencies once, failing on cycles."""
+        require(key not in active, "dependency cycle")
+        if key in complete:
+            return
+        active.add(key)
         for dep in artifacts[key]["dependencies"]:
-            visit(dep, trail | {key})
+            visit(dep)
+        active.remove(key)
+        complete.add(key)
     for key in artifacts:
-        visit(key, set())
+        visit(key)
 
 
 def load(root: Path, study_id: str) -> dict:
@@ -137,10 +144,11 @@ def execution_inputs(record: dict, key: str) -> dict:
     item = record["artifacts"][key]
     current = status(record)["artifacts"][key]
     require(current["freshness"] == "current", "execution inputs need reconciliation")
+    binding_cache: dict[str, str] = {}
     return {"study_id": record["study_id"], "artifact_id": key,
             "source_digest": item["digest"],
             "dependencies_complete": current["coverage"] == "declared",
-            "dependencies": {d: evidence_binding(record, d) for d in item["dependencies"]}}
+            "dependencies": {d: evidence_binding(record, d, binding_cache) for d in item["dependencies"]}}
 
 
 QUARTO_PROJECT = "project:\n  type: default\nexecute:\n  cache: false\n  freeze: false\n  daemon: false\n"
@@ -272,6 +280,7 @@ def status(record: dict) -> dict:
     """Project per-artifact freshness, approval and coverage plus handoff states."""
     artifacts = record["artifacts"]
     states: dict[str, dict] = {}
+    binding_cache: dict[str, str] = {}
     def inspect(key: str) -> dict:
         """Compute one artifact status, memoized across the projection."""
         if key in states:
@@ -292,10 +301,10 @@ def status(record: dict) -> dict:
                 freshness = "unavailable"
         dependencies = [inspect(dep) for dep in item["dependencies"]]
         bound = item.get("dependency_bindings", {})
-        if bound != {d: evidence_binding(record, d) for d in item["dependencies"]} or any(d["freshness"] != "current" for d in dependencies):
+        if bound != {d: evidence_binding(record, d, binding_cache) for d in item["dependencies"]} or any(d["freshness"] != "current" for d in dependencies):
             freshness = "stale" if freshness != "unavailable" else freshness
         approval = item.get("approval")
-        binding = evidence_binding(record, key)
+        binding = evidence_binding(record, key, binding_cache)
         approved = bool(approval and approval.get("binding") == binding and freshness == "current")
         states[key] = {"freshness": freshness, "provenance": item["provenance"],
                        "execution": item["execution"], "human_approval": "recorded-current" if approved else "unapproved",
@@ -317,12 +326,18 @@ def status(record: dict) -> dict:
             "artifacts": states}
 
 
-def evidence_binding(record: dict, key: str) -> str:
+def evidence_binding(record: dict, key: str, cache: dict[str, str] | None = None) -> str:
     """Hash the artifact evidence chain an approval or binding must match."""
+    if cache is None:
+        cache = {}
+    if key in cache:
+        return cache[key]
     item = record["artifacts"][key]
-    return canonical_hash({"digest": item["digest"], "execution": item["execution"],
-                           "run": item.get("run"), "dependencies_complete": item.get("dependencies_complete", False),
-                           "dependencies": {d: evidence_binding(record, d) for d in item["dependencies"]}})
+    binding = canonical_hash({"digest": item["digest"], "execution": item["execution"],
+                              "run": item.get("run"), "dependencies_complete": item.get("dependencies_complete", False),
+                              "dependencies": {d: evidence_binding(record, d, cache) for d in item["dependencies"]}})
+    cache[key] = binding
+    return binding
 
 
 def snapshot(root: Path, record: dict, snapshot_id: str) -> dict:
@@ -421,7 +436,9 @@ def main() -> int:
                         "digest": digest(source), "provenance": args.provenance, "execution": "unrun",
                         "dependencies": args.depends_on, "dependencies_complete": args.dependencies_complete}
                     validate(record, args.study_id)
-                    record["artifacts"][args.id]["dependency_bindings"] = {d: evidence_binding(record, d) for d in args.depends_on}
+                    binding_cache: dict[str, str] = {}
+                    record["artifacts"][args.id]["dependency_bindings"] = {
+                        d: evidence_binding(record, d, binding_cache) for d in args.depends_on}
                     result = {"artifact_id": args.id}
                 elif args.command in ("refresh", "approve", "record-run", "master", "export-manuscript"):
                     require(args.id in record["artifacts"], "unknown artifact")
@@ -429,7 +446,9 @@ def main() -> int:
                     current = status(record)["artifacts"][args.id]
                     if args.command == "refresh":
                         item["digest"] = digest(local_path(item["path"]))
-                        item["dependency_bindings"] = {d: evidence_binding(record, d) for d in item["dependencies"]}
+                        binding_cache: dict[str, str] = {}
+                        item["dependency_bindings"] = {
+                            d: evidence_binding(record, d, binding_cache) for d in item["dependencies"]}
                         item["execution"] = "unrun"
                         item.pop("approval", None)
                         item.pop("run", None)

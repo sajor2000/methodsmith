@@ -109,3 +109,50 @@ test("hand-written records with a non-boolean dependencies_complete fail closed"
  expect(status.code).toBe(1)
  expect(status.out).toContain("invalid dependencies_complete")
 })
+
+test("shared dependency DAGs memoize bindings and validate cycles in linear work",async()=>{
+ const probe=`
+import importlib.util, sys
+spec=importlib.util.spec_from_file_location("study_record",sys.argv[1])
+module=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+count=24
+reads=0
+class CountedArtifacts(dict):
+    def __getitem__(self,key):
+        global reads
+        reads+=1
+        return super().__getitem__(key)
+artifacts=CountedArtifacts()
+for i in range(count):
+    dependencies=[f"a{i-1}"] if i else []
+    if i>1: dependencies.append(f"a{i-2}")
+    artifacts[f"a{i}"]={"kind":"data" if i==0 else "table",
+        "provenance":"unknown","execution":"unrun","path":f"/tmp/a{i}",
+        "digest":f"{i:064x}","dependencies":dependencies,"dependencies_complete":True}
+record={"schema_version":1,"study_id":"demo","revision":0,"artifacts":artifacts}
+module.validate(record,"demo")
+assert reads<=count*2, f"dependency validation revisited shared nodes: {reads}"
+hashes=0
+original=module.canonical_hash
+def counted_hash(value):
+    global hashes
+    hashes+=1
+    return original(value)
+module.canonical_hash=counted_hash
+assert len(module.evidence_binding(record,f"a{count-1}"))==64
+assert hashes==count, f"evidence bindings hashed shared ancestors {hashes} times"
+artifacts["a0"]["dependencies"]=[f"a{count-1}"]
+try:
+    module.validate(record,"demo")
+except module.RecordError as error:
+    assert "dependency cycle" in str(error)
+else:
+    raise AssertionError("dependency cycle was accepted")
+`
+ const proc=Bun.spawn(["python3","-c",probe,script],{stdout:"pipe",stderr:"pipe"})
+ const code=await proc.exited
+ const out=await new Response(proc.stdout).text()
+ const err=await new Response(proc.stderr).text()
+ expect(code,`${out}${err}`).toBe(0)
+})
